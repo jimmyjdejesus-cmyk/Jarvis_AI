@@ -8,3 +8,20 @@ __pycache__/
 
 # IDE files (PyCharm)
 .idea/
+
+# Database files
+*.db
+janus_database.db
+
+# Environment variables
+.env
+
+# Test files
+test_auth.py
+migrate_users.py
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
