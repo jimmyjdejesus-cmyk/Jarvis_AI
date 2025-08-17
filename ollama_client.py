@@ -1,10 +1,10 @@
-# ollama_client.py
 import requests
 import json
 import subprocess
 import sys
 
 OLLAMA_ENDPOINT = "http://localhost:11434"
+
 
 def get_available_models():
     """
@@ -18,21 +18,22 @@ def get_available_models():
     except requests.exceptions.RequestException:
         return []
 
-def stream_generation(model, prompt):
+
+def stream_generation(model, prompt, draft_model=None):
     """
-    Sends a prompt to the selected model and streams the response.
+    Sends a prompt and an optional draft model to the Ollama API for a streaming response.
     """
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": True
-    }
+    payload = {"model": model, "prompt": prompt, "stream": True}
+    if draft_model:
+        # Pass the draft model as an option for speculative decoding
+        payload["options"] = {"draft_model": draft_model}
+
     try:
         response = requests.post(
             f"{OLLAMA_ENDPOINT}/api/generate",
             json=payload,
             stream=True,
-            timeout=120  # Increased timeout for large model loading
+            timeout=120
         )
         response.raise_for_status()
         for line in response.iter_lines():
@@ -41,12 +42,27 @@ def stream_generation(model, prompt):
     except requests.exceptions.RequestException as e:
         yield {"error": f"Connection to Ollama failed or timed out: {e}"}
 
-# In ollama_client.py
 
-# Add this import to the top of the file
-import sys
+def generate_non_streamed_response(model, prompt, draft_model=None):
+    """
+    Generates a complete response from a model without streaming, with an optional draft model.
+    """
+    payload = {"model": model, "prompt": prompt, "stream": False}
+    if draft_model:
+        payload["options"] = {"draft_model": draft_model}
 
-# ... (other functions like get_available_models and stream_generation remain the same) ...
+    try:
+        response = requests.post(
+            f"{OLLAMA_ENDPOINT}/api/generate",
+            json=payload,
+            timeout=120
+        )
+        response.raise_for_status()
+        return response.json().get("response", "")
+    except requests.exceptions.RequestException as e:
+        print(f"Error in non-streamed generation: {e}")
+        return f"Error: Could not get a response from Ollama. {e}"
+
 
 def pull_model_subprocess(model_name):
     """
@@ -55,8 +71,6 @@ def pull_model_subprocess(model_name):
     """
     command = ["ollama", "pull", model_name]
     try:
-        # Use bufsize=1 for line-buffering.
-        # creationflags prevents a console window from popping up on Windows.
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
@@ -66,13 +80,9 @@ def pull_model_subprocess(model_name):
             encoding='utf-8',
             errors='replace'
         )
-
-        # A more robust way to read the output line by line
         for line in process.stdout:
             yield line.strip()
-
         process.wait()
-
     except FileNotFoundError:
         yield "Ollama command not found. Make sure Ollama is installed and in your system's PATH."
     except Exception as e:

@@ -1,0 +1,10 @@
+credentials:
+  usernames:
+    moodeux: # <-- Create your admin user here
+      email: jimmydejesus1129@gmail.com
+      name: Replicator
+      password: 'Passcode' # Use a temporary password, it will be hashed on first login
+cookies:
+  cookie_name: janus_auth_cookie
+  key: 'jims_secret_key' # IMPORTANT: Change this!
+  cookie_expiry_days: 30
