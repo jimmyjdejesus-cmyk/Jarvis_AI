@@ -5,14 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1ad3c874-3be4-4fa9-98fc-ac1ce9d0b9dd" name="Changes" comment="This is the base Version for Janus_Ai, a Llama 3 locally hosted NLP, I will be testing a few different LLama models but I am starting with Gemma3 12B. this model uses duck duck go and currently does not save chat history as it is hosted locally in the streamlit window. I do intend to create variations with the different models for different projects including mixing IOT devices into the work flow.&#10; &#10; ### Side note-&#10; I wish i could have chosen Jarvis_AI lol, maybe a various could be. &#10; &quot;&quot;&quot;&#10; &#10; Janus sounds funny, jarvis is  a little better.&#10;&quot;&quot;&quot;&#10; #Added the modular model baseline code&#10; &quot;&quot;&quot;&#10; in the streamlit UI, you can choose the model for the task you need done&#10;more flexibility will be added as I find the limits of the system.&#10;&#10;I note that the system is painfully slow, im going to try speculative decoding and see the different at runtime.&#10;&quot;&quot;&quot;">
-      <change afterPath="$PROJECT_DIR$/agent/browser_automation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/agent/core.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/agent/file_ingest.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/agent/human_in_loop.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/agent/image_generation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/agent/tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/agent/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/agent/core.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/agent/file_ingest.py" beforeDir="false" afterPath="$PROJECT_DIR$/agent/file_ingest.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/agent/tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/agent/tools.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ui/sidebar.py" beforeDir="false" afterPath="$PROJECT_DIR$/ui/sidebar.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -77,7 +75,7 @@
       <option name="presentableId" value="Default" />
       <updated>1755261081527</updated>
       <workItem from="1755261082555" duration="12711000" />
-      <workItem from="1755310604736" duration="27502000" />
+      <workItem from="1755310604736" duration="29260000" />
     </task>
     <task id="LOCAL-00001" summary="This is the base Version for Janus_Ai, a Llama 3 locally hosted NLP, I will be testing a few different LLama models but I am starting with Gemma3 12B. this model uses duck duck go and currently does not save chat history as it is hosted locally in the streamlit window. I do intend to create variations with the different models for different projects including mixing IOT devices into the work flow.&#10; &#10; ### Side note-&#10; I wish i could have chosen Jarvis_AI lol, maybe a various could be. &#10; ###">
       <option name="closed" value="true" />
@@ -143,7 +141,15 @@
       <option name="project" value="LOCAL" />
       <updated>1755400486244</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="This is the base Version for Janus_Ai, a Llama 3 locally hosted NLP, I will be testing a few different LLama models but I am starting with Gemma3 12B. this model uses duck duck go and currently does not save chat history as it is hosted locally in the streamlit window. I do intend to create variations with the different models for different projects including mixing IOT devices into the work flow.&#10; &#10; ### Side note-&#10; I wish i could have chosen Jarvis_AI lol, maybe a various could be. &#10; &quot;&quot;&quot;&#10; &#10; Janus sounds funny, jarvis is  a little better.&#10;&quot;&quot;&quot;&#10; #Added the modular model baseline code&#10; &quot;&quot;&quot;&#10; in the streamlit UI, you can choose the model for the task you need done&#10;more flexibility will be added as I find the limits of the system.&#10;&#10;I note that the system is painfully slow, im going to try speculative decoding and see the different at runtime.&#10;&quot;&quot;&quot;">
+      <option name="closed" value="true" />
+      <created>1755450877714</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1755450877714</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

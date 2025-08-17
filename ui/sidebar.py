@@ -1,61 +1,101 @@
 import streamlit as st
+import uuid
 
-def render_sidebar(config, authenticator):
-    st.title(f"Welcome, {st.session_state.get('name', 'User')}!")
-    authenticator.logout('Logout')
-    st.divider()
-    st.header("🗂️ Projects & Sessions")
+AVAILABLE_MODELS = [
+    "Gemm3:12b-it-qat",
+    "gemma3:1b",
+    "Deepeek-r1-0528-qwen3-8b",
+    "qwen3-.6b"
+]
 
-    from database import get_projects, add_project, get_sessions_for_project, create_new_session, rename_session, \
-        delete_session, delete_project
-    username = st.session_state.get("username")
-    projects = get_projects(username)
-    if not projects:
-        projects = ["default"]
+def auto_chat_name(context):
+    if not context:
+        return "New Chat"
+    context = context.strip()
+    if len(context) > 40:
+        context = context[:37] + "..."
+    return context.replace("\n", " ") or "New Chat"
 
-    # Project tree UI
-    for project in projects:
-        with st.expander(f"📁 {project}", expanded=(project == st.session_state.get('selected_project', projects[0]))):
-            st.session_state.selected_project = project
-            if st.button("🗑️ Delete Project", key=f"del_proj_{project}"):
-                delete_project(username, project)
-                st.experimental_rerun()
-            sessions = get_sessions_for_project(username, project)
-            for session in sessions:
-                col1, col2, col3 = st.columns([0.6, 0.2, 0.2])
-                with col1:
-                    if st.button(f"💬 {session['name']}", key=f"select_{session['id']}", use_container_width=True):
-                        st.session_state.session_id = session['id']
-                        st.experimental_rerun()
-                with col2:
-                    if st.button("✏️", key=f"rename_btn_{session['id']}"):
-                        new_name = st.text_input("Rename to:", value=session['name'], key=f"rename_txt_{session['id']}")
-                        if st.button("Save", key=f"save_rename_{session['id']}"):
-                            rename_session(session['id'], new_name)
-                            st.experimental_rerun()
-                with col3:
-                    if st.button("🗑️", key=f"del_{session['id']}"):
-                        delete_session(session['id'])
-                        st.experimental_rerun()
-            if st.button("➕ New Session", key=f"new_sess_{project}"):
-                new_session_id = create_new_session(username, project)
-                st.session_state.session_id = new_session_id
-                st.experimental_rerun()
-    if st.button("➕ New Project"):
-        new_project_name = st.text_input("Project Name", key="new_project_name")
-        if st.button("Create", key="create_project_btn"):
-            if new_project_name and new_project_name not in projects:
-                add_project(username, new_project_name)
-                st.session_state.selected_project = new_project_name
-                st.success(f"Project '{new_project_name}' created!")
-                st.experimental_rerun()
-            else:
-                st.warning("Please enter a unique project name.")
+def sidebar(user, save_user_prefs):
+    with st.sidebar:
+        st.markdown(f"### 👤 User: `{user}`")
+        st.markdown("## 📁 Projects & Chats")
+        if "folders" not in st.session_state:
+            st.session_state.folders = {"Main": ["Default"]}
+        if "current_folder" not in st.session_state:
+            st.session_state.current_folder = "Main"
+        if "current_session" not in st.session_state:
+            st.session_state.current_session = "Default"
+        if "chat_sessions" not in st.session_state:
+            st.session_state.chat_sessions = {"Default": []}
+        if "chat_contexts" not in st.session_state:
+            st.session_state.chat_contexts = {"Default": "New Chat"}
 
+        folder_names = list(st.session_state.folders.keys())
+        selected_folder = st.selectbox("📂 Select Folder", folder_names, index=folder_names.index(st.session_state.current_folder), help="Choose or organize folders/projects")
+        if selected_folder != st.session_state.current_folder:
+            st.session_state.current_folder = selected_folder
+            save_user_prefs()
 
-DEFAULT_JARVS = {
-    "Code Expert (Default)": "You are an expert-level programmer and systems thinker. Engage in technical debate, review code, and collaborate on solutions as an superior.",
-    "Critical Thinking Teacher": "You will not provide direct answers. Instead, you will guide the user through a series of reflective, open-ended questions to help them arrive at their own conclusions. Your goal is to foster critical thinking.",
-    "Harsh Critic": "You will adopt a critical stance. Your goal is to identify weaknesses, challenge assumptions, and play devil's advocate to strengthen the user's work.",
-    "Strategic Guide/Project Planning": "You will act as a strategic guide for high-level planning. Help formulate research questions, structure projects, and define methodologies."
-}
+        session_names = st.session_state.folders[selected_folder]
+        session_display_names = [st.session_state.chat_contexts.get(sess, sess) for sess in session_names]
+        selected_session_idx = session_names.index(st.session_state.current_session)
+        selected_session = st.selectbox("💬 Select Chat", session_display_names, index=selected_session_idx, help="Right-click to rename (coming soon), drag to reorder (coming soon)")
+        if session_names[selected_session_idx] != st.session_state.current_session:
+            st.session_state.current_session = session_names[selected_session_idx]
+            save_user_prefs()
+
+        st.markdown('<span title="Start a new chat based on context"><button style="font-size:1.1em;">➕ New Chat</button></span>', unsafe_allow_html=True)
+        if st.button("Create New Chat (plus button above)"):
+            prev_context = ""
+            if st.session_state.current_session in st.session_state.chat_sessions and len(st.session_state.chat_sessions[st.session_state.current_session]) > 0:
+                prev_context = st.session_state.chat_sessions[st.session_state.current_session][0]["content"]
+            new_chat_name = auto_chat_name(prev_context)
+            new_id = str(uuid.uuid4())[:8]
+            new_session = f"Chat_{new_id}"
+            st.session_state.folders[selected_folder].append(new_session)
+            st.session_state.chat_sessions[new_session] = []
+            st.session_state.chat_contexts[new_session] = new_chat_name
+            st.session_state.current_session = new_session
+            st.success(f"Chat '{new_chat_name}' created.")
+            save_user_prefs()
+
+        rename_session = st.text_input("✏️ Rename current chat", value=st.session_state.chat_contexts.get(st.session_state.current_session, st.session_state.current_session))
+        if st.button("Rename Chat"):
+            st.session_state.chat_contexts[st.session_state.current_session] = rename_session
+            st.success(f"Chat renamed to '{rename_session}'.")
+            save_user_prefs()
+
+        new_folder = st.text_input("New Folder Name")
+        if st.button("Add Folder"):
+            if new_folder and new_folder not in folder_names:
+                st.session_state.folders[new_folder] = []
+                st.success(f"Folder '{new_folder}' created.")
+                save_user_prefs()
+
+        rename_folder = st.text_input("Rename current folder", value=st.session_state.current_folder)
+        if st.button("Rename Folder"):
+            if rename_folder and rename_folder not in folder_names:
+                old_folder = st.session_state.current_folder
+                st.session_state.folders[rename_folder] = st.session_state.folders.pop(old_folder)
+                st.session_state.current_folder = rename_folder
+                st.success(f"Folder renamed to '{rename_folder}'.")
+                save_user_prefs()
+
+        expert_model = st.selectbox("🤖 Expert Model", AVAILABLE_MODELS, index=0)
+        if expert_model != st.session_state.get("selected_expert_model", AVAILABLE_MODELS[0]):
+            st.session_state.selected_expert_model = expert_model
+            save_user_prefs()
+
+        draft_model = st.selectbox("🤖 Draft Model", AVAILABLE_MODELS, index=1)
+        if draft_model != st.session_state.get("selected_draft_model", AVAILABLE_MODELS[1]):
+            st.session_state.selected_draft_model = draft_model
+            save_user_prefs()
+
+        persona_prompt = st.text_area("🧠 Agent Persona Prompt", value=st.session_state.get("persona_prompt", f"You are an expert assistant using the {expert_model} (expert) and {draft_model} (draft) models."))
+        if persona_prompt != st.session_state.get("persona_prompt", ""):
+            st.session_state.persona_prompt = persona_prompt
+            save_user_prefs()
+
+        st.markdown("---")
+        st.caption("💡 Tip: Drag & drop and right-click features coming soon for chat/folder management!")
