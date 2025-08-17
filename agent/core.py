@@ -1,6 +1,6 @@
 import agent.tools as tools
 
-ACTION_TOOLS = {"file_update", "browser_automation", "automation_task"}
+ACTION_TOOLS = {"file_update", "browser_automation", "automation_task", "git_command", "github_api", "ide_command"}
 
 class JarvisAgent:
     def __init__(self, persona_prompt, tool_registry, approval_callback, expert_model=None, draft_model=None, user=None, llm_endpoint=None, rag_endpoint=None):
@@ -16,7 +16,118 @@ class JarvisAgent:
     def parse_natural_language(self, user_msg, available_files, chat_history=None):
         plan = []
         msg_lower = user_msg.lower()
-        if any(w in msg_lower for w in ["what", "how", "why", "explain", "summarize", "analyze", "reason", "context", "rag"]):
+        
+        # Git commands
+        if any(cmd in msg_lower for cmd in ["git status", "git commit", "git diff", "git push", "git pull", "git checkout", "git branch"]):
+            plan.append({
+                "tool": "git_command",
+                "args": {
+                    "command": user_msg,
+                    "repository_path": None  # Will use current directory
+                }
+            })
+        
+        # IDE commands (PyCharm, IntelliJ, etc.)
+        elif any(phrase in msg_lower for phrase in ["open in pycharm", "open in intellij", "open in idea", "open in webstorm", "open in phpstorm"]):
+            plan.append({
+                "tool": "ide_command",
+                "args": {
+                    "command": user_msg
+                }
+            })
+        
+        # Note-taking commands (Notion, OneNote)
+        elif any(phrase in msg_lower for phrase in ["save to notion", "save to onenote", "create note", "search notes"]):
+            plan.append({
+                "tool": "note_command",
+                "args": {
+                    "command": user_msg,
+                    "notion_token": None,  # Will use environment variables
+                    "notion_db_id": None,
+                    "onenote_token": None,
+                    "onenote_section_id": None
+                }
+            })
+        
+        # Code review commands
+        elif any(phrase in msg_lower for phrase in ["review code", "code review", "analyze code", "check code quality"]):
+            # Extract file path if mentioned
+            import re
+            file_match = re.search(r'([^\s]+\.(py|js|ts|java|cpp|c|h|hpp|go|rs))', user_msg)
+            if file_match:
+                file_path = file_match.group(1)
+            else:
+                file_path = available_files[0] if available_files else ""
+            
+            plan.append({
+                "tool": "code_review",
+                "args": {
+                    "file_path": file_path,
+                    "check_types": ["style", "security", "complexity", "best_practices"]
+                }
+            })
+        
+        # Code search commands
+        elif any(phrase in msg_lower for phrase in ["search code", "find function", "find class", "search for"]):
+            # Extract search query
+            search_phrases = ["search code", "find function", "find class", "search for"]
+            query = user_msg
+            for phrase in search_phrases:
+                if phrase in msg_lower:
+                    query = user_msg[user_msg.lower().find(phrase) + len(phrase):].strip()
+                    break
+            
+            search_type = "all"
+            if "function" in msg_lower:
+                search_type = "function"
+            elif "class" in msg_lower:
+                search_type = "class"
+            elif "variable" in msg_lower:
+                search_type = "variable"
+            
+            plan.append({
+                "tool": "code_search",
+                "args": {
+                    "query": query,
+                    "search_type": search_type,
+                    "repository_path": None,
+                    "case_sensitive": False,
+                    "regex": False
+                }
+            })
+        
+        # GitHub API commands
+        elif any(phrase in msg_lower for phrase in ["create pr", "create pull request", "create issue", "list issues", "list prs"]):
+            action = "repo_info"  # default
+            if "create pr" in msg_lower or "create pull request" in msg_lower:
+                action = "create_pr"
+            elif "create issue" in msg_lower:
+                action = "create_issue"
+            elif "list issues" in msg_lower:
+                action = "list_issues"
+            elif "list prs" in msg_lower:
+                action = "list_prs"
+            
+            plan.append({
+                "tool": "github_api",
+                "args": {
+                    "action": action,
+                    "token": None,  # Will use environment variables
+                    "repository": None
+                }
+            })
+        
+        # Repository context commands
+        elif any(phrase in msg_lower for phrase in ["repo context", "repository context", "project overview", "show project structure"]):
+            plan.append({
+                "tool": "repo_context",
+                "args": {
+                    "repository_path": None
+                }
+            })
+        
+        # Existing logic for other commands
+        elif any(w in msg_lower for w in ["what", "how", "why", "explain", "summarize", "analyze", "reason", "context", "rag"]):
             if available_files:
                 plan.append({
                     "tool": "llm_rag",
