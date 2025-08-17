@@ -1,6 +1,7 @@
 import sqlite3
 import json
 import logging
+import threading
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
 
@@ -10,11 +11,15 @@ DB_NAME = 'janus_database.db'
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Database connection lock to prevent concurrent access issues
+_db_lock = threading.Lock()
+
 
 def init_db():
     """Initializes the database and creates all necessary tables if they don't exist."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    with _db_lock:
+        conn = sqlite3.connect(DB_NAME, timeout=10.0)
+        cursor = conn.cursor()
 
     # Users table with role management
     cursor.execute('''
@@ -323,83 +328,98 @@ def rename_session(session_id, new_name):
 
 def create_user(username: str, name: str, email: str, hashed_password: str, role: str = 'user') -> bool:
     """Create a new user in the database"""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "INSERT INTO users (username, name, email, hashed_password, role) VALUES (?, ?, ?, ?, ?)",
-            (username, name, email, hashed_password, role)
-        )
-        conn.commit()
-        log_security_event("USER_CREATED", username=username, details=f"User {username} created with role {role}")
-        return True
-    except sqlite3.IntegrityError as e:
-        logger.error(f"Failed to create user {username}: {e}")
-        return False
-    finally:
-        conn.close()
+    with _db_lock:
+        conn = sqlite3.connect(DB_NAME, timeout=10.0)
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO users (username, name, email, hashed_password, role) VALUES (?, ?, ?, ?, ?)",
+                (username, name, email, hashed_password, role)
+            )
+            conn.commit()
+            success = True
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Failed to create user {username}: {e}")
+            success = False
+        finally:
+            conn.close()
+    
+    if success:
+        try:
+            log_security_event("USER_CREATED", username=username, details=f"User {username} created with role {role}")
+        except:
+            pass
+    
+    return success
 
 def get_user(username: str) -> Optional[Dict[str, Any]]:
     """Get user by username"""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT username, name, email, hashed_password, role, is_active, is_verified, created_at, last_login, "
-        "two_fa_enabled, failed_login_attempts, locked_until FROM users WHERE username = ?",
-        (username,)
-    )
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        return {
-            "username": row[0],
-            "name": row[1],
-            "email": row[2],
-            "hashed_password": row[3],
-            "role": row[4],
-            "is_active": row[5],
-            "is_verified": row[6],
-            "created_at": row[7],
-            "last_login": row[8],
-            "two_fa_enabled": row[9],
-            "failed_login_attempts": row[10],
-            "locked_until": row[11]
-        }
-    return None
+    with _db_lock:
+        conn = sqlite3.connect(DB_NAME, timeout=10.0)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT username, name, email, hashed_password, role, is_active, is_verified, created_at, last_login, "
+            "two_fa_enabled, failed_login_attempts, locked_until FROM users WHERE username = ?",
+            (username,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                "username": row[0],
+                "name": row[1],
+                "email": row[2],
+                "hashed_password": row[3],
+                "role": row[4],
+                "is_active": row[5],
+                "is_verified": row[6],
+                "created_at": row[7],
+                "last_login": row[8],
+                "two_fa_enabled": row[9],
+                "failed_login_attempts": row[10],
+                "locked_until": row[11]
+            }
+        return None
 
 def update_user_login(username: str, success: bool = True):
     """Update user login information"""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    if success:
-        cursor.execute(
-            "UPDATE users SET last_login = ?, failed_login_attempts = 0, locked_until = NULL WHERE username = ?",
-            (datetime.now(), username)
-        )
-        log_security_event("LOGIN_SUCCESS", username=username)
-    else:
-        cursor.execute(
-            "UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE username = ?",
-            (username,)
-        )
+    with _db_lock:
+        conn = sqlite3.connect(DB_NAME, timeout=10.0)
+        cursor = conn.cursor()
         
-        # Lock account after 5 failed attempts for 15 minutes
-        cursor.execute("SELECT failed_login_attempts FROM users WHERE username = ?", (username,))
-        attempts = cursor.fetchone()
-        if attempts and attempts[0] >= 5:
-            lock_until = datetime.now() + timedelta(minutes=15)
+        if success:
             cursor.execute(
-                "UPDATE users SET locked_until = ? WHERE username = ?",
-                (lock_until, username)
+                "UPDATE users SET last_login = ?, failed_login_attempts = 0, locked_until = NULL WHERE username = ?",
+                (datetime.now(), username)
             )
-            log_security_event("ACCOUNT_LOCKED", username=username, details="Account locked due to failed login attempts")
+        else:
+            cursor.execute(
+                "UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE username = ?",
+                (username,)
+            )
+            
+            # Lock account after 5 failed attempts for 15 minutes
+            cursor.execute("SELECT failed_login_attempts FROM users WHERE username = ?", (username,))
+            attempts = cursor.fetchone()
+            if attempts and attempts[0] >= 5:
+                lock_until = datetime.now() + timedelta(minutes=15)
+                cursor.execute(
+                    "UPDATE users SET locked_until = ? WHERE username = ?",
+                    (lock_until, username)
+                )
         
-        log_security_event("LOGIN_FAILED", username=username)
-    
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+        
+    # Log after database transaction completes
+    try:
+        if success:
+            log_security_event("LOGIN_SUCCESS", username=username)
+        else:
+            log_security_event("LOGIN_FAILED", username=username)
+    except:
+        pass  # Don't fail login if logging fails
 
 def is_user_locked(username: str) -> bool:
     """Check if user account is locked"""
@@ -574,14 +594,18 @@ def get_user_preferences(username: str) -> Dict[str, Any]:
 
 def log_security_event(event_type: str, username: str = None, ip_address: str = None, user_agent: str = None, details: str = None):
     """Log security events to database"""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO security_logs (event_type, username, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?)",
-        (event_type, username, ip_address, user_agent, details)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO security_logs (event_type, username, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?)",
+                (event_type, username, ip_address, user_agent, details)
+            )
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.error(f"Failed to log security event: {e}")
 
 def get_security_logs(limit: int = 100) -> List[Dict[str, Any]]:
     """Get security logs for admin review"""
