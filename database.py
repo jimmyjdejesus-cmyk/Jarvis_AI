@@ -201,19 +201,19 @@ def init_db():
                    )
                        )
                    ''')
-        # User settings table
-        cursor.execute('''
-                       CREATE TABLE IF NOT EXISTS user_settings
-                       (
-                           id INTEGER PRIMARY KEY AUTOINCREMENT,
-                           username TEXT NOT NULL,
-                           settings_json TEXT,
-                           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                           UNIQUE(username),
-                           FOREIGN KEY (username) REFERENCES users (username)
-                       )
-                       ''')
+    # User settings table
+    cursor.execute('''
+                   CREATE TABLE IF NOT EXISTS user_settings
+                   (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username TEXT NOT NULL,
+                       settings_json TEXT,
+                       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       UNIQUE(username),
+                       FOREIGN KEY (username) REFERENCES users (username)
+                   )
+                   ''')
     conn.commit()
     conn.close()
 
@@ -585,72 +585,74 @@ def save_user_preference(username: str, key: str, value: Any):
     conn.commit()
     conn.close()
 
-    # User settings CRUD
-    def save_user_settings(username: str, settings: Dict[str, Any]):
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        settings_json = json.dumps(settings)
-        cursor.execute(
-            "INSERT OR REPLACE INTO user_settings (username, settings_json, updated_at) VALUES (?, ?, ?)",
-            (username, settings_json, datetime.now())
-        )
-        conn.commit()
-        conn.close()
+# User settings CRUD
+def save_user_settings(username: str, settings: Dict[str, Any]):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    settings_json = json.dumps(settings)
+    cursor.execute(
+        "INSERT OR REPLACE INTO user_settings (username, settings_json, updated_at) VALUES (?, ?, ?)",
+        (username, settings_json, datetime.now())
+    )
+    conn.commit()
+    conn.close()
 
-    def get_user_settings(username: str) -> Dict[str, Any]:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT settings_json FROM user_settings WHERE username = ?",
-            (username,)
-        )
-        row = cursor.fetchone()
-        conn.close()
-        if row and row[0]:
-            try:
-                return json.loads(row[0])
-            except Exception:
-                return {}
-        return {}
+def get_user_settings(username: str) -> Dict[str, Any]:
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT settings_json FROM user_settings WHERE username = ?",
+        (username,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row and row[0]:
+        try:
+            return json.loads(row[0])
+        except Exception:
+            return {}
+    return {}
 
-    # Backup/export/import utilities
-    def backup_user_data(username: str) -> Dict[str, Any]:
-        """Export all user data (preferences, settings, chat logs) as a dict"""
-        data = {
-            "preferences": get_user_preferences(username),
-            "settings": get_user_settings(username),
-            "chat_sessions": [],
-            "chat_logs": []
-        }
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, project_name, session_name, timestamp FROM chat_sessions WHERE username = ?", (username,))
-        sessions = cursor.fetchall()
-        for s in sessions:
-            session = {"id": s[0], "project_name": s[1], "session_name": s[2], "timestamp": s[3]}
-            data["chat_sessions"].append(session)
-            cursor.execute("SELECT role, content, sources, timestamp FROM chat_logs WHERE session_id = ?", (s[0],))
-            logs = cursor.fetchall()
-            for l in logs:
-                data["chat_logs"].append({"session_id": s[0], "role": l[0], "content": l[1], "sources": l[2], "timestamp": l[3]})
-        conn.close()
-        return data
+    # ...existing code...
 
-    def import_user_data(username: str, data: Dict[str, Any]):
-        """Import user data (preferences, settings, chat logs) from dict"""
-        save_user_settings(username, data.get("settings", {}))
-        for k, v in data.get("preferences", {}).items():
-            save_user_preference(username, k, v)
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        for session in data.get("chat_sessions", []):
-            cursor.execute("INSERT OR IGNORE INTO chat_sessions (id, username, project_name, session_name, timestamp) VALUES (?, ?, ?, ?, ?)",
-                           (session["id"], username, session["project_name"], session["session_name"], session["timestamp"]))
-        for log in data.get("chat_logs", []):
-            cursor.execute("INSERT INTO chat_logs (session_id, role, content, sources, timestamp) VALUES (?, ?, ?, ?, ?)",
-                           (log["session_id"], log["role"], log["content"], log["sources"], log["timestamp"]))
-        conn.commit()
-        conn.close()
+# Backup/export/import utilities
+def backup_user_data(username: str) -> Dict[str, Any]:
+    """Export all user data (preferences, settings, chat logs) as a dict"""
+    data = {
+        "preferences": get_user_preferences(username),
+        "settings": get_user_settings(username),
+        "chat_sessions": [],
+        "chat_logs": []
+    }
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, project_name, session_name, timestamp FROM chat_sessions WHERE username = ?", (username,))
+    sessions = cursor.fetchall()
+    for s in sessions:
+        session = {"id": s[0], "project_name": s[1], "session_name": s[2], "timestamp": s[3]}
+        data["chat_sessions"].append(session)
+        cursor.execute("SELECT role, content, sources, timestamp FROM chat_logs WHERE session_id = ?", (s[0],))
+        logs = cursor.fetchall()
+        for l in logs:
+            data["chat_logs"].append({"session_id": s[0], "role": l[0], "content": l[1], "sources": l[2], "timestamp": l[3]})
+    conn.close()
+    return data
+
+def import_user_data(username: str, data: Dict[str, Any]):
+    """Import user data (preferences, settings, chat logs) from dict"""
+    save_user_settings(username, data.get("settings", {}))
+    for k, v in data.get("preferences", {}).items():
+        save_user_preference(username, k, v)
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    for session in data.get("chat_sessions", []):
+        cursor.execute("INSERT OR IGNORE INTO chat_sessions (id, username, project_name, session_name, timestamp) VALUES (?, ?, ?, ?, ?)",
+                       (session["id"], username, session["project_name"], session["session_name"], session["timestamp"]))
+    for log in data.get("chat_logs", []):
+        cursor.execute("INSERT INTO chat_logs (session_id, role, content, sources, timestamp) VALUES (?, ?, ?, ?, ?)",
+                       (log["session_id"], log["role"], log["content"], log["sources"], log["timestamp"]))
+    conn.commit()
+    conn.close()
 
     # Cloud DB support
     import os
