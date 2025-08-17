@@ -420,7 +420,7 @@ def load_user_prefs():
     return database.get_user_preferences(USER)
 
 def save_user_prefs():
-    """Save user preferences to database instead of encrypted files"""
+    """Save user preferences to database only if changed."""
     prefs = {
         "selected_expert_model": st.session_state.get("selected_expert_model"),
         "selected_draft_model": st.session_state.get("selected_draft_model"),
@@ -433,10 +433,13 @@ def save_user_prefs():
         "rag_endpoint": st.session_state.get("rag_endpoint", ""),
         "llm_endpoint": st.session_state.get("llm_endpoint", ""),
     }
-    
-    # Save each preference individually
-    for key, value in prefs.items():
-        database.save_user_preference(USER, key, value)
+    try:
+        current_prefs = database.get_user_preferences(USER)
+        for key, value in prefs.items():
+            if current_prefs.get(key) != value:
+                database.save_user_preference(USER, key, value)
+    except Exception as e:
+        print(f"Error saving user preferences: {e}")
 
 # Load user preferences from database
 prefs = load_user_prefs()

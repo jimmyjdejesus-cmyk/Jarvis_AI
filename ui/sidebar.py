@@ -1,12 +1,9 @@
 import streamlit as st
 import uuid
 
-AVAILABLE_MODELS = [
-    "Gemm3:12b-it-qat",
-    "gemma3:1b",
-    "Deepeek-r1-0528-qwen3-8b",
-    "qwen3-.6b"
-]
+
+from ollama_client import get_available_models
+
 
 def auto_chat_name(context):
     if not context:
@@ -79,12 +76,13 @@ def sidebar(user, save_user_prefs):
                 st.success(f"Folder renamed to '{rename_folder}'.")
                 save_user_preference(user, "folders", st.session_state.folders)
                 save_user_preference(user, "current_folder", rename_folder)
-        expert_model = st.selectbox("🤖 Expert Model", AVAILABLE_MODELS, index=0)
-        if expert_model != st.session_state.get("selected_expert_model", AVAILABLE_MODELS[0]):
+        model_list = get_available_models()
+        expert_model = st.selectbox("🤖 Expert Model", model_list, index=0 if model_list else None)
+        if expert_model != st.session_state.get("selected_expert_model", (model_list[0] if model_list else None)):
             st.session_state.selected_expert_model = expert_model
             save_user_preference(user, "selected_expert_model", expert_model)
-        draft_model = st.selectbox("🤖 Draft Model", AVAILABLE_MODELS, index=1)
-        if draft_model != st.session_state.get("selected_draft_model", AVAILABLE_MODELS[1]):
+        draft_model = st.selectbox("🤖 Draft Model", model_list, index=1 if len(model_list) > 1 else 0)
+        if draft_model != st.session_state.get("selected_draft_model", (model_list[1] if len(model_list) > 1 else model_list[0] if model_list else None)):
             st.session_state.selected_draft_model = draft_model
             save_user_preference(user, "selected_draft_model", draft_model)
         persona_prompt = st.text_area("🧠 Agent Persona Prompt", value=st.session_state.get("persona_prompt", f"You are an expert assistant using the {expert_model} (expert) and {draft_model} (draft) models."))

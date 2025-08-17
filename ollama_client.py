@@ -3,20 +3,34 @@ import json
 import subprocess
 import sys
 
+
 OLLAMA_ENDPOINT = "http://localhost:11434"
+
+# Simple in-memory cache for available models
+_model_cache = None
+_model_cache_time = 0
+_MODEL_CACHE_TTL = 60  # seconds
 
 
 def get_available_models():
     """
-    Fetches the list of locally available models from the Ollama API.
+    Fetches the list of locally available models from the Ollama API, with caching.
     """
+    import time
+    global _model_cache, _model_cache_time
+    now = time.time()
+    if _model_cache and (now - _model_cache_time < _MODEL_CACHE_TTL):
+        return _model_cache
     try:
         response = requests.get(f"{OLLAMA_ENDPOINT}/api/tags")
         response.raise_for_status()
         models = response.json().get("models", [])
-        return [model['name'] for model in models]
-    except requests.exceptions.RequestException:
-        return []
+        _model_cache = [model['name'] for model in models]
+        _model_cache_time = now
+        return _model_cache
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching models: {e}")
+        return _model_cache if _model_cache else []
 
 
 def stream_generation(model, prompt, draft_model=None):
