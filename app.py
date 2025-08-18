@@ -474,7 +474,6 @@ def show_admin_panel():
                             })
                     
                     # Display results in a table
-                    import pandas as pd
                     df = pd.DataFrame(health_results)
                     st.dataframe(df, use_container_width=True)
                 else:
