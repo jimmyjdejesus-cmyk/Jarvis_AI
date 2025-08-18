@@ -190,48 +190,85 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
     else:
         return None
 
-def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint):
-    # If endpoint is Ollama, use /api/generate and correct payload
-    if "11434" in endpoint:
-        # Use expert_model as the model name
-        model = expert_model or "llama2"
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "stream": False
-        }
+def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint, session_id=None):
+    import time
+    import sys
+    import os
+    
+    # Add parent directory to path to import analytics_tracker
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import analytics_tracker
+    
+    start_time = time.time()
+    success = True
+    error_message = None
+    
+    try:
+        # If endpoint is Ollama, use /api/generate and correct payload
+        if "11434" in endpoint:
+            # Use expert_model as the model name
+            model = expert_model or "llama2"
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False
+            }
+            try:
+                res = requests.post(f"http://localhost:11434/api/generate", json=payload, timeout=60)
+                if res.ok:
+                    data = res.json()
+                    # Ollama returns 'response' for some models, 'output' for others
+                    response = data.get("response")
+                    if response is None:
+                        response = data.get("output")
+                    if response is None:
+                        # Show the full JSON if no recognized field
+                        response = str(data)
+                    return response
+                else:
+                    success = False
+                    error_message = f"LLM API error: {res.status_code} {res.text}"
+                    return error_message
+            except Exception as e:
+                success = False
+                error_message = f"LLM API request failed: {e}"
+                return error_message
+        else:
+            payload = {
+                "prompt": prompt,
+                "expert_model": expert_model,
+                "draft_model": draft_model,
+                "chat_history": chat_history,
+                "user": user
+            }
+            try:
+                res = requests.post(endpoint, json=payload, timeout=20)
+                if res.ok:
+                    return res.json().get("response", "LLM response not found.")
+                else:
+                    success = False
+                    error_message = f"LLM API error: {res.status_code} {res.text}"
+                    return error_message
+            except Exception as e:
+                success = False
+                error_message = f"LLM API request failed: {e}"
+                return error_message
+    finally:
+        # Log the API call with analytics
+        latency_ms = int((time.time() - start_time) * 1000)
+        
         try:
-            res = requests.post(f"http://localhost:11434/api/generate", json=payload, timeout=60)
-            if res.ok:
-                data = res.json()
-                # Ollama returns 'response' for some models, 'output' for others
-                response = data.get("response")
-                if response is None:
-                    response = data.get("output")
-                if response is None:
-                    # Show the full JSON if no recognized field
-                    response = str(data)
-                return response
-            else:
-                return f"LLM API error: {res.status_code} {res.text}"
+            analytics_tracker.log_chat_interaction(
+                username=user or 'anonymous',
+                session_id=session_id,
+                user_message=prompt,
+                ai_response="",  # We don't have the response here if it failed
+                model_name=expert_model,
+                latency_ms=latency_ms
+            )
         except Exception as e:
-            return f"LLM API request failed: {e}"
-    else:
-        payload = {
-            "prompt": prompt,
-            "expert_model": expert_model,
-            "draft_model": draft_model,
-            "chat_history": chat_history,
-            "user": user
-        }
-        try:
-            res = requests.post(endpoint, json=payload, timeout=20)
-            if res.ok:
-                return res.json().get("response", "LLM response not found.")
-            else:
-                return f"LLM API error: {res.status_code} {res.text}"
-        except Exception as e:
-            return f"LLM API request failed: {e}"
+            # Don't let analytics errors break the main function
+            print(f"Analytics logging error: {e}")
 
 def llm_summarize_source(source_text, endpoint):
     payload = {

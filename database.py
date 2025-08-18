@@ -214,6 +214,106 @@ def init_db():
                        FOREIGN KEY (username) REFERENCES users (username)
                    )
                    ''')
+
+    # API/Model call analytics table
+    cursor.execute('''
+                   CREATE TABLE IF NOT EXISTS api_call_analytics
+                   (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username TEXT NOT NULL,
+                       session_id INTEGER,
+                       endpoint_type TEXT NOT NULL,
+                       model_name TEXT,
+                       prompt_tokens INTEGER,
+                       response_tokens INTEGER,
+                       latency_ms INTEGER,
+                       success BOOLEAN NOT NULL,
+                       error_type TEXT,
+                       error_message TEXT,
+                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       FOREIGN KEY (username) REFERENCES users (username),
+                       FOREIGN KEY (session_id) REFERENCES chat_sessions (id)
+                   )
+                   ''')
+
+    # User feedback table
+    cursor.execute('''
+                   CREATE TABLE IF NOT EXISTS user_feedback
+                   (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username TEXT NOT NULL,
+                       feedback_type TEXT NOT NULL,
+                       rating INTEGER,
+                       title TEXT,
+                       description TEXT NOT NULL,
+                       category TEXT,
+                       priority TEXT DEFAULT 'medium',
+                       status TEXT DEFAULT 'open',
+                       assigned_to TEXT,
+                       resolved_at DATETIME,
+                       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       FOREIGN KEY (username) REFERENCES users (username)
+                   )
+                   ''')
+
+    # Feature usage analytics table
+    cursor.execute('''
+                   CREATE TABLE IF NOT EXISTS feature_analytics
+                   (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username TEXT NOT NULL,
+                       feature_name TEXT NOT NULL,
+                       action TEXT NOT NULL,
+                       metadata TEXT,
+                       session_id INTEGER,
+                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       FOREIGN KEY (username) REFERENCES users (username),
+                       FOREIGN KEY (session_id) REFERENCES chat_sessions (id)
+                   )
+                   ''')
+
+    # Error tracking table
+    cursor.execute('''
+                   CREATE TABLE IF NOT EXISTS error_analytics
+                   (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username TEXT,
+                       session_id INTEGER,
+                       error_type TEXT NOT NULL,
+                       error_code TEXT,
+                       error_message TEXT NOT NULL,
+                       stack_trace TEXT,
+                       context TEXT,
+                       resolved BOOLEAN DEFAULT 0,
+                       resolved_at DATETIME,
+                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       FOREIGN KEY (username) REFERENCES users (username),
+                       FOREIGN KEY (session_id) REFERENCES chat_sessions (id)
+                   )
+                   ''')
+
+    # User activity summary table for quick analytics
+    cursor.execute('''
+                   CREATE TABLE IF NOT EXISTS user_activity_summary
+                   (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       username TEXT NOT NULL,
+                       date DATE NOT NULL,
+                       total_sessions INTEGER DEFAULT 0,
+                       total_messages INTEGER DEFAULT 0,
+                       total_api_calls INTEGER DEFAULT 0,
+                       total_tokens_used INTEGER DEFAULT 0,
+                       avg_latency_ms REAL DEFAULT 0,
+                       error_count INTEGER DEFAULT 0,
+                       feature_usage_count INTEGER DEFAULT 0,
+                       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       UNIQUE(username, date),
+                       FOREIGN KEY (username) REFERENCES users (username)
+                   )
+                   ''')
+
     conn.commit()
     conn.close()
 
@@ -719,3 +819,295 @@ def get_security_logs(limit: int = 100) -> List[Dict[str, Any]]:
     
     conn.close()
     return logs
+
+
+# Analytics and Feedback Functions
+
+def log_api_call(username: str, session_id: int = None, endpoint_type: str = None, 
+                model_name: str = None, prompt_tokens: int = None, response_tokens: int = None,
+                latency_ms: int = None, success: bool = True, error_type: str = None, 
+                error_message: str = None):
+    """Log API/model call analytics"""
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO api_call_analytics 
+                (username, session_id, endpoint_type, model_name, prompt_tokens, 
+                 response_tokens, latency_ms, success, error_type, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (username, session_id, endpoint_type, model_name, prompt_tokens,
+                  response_tokens, latency_ms, success, error_type, error_message))
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.error(f"Failed to log API call: {e}")
+
+
+def log_feature_usage(username: str, feature_name: str, action: str, 
+                     metadata: Dict = None, session_id: int = None):
+    """Log feature usage analytics"""
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            metadata_json = json.dumps(metadata) if metadata else None
+            cursor.execute('''
+                INSERT INTO feature_analytics (username, feature_name, action, metadata, session_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (username, feature_name, action, metadata_json, session_id))
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.error(f"Failed to log feature usage: {e}")
+
+
+def log_error(username: str = None, session_id: int = None, error_type: str = None,
+              error_code: str = None, error_message: str = None, stack_trace: str = None,
+              context: Dict = None):
+    """Log error analytics"""
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            context_json = json.dumps(context) if context else None
+            cursor.execute('''
+                INSERT INTO error_analytics 
+                (username, session_id, error_type, error_code, error_message, stack_trace, context)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (username, session_id, error_type, error_code, error_message, stack_trace, context_json))
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.error(f"Failed to log error: {e}")
+
+
+def save_user_feedback(username: str, feedback_type: str, description: str,
+                      rating: int = None, title: str = None, category: str = None,
+                      priority: str = "medium"):
+    """Save user feedback"""
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO user_feedback 
+                (username, feedback_type, rating, title, description, category, priority)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (username, feedback_type, rating, title, description, category, priority))
+            conn.commit()
+            conn.close()
+            return True
+    except Exception as e:
+        logger.error(f"Failed to save user feedback: {e}")
+        return False
+
+
+def get_analytics_overview(days: int = 30) -> Dict[str, Any]:
+    """Get analytics overview for the last N days"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        since_date = (datetime.now() - timedelta(days=days)).isoformat()
+        
+        # Total API calls
+        cursor.execute('''
+            SELECT COUNT(*), AVG(latency_ms), SUM(prompt_tokens), SUM(response_tokens)
+            FROM api_call_analytics WHERE timestamp >= ?
+        ''', (since_date,))
+        api_stats = cursor.fetchone()
+        
+        # Error statistics
+        cursor.execute('''
+            SELECT COUNT(*) FROM api_call_analytics 
+            WHERE timestamp >= ? AND success = 0
+        ''', (since_date,))
+        error_count = cursor.fetchone()[0]
+        
+        # Active users
+        cursor.execute('''
+            SELECT COUNT(DISTINCT username) FROM api_call_analytics 
+            WHERE timestamp >= ?
+        ''', (since_date,))
+        active_users = cursor.fetchone()[0]
+        
+        # Popular features
+        cursor.execute('''
+            SELECT feature_name, COUNT(*) as usage_count
+            FROM feature_analytics WHERE timestamp >= ?
+            GROUP BY feature_name ORDER BY usage_count DESC LIMIT 10
+        ''', (since_date,))
+        popular_features = cursor.fetchall()
+        
+        # Recent feedback
+        cursor.execute('''
+            SELECT COUNT(*) FROM user_feedback WHERE created_at >= ?
+        ''', (since_date,))
+        feedback_count = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            "total_api_calls": api_stats[0] or 0,
+            "avg_latency_ms": api_stats[1] or 0,
+            "total_prompt_tokens": api_stats[2] or 0,
+            "total_response_tokens": api_stats[3] or 0,
+            "error_count": error_count,
+            "active_users": active_users,
+            "popular_features": popular_features,
+            "feedback_count": feedback_count,
+            "days": days
+        }
+    except Exception as e:
+        logger.error(f"Failed to get analytics overview: {e}")
+        return {}
+
+
+def get_user_feedback(limit: int = 50, status: str = None) -> List[Dict[str, Any]]:
+    """Get user feedback with optional status filter"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        query = '''
+            SELECT id, username, feedback_type, rating, title, description, 
+                   category, priority, status, created_at, updated_at
+            FROM user_feedback
+        '''
+        params = []
+        
+        if status:
+            query += ' WHERE status = ?'
+            params.append(status)
+            
+        query += ' ORDER BY created_at DESC LIMIT ?'
+        params.append(limit)
+        
+        cursor.execute(query, params)
+        
+        feedback = []
+        for row in cursor.fetchall():
+            feedback.append({
+                "id": row[0],
+                "username": row[1],
+                "feedback_type": row[2],
+                "rating": row[3],
+                "title": row[4],
+                "description": row[5],
+                "category": row[6],
+                "priority": row[7],
+                "status": row[8],
+                "created_at": row[9],
+                "updated_at": row[10]
+            })
+        
+        conn.close()
+        return feedback
+    except Exception as e:
+        logger.error(f"Failed to get user feedback: {e}")
+        return []
+
+
+def update_feedback_status(feedback_id: int, status: str, assigned_to: str = None):
+    """Update feedback status"""
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            
+            update_fields = ["status = ?", "updated_at = CURRENT_TIMESTAMP"]
+            params = [status]
+            
+            if assigned_to:
+                update_fields.append("assigned_to = ?")
+                params.append(assigned_to)
+            
+            if status in ['resolved', 'closed']:
+                update_fields.append("resolved_at = CURRENT_TIMESTAMP")
+            
+            params.append(feedback_id)
+            
+            query = f"UPDATE user_feedback SET {', '.join(update_fields)} WHERE id = ?"
+            cursor.execute(query, params)
+            conn.commit()
+            conn.close()
+            return True
+    except Exception as e:
+        logger.error(f"Failed to update feedback status: {e}")
+        return False
+
+
+def get_error_analytics(days: int = 7) -> List[Dict[str, Any]]:
+    """Get error analytics for the last N days"""
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        since_date = (datetime.now() - timedelta(days=days)).isoformat()
+        
+        cursor.execute('''
+            SELECT error_type, error_code, COUNT(*) as count, 
+                   MAX(timestamp) as latest_occurrence
+            FROM error_analytics 
+            WHERE timestamp >= ?
+            GROUP BY error_type, error_code
+            ORDER BY count DESC
+        ''', (since_date,))
+        
+        errors = []
+        for row in cursor.fetchall():
+            errors.append({
+                "error_type": row[0],
+                "error_code": row[1],
+                "count": row[2],
+                "latest_occurrence": row[3]
+            })
+        
+        conn.close()
+        return errors
+    except Exception as e:
+        logger.error(f"Failed to get error analytics: {e}")
+        return []
+
+
+def update_user_activity_summary(username: str, date: str = None):
+    """Update or create user activity summary for a specific date"""
+    if not date:
+        date = datetime.now().date().isoformat()
+    
+    try:
+        with _db_lock:
+            conn = sqlite3.connect(DB_NAME, timeout=10.0)
+            cursor = conn.cursor()
+            
+            # Get stats for the date
+            cursor.execute('''
+                SELECT COUNT(DISTINCT session_id), COUNT(*), AVG(latency_ms), 
+                       SUM(prompt_tokens + response_tokens), 
+                       SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END)
+                FROM api_call_analytics 
+                WHERE username = ? AND DATE(timestamp) = ?
+            ''', (username, date))
+            api_stats = cursor.fetchone()
+            
+            cursor.execute('''
+                SELECT COUNT(*) FROM feature_analytics
+                WHERE username = ? AND DATE(timestamp) = ?
+            ''', (username, date))
+            feature_usage = cursor.fetchone()[0]
+            
+            # Insert or update summary
+            cursor.execute('''
+                INSERT OR REPLACE INTO user_activity_summary
+                (username, date, total_sessions, total_api_calls, avg_latency_ms, 
+                 total_tokens_used, error_count, feature_usage_count, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (username, date, api_stats[0] or 0, api_stats[1] or 0, 
+                  api_stats[2] or 0, api_stats[3] or 0, api_stats[4] or 0, feature_usage))
+            
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        logger.error(f"Failed to update user activity summary: {e}")

@@ -10,4 +10,5 @@ playwright
 requests
 streamlit>=1.30.0
 requests>=2.31.0
-duckduckgo-search>=4.0.0
+duckduckgo-search>=4.0.0plotly
+psutil

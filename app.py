@@ -624,12 +624,42 @@ with col1:
     st.markdown(f"**Welcome, {USER_DATA.get('name', USER)}** ({USER_ROLE})")
 with col2:
     if IS_ADMIN:
-        if st.button("🔧 Admin Panel"):
+        # Admin panel dropdown
+        admin_option = st.selectbox(
+            "Admin Options", 
+            ["Select Option", "👥 User Management", "📊 Analytics Dashboard", "💬 Feedback Management"],
+            key="admin_option"
+        )
+        
+        if admin_option == "👥 User Management":
             st.session_state.show_admin_panel = True
+            st.session_state.show_analytics = False
+            st.session_state.show_feedback_mgmt = False
+            st.rerun()
+        elif admin_option == "📊 Analytics Dashboard":
+            st.session_state.show_analytics = True
+            st.session_state.show_admin_panel = False
+            st.session_state.show_feedback_mgmt = False
+            st.rerun()
+        elif admin_option == "💬 Feedback Management":
+            st.session_state.show_feedback_mgmt = True
+            st.session_state.show_admin_panel = False
+            st.session_state.show_analytics = False
             st.rerun()
 with col3:
-    if st.button("⚙️ Settings"):
+    user_option = st.selectbox(
+        "User Options",
+        ["Select Option", "⚙️ Settings", "📝 Give Feedback"],
+        key="user_option"
+    )
+    
+    if user_option == "⚙️ Settings":
         st.session_state.show_user_settings = True
+        st.session_state.show_feedback = False
+        st.rerun()
+    elif user_option == "📝 Give Feedback":
+        st.session_state.show_feedback = True
+        st.session_state.show_user_settings = False
         st.rerun()
 with col4:
     if st.button("🚪 Logout"):
@@ -641,6 +671,42 @@ with col4:
 # Show various panels if requested
 if st.session_state.get("show_admin_panel", False) and IS_ADMIN:
     show_admin_panel()
+
+if st.session_state.get("show_analytics", False) and IS_ADMIN:
+    from ui.analytics import render_analytics_dashboard, render_user_analytics, render_system_health
+    
+    st.markdown("# 📊 Analytics Dashboard")
+    
+    tab1, tab2, tab3 = st.tabs(["📈 Usage Analytics", "👤 User Analytics", "🏥 System Health"])
+    
+    with tab1:
+        render_analytics_dashboard()
+    
+    with tab2:
+        render_user_analytics()
+    
+    with tab3:
+        render_system_health()
+    
+    if st.button("← Back to Main App"):
+        st.session_state.show_analytics = False
+        st.rerun()
+
+if st.session_state.get("show_feedback_mgmt", False) and IS_ADMIN:
+    from ui.analytics import render_feedback_management
+    render_feedback_management()
+    
+    if st.button("← Back to Main App"):
+        st.session_state.show_feedback_mgmt = False
+        st.rerun()
+
+if st.session_state.get("show_feedback", False):
+    from ui.feedback import render_feedback_interface
+    render_feedback_interface()
+    
+    if st.button("← Back to Main App"):
+        st.session_state.show_feedback = False
+        st.rerun()
 
 if st.session_state.get("show_user_settings", False):
     show_user_settings()
@@ -673,6 +739,10 @@ else:
 # User can now control RAG features via checkbox instead of always-on behavior
 enable_rag = st.sidebar.checkbox("Enable RAG features", value=False)
 st.session_state.enable_rag = enable_rag
+
+# --- Quick Feedback Widget ---
+from ui.feedback import render_quick_feedback
+render_quick_feedback()
 
 save_user_prefs()
 
