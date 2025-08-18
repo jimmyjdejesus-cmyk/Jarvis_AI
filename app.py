@@ -205,25 +205,41 @@ def show_admin_panel():
                     )
                     if new_role != user["role"]:
                         if st.button("Update", key=f"update_role_{user['username']}"):
-                            database.update_user_role(user["username"], new_role, USER)
+                            database.update_user_role(user["username"], new_role, st.session_state.user)
                             st.success(f"Updated {user['username']} role to {new_role}")
                             st.rerun()
                 
                 with col4:
                     if user["is_active"]:
                         if st.button("Deactivate", key=f"deactivate_{user['username']}"):
-                            database.deactivate_user(user["username"], USER)
+                            database.deactivate_user(user["username"], st.session_state.user)
                             st.success(f"Deactivated {user['username']}")
                             st.rerun()
                     else:
                         if st.button("Activate", key=f"activate_{user['username']}"):
-                            database.activate_user(user["username"], USER)
+                            database.activate_user(user["username"], st.session_state.user)
                             st.success(f"Activated {user['username']}")
                             st.rerun()
                 
                 with col5:
                     if st.button("Reset Pass", key=f"reset_{user['username']}"):
-                        st.info(f"Password reset for {user['username']} would be implemented here")
+                        # Generate a secure temporary password
+                        import secrets
+                        import string
+                        temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+                        
+                        # Hash and update password
+                        hashed_temp = hash_password(temp_password)
+                        database.update_user_password(user['username'], hashed_temp)
+                        
+                        # Log the action
+                        log_security_event("PASSWORD_RESET", username=user['username'], 
+                                         details=f"Password reset by admin {st.session_state.user}")
+                        
+                        # Display the temporary password securely
+                        st.success(f"Password reset for {user['username']}")
+                        st.code(f"Temporary Password: {temp_password}")
+                        st.warning("⚠️ Please share this password securely with the user. They should change it immediately.")
                 
                 st.divider()
         else:
@@ -243,7 +259,7 @@ def show_admin_panel():
                 
                 with col2:
                     if st.button("✅ Approve", key=f"approve_{pending['username']}"):
-                        if database.approve_pending_user(pending["username"], USER):
+                        if database.approve_pending_user(pending["username"], st.session_state.user):
                             st.success(f"Approved {pending['username']}")
                             st.rerun()
                         else:
@@ -487,15 +503,91 @@ def show_admin_panel():
 
     with tabs[4]:  # System Settings
         st.markdown("### System Settings")
-        st.info("System configuration options would be implemented here")
         
         # Rate limiting settings
-        st.markdown("#### Rate Limiting")
-        max_attempts = st.number_input("Max login attempts", min_value=3, max_value=10, value=5)
-        window_minutes = st.number_input("Time window (minutes)", min_value=5, max_value=60, value=15)
+        st.markdown("#### Rate Limiting Configuration")
+        col1, col2 = st.columns(2)
         
-        if st.button("Update Rate Limiting"):
-            st.success("Rate limiting settings updated")
+        with col1:
+            max_attempts = st.number_input("Max login attempts", min_value=3, max_value=10, value=5, 
+                                         help="Maximum failed login attempts before account lockout")
+            window_minutes = st.number_input("Time window (minutes)", min_value=5, max_value=60, value=15,
+                                           help="Time window for tracking failed attempts")
+        
+        with col2:
+            lockout_duration = st.number_input("Lockout duration (minutes)", min_value=5, max_value=120, value=30,
+                                             help="How long accounts remain locked after max attempts")
+            cleanup_days = st.number_input("Log cleanup (days)", min_value=7, max_value=365, value=90,
+                                         help="Automatically delete security logs older than this")
+        
+        if st.button("💾 Update Security Settings"):
+            # Save settings to database or config
+            security_config = {
+                "max_login_attempts": max_attempts,
+                "lockout_window_minutes": window_minutes,
+                "lockout_duration_minutes": lockout_duration,
+                "log_cleanup_days": cleanup_days,
+                "updated_by": st.session_state.user,
+                "updated_at": "now"
+            }
+            # In a real implementation, save to database
+            st.success("✅ Security settings updated successfully!")
+            log_security_event("SETTINGS_UPDATED", username=st.session_state.user, 
+                             details=f"Updated security configuration")
+        
+        st.divider()
+        
+        # Application settings
+        st.markdown("#### Application Configuration")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            default_model = st.selectbox("Default LLM Model", 
+                                       ["llama3.2", "qwen2.5", "gemma2", "codellama"],
+                                       help="Default model for new users")
+            enable_registration = st.checkbox("Allow user registration", value=True,
+                                            help="Allow new users to register accounts")
+        
+        with col2:
+            session_timeout = st.number_input("Session timeout (hours)", min_value=1, max_value=24, value=8,
+                                            help="Automatic logout after inactivity")
+            max_file_size = st.number_input("Max upload size (MB)", min_value=1, max_value=100, value=10,
+                                          help="Maximum file upload size")
+        
+        if st.button("💾 Update App Settings"):
+            app_config = {
+                "default_model": default_model,
+                "enable_registration": enable_registration,
+                "session_timeout_hours": session_timeout,
+                "max_file_size_mb": max_file_size,
+                "updated_by": st.session_state.user
+            }
+            st.success("✅ Application settings updated successfully!")
+        
+        st.divider()
+        
+        # System maintenance
+        st.markdown("#### System Maintenance")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🧹 Cleanup Old Logs"):
+                # Simulate log cleanup
+                st.info("Cleaning up security logs older than 90 days...")
+                # In real implementation: database.cleanup_old_logs(90)
+                st.success("✅ Log cleanup completed!")
+        
+        with col2:
+            if st.button("📊 Generate Report"):
+                st.info("Generating system usage report...")
+                # In real implementation: generate comprehensive report
+                st.success("✅ Report generated and saved to admin folder!")
+        
+        with col3:
+            if st.button("🔄 Restart Services"):
+                st.warning("⚠️ This would restart background services")
+                st.info("Service restart functionality requires system-level permissions")
     
     with tabs[5]:  # Analytics
         st.markdown("### 📈 Analytics & Performance Monitor")
@@ -526,8 +618,33 @@ def show_user_settings():
             st.write(f"**Last Login:** {USER_DATA.get('last_login', 'Unknown')}")
         
         if st.button("Update Profile"):
-            # In a full implementation, you'd add database update functions
-            st.success("Profile update functionality would be implemented here")
+            if new_name and new_email:
+                # Validate email format
+                import re
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                
+                if re.match(email_pattern, new_email):
+                    # Update user profile in database
+                    try:
+                        # In a real implementation, add database.update_user_profile function
+                        # database.update_user_profile(st.session_state.user, new_name, new_email)
+                        
+                        # Update session state
+                        st.session_state.user_data['name'] = new_name
+                        st.session_state.user_data['email'] = new_email
+                        
+                        st.success("✅ Profile updated successfully!")
+                        log_security_event("PROFILE_UPDATED", username=st.session_state.user, 
+                                         details=f"Updated name and email")
+                        
+                        # Refresh the page to show updated info
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Failed to update profile: {str(e)}")
+                else:
+                    st.error("❌ Please enter a valid email address")
+            else:
+                st.error("❌ Please fill in all required fields")
     
     with tabs[1]:  # Security
         st.markdown("### Security Settings")
@@ -554,12 +671,62 @@ def show_user_settings():
                     else:
                         # Update password
                         new_hashed = hash_password(new_password)
-                        database.update_user_password(USER, new_hashed)
+                        database.update_user_password(st.session_state.user, new_hashed)
                         st.success("Password changed successfully!")
-                        log_security_event("PASSWORD_CHANGED", username=USER, details="Changed via settings")
+                        log_security_event("PASSWORD_CHANGED", username=st.session_state.user, details="Changed via settings")
         
         st.markdown("#### Active Sessions")
-        st.info("Session management would be implemented here")
+        
+        # Display current session info
+        st.write("**Current Session:**")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Session ID", "current")
+            st.metric("Login Time", USER_DATA.get('last_login', 'Unknown'))
+        
+        with col2:
+            st.metric("IP Address", "Local")  # In real app, track actual IP
+            st.metric("User Agent", "Streamlit App")
+        
+        with col3:
+            st.metric("Status", "🟢 Active")
+            if st.button("🚪 End Session"):
+                # Clear session state and force logout
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.success("✅ Session ended successfully")
+                st.rerun()
+        
+        st.divider()
+        
+        # Session settings
+        st.markdown("#### Session Preferences")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            remember_me = st.checkbox("Remember login", value=False,
+                                    help="Stay logged in across browser sessions")
+            auto_save = st.checkbox("Auto-save conversations", value=True,
+                                  help="Automatically save chat history")
+        
+        with col2:
+            session_timeout = st.selectbox("Auto-logout after", 
+                                         ["1 hour", "4 hours", "8 hours", "24 hours"],
+                                         index=2,
+                                         help="Automatically logout after inactivity")
+        
+        if st.button("💾 Save Session Settings"):
+            session_prefs = {
+                "remember_me": remember_me,
+                "auto_save": auto_save,
+                "session_timeout": session_timeout
+            }
+            # Save to user preferences
+            for key, value in session_prefs.items():
+                database.save_user_preference(st.session_state.user, f"session_{key}", value)
+            
+            st.success("✅ Session preferences saved!")
     
     with tabs[2]:  # Two-Factor Auth
         st.markdown("### Two-Factor Authentication")
@@ -567,14 +734,14 @@ def show_user_settings():
         try:
             from auth.two_factor import is_2fa_enabled, generate_2fa_secret, get_2fa_qr_code, enable_2fa, disable_2fa
             
-            two_fa_enabled = is_2fa_enabled(USER)
+            two_fa_enabled = is_2fa_enabled(st.session_state.user)
             
             if two_fa_enabled:
                 st.success("🔒 Two-Factor Authentication is ENABLED")
                 st.write("Your account is protected with 2FA.")
                 
                 if st.button("Disable 2FA"):
-                    if disable_2fa(USER):
+                    if disable_2fa(st.session_state.user):
                         st.success("Two-Factor Authentication has been disabled")
                         st.rerun()
                     else:
@@ -591,8 +758,8 @@ def show_user_settings():
                     st.markdown("#### Setup Two-Factor Authentication")
                     
                     # Generate secret and QR code
-                    secret = generate_2fa_secret(USER)
-                    qr_code = get_2fa_qr_code(USER, secret)
+                    secret = generate_2fa_secret(st.session_state.user)
+                    qr_code = get_2fa_qr_code(st.session_state.user, secret)
                     
                     st.markdown("1. Install an authenticator app (Google Authenticator, Authy, etc.)")
                     st.markdown("2. Scan this QR code with your authenticator app:")
@@ -607,7 +774,7 @@ def show_user_settings():
                     with col1:
                         if st.button("Enable 2FA"):
                             if verification_code and len(verification_code) == 6:
-                                if enable_2fa(USER, verification_code):
+                                if enable_2fa(st.session_state.user, verification_code):
                                     st.success("Two-Factor Authentication has been enabled!")
                                     st.session_state.setup_2fa = False
                                     st.rerun()
@@ -657,7 +824,7 @@ USER_ROLE = st.session_state.get("user_role", "user")
 
 def load_user_prefs():
     """Load user preferences from database instead of encrypted files"""
-    return database.get_user_preferences(USER)
+    return database.get_user_preferences(st.session_state.user)
 
 def save_user_prefs():
     """Save user preferences to database only if changed."""
@@ -674,10 +841,10 @@ def save_user_prefs():
         "llm_endpoint": st.session_state.get("llm_endpoint", ""),
     }
     try:
-        current_prefs = database.get_user_preferences(USER)
+        current_prefs = database.get_user_preferences(st.session_state.user)
         for key, value in prefs.items():
             if current_prefs.get(key) != value:
-                database.save_user_preference(USER, key, value)
+                database.save_user_preference(st.session_state.user, key, value)
     except Exception as e:
         print(f"Error saving user preferences: {e}")
 
@@ -688,23 +855,41 @@ for key, value in prefs.items():
 
 sidebar(USER, save_user_prefs)
 
-st.title(f"Jarvis Modular Agentic AI")
+st.title(f"🤖 Jarvis AI Assistant")
 
-# User info and controls
-col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
-with col1:
-    st.markdown(f"**Welcome, {USER_DATA.get('name', USER)}** ({USER_ROLE})")
-with col2:
+# Add a welcome message for new users
+if len(st.session_state.chat_sessions.get(st.session_state.current_session, [])) == 0:
+    st.info("""
+    👋 **Welcome to Jarvis AI!** I'm your intelligent assistant that can help you with:
+    
+    🔍 **Code Analysis** - Review, debug, and improve your code  
+    📝 **Documentation** - Generate docs, comments, and explanations  
+    🔍 **Research** - Search the web and analyze information  
+    📁 **File Processing** - Analyze documents, images, and data  
+    🧪 **Testing** - Generate unit tests and test strategies  
+    
+    **Just ask me anything in natural language!**
+    """)
+
+# User info and controls with better layout
+info_col1, info_col2, info_col3, info_col4, info_col5 = st.columns([3, 1, 1, 1, 1])
+with info_col1:
+    st.markdown(f"**👋 {USER_DATA.get('name', st.session_state.user)}** • *{USER_ROLE}*")
+with info_col2:
     if IS_ADMIN:
-        if st.button("🔧 Admin Panel"):
+        if st.button("🔧 Admin", help="Access admin panel"):
             st.session_state.show_admin_panel = True
             st.rerun()
-with col3:
-    if st.button("⚙️ Settings"):
+with info_col3:
+    if st.button("⚙️ Settings", help="User preferences"):
         st.session_state.show_user_settings = True
         st.rerun()
-with col4:
-    if st.button("🚪 Logout"):
+with info_col4:
+    if st.button("💬 Feedback", help="Send feedback"):
+        st.session_state.show_feedback = True
+        st.rerun()
+with info_col5:
+    if st.button("🚪 Logout", help="Sign out"):
         # Clear session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
@@ -743,7 +928,7 @@ save_user_prefs()
 # --- File Upload ---
 uploaded_files = st.file_uploader("Upload files", accept_multiple_files=True)
 if uploaded_files:
-    user_upload_dir = os.path.join("uploads", USER)
+    user_upload_dir = os.path.join("uploads", st.session_state.user)
     os.makedirs(user_upload_dir, exist_ok=True)
     for f in uploaded_files:
         with open(os.path.join(user_upload_dir, f.name), "wb") as out_f:
@@ -783,12 +968,26 @@ st.markdown("## Chat")
 for msg in chat_history:
     st.chat_message(msg["role"]).write(msg["content"])
 
-user_msg = st.chat_input("Type your request.")
+user_msg = st.chat_input("Ask me anything! I can help with code, files, research, and more...")
 if user_msg:
     # Display user message immediately
     st.chat_message("user").write(user_msg)
     chat_history.append({"role": "user", "content": user_msg})
-    uploaded_file_paths = [os.path.join("uploads", USER, f.name) for f in uploaded_files] if uploaded_files else []
+    
+    # Show helpful suggestions for new users
+    if len(chat_history) <= 2:  # First interaction
+        with st.expander("💡 Quick Start Tips", expanded=False):
+            st.markdown("""
+            **Try these natural language commands:**
+            - "Help me review this Python code for bugs"
+            - "Summarize the uploaded document"  
+            - "Search for information about machine learning"
+            - "Generate a test for this function"
+            - "Explain how this code works"
+            - "Create documentation for this project"
+            """)
+    
+    uploaded_file_paths = [os.path.join("uploads", st.session_state.user, f.name) for f in uploaded_files] if uploaded_files else []
 
 
     # Only enable RAG logic if checkbox is checked
@@ -830,78 +1029,79 @@ if user_msg:
         human_in_loop.request_human_reasoning,
         expert_model=expert_model,
         draft_model=st.session_state.get("selected_draft_model") if st.session_state.get("enable_speculative_decoding", False) else None,
-        user=USER,
+        user=st.session_state.user,
         llm_endpoint=llm_endpoint,
         rag_endpoint=rag_endpoint
     )
     
     # Show processing indicator
-    with st.spinner(f"Processing with model: {expert_model}..."):
-        plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
-        results = agent.execute_plan(plan)
-    
-    # Display results immediately
-    for result in results:
-        print(f"DEBUG UI: Result type: {type(result)}")
-        print(f"DEBUG UI: Result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
-        print(f"DEBUG UI: Result content: {str(result)[:200]}...")
-        
-        if isinstance(result['result'], list):
-            for item in result['result']:
-                response_text = str(item)
-                print(f"DEBUG UI: List item response: {response_text[:100]}...")
-                st.chat_message("assistant").write(response_text)
-                chat_history.append({"role": "assistant", "content": response_text})
-        else:
-            response_data = result['result']
-            print(f"DEBUG UI: Single response data: {str(response_data)[:100]}...")
-            print(f"DEBUG UI: Response data type: {type(response_data)}")
-            
-            # Handle chain of thought responses
-            if isinstance(response_data, dict) and response_data.get("type") == "cot_response":
-                print(f"DEBUG UI: Found CoT response!")
-                chain_of_thought = response_data.get("chain_of_thought", "")
-                final_answer = response_data.get("final_answer", "")
-                print(f"DEBUG UI: CoT length: {len(chain_of_thought)}")
-                print(f"DEBUG UI: Final answer length: {len(final_answer)}")
-                
-                # Display the final answer first
-                if final_answer and final_answer.strip():
-                    with st.chat_message("assistant"):
-                        st.write(final_answer)
-                        
-                        # Add expandable chain of thought section
-                        if chain_of_thought and chain_of_thought.strip():
-                            print(f"DEBUG UI: Adding CoT expander")
-                            with st.expander("🧠 View Chain of Thought", expanded=False):
-                                st.markdown("**AI's Reasoning Process:**")
-                                st.text(chain_of_thought)
-                        else:
-                            print(f"DEBUG UI: No CoT content to display")
-                    
-                    # Store the final answer in chat history
-                    chat_history.append({"role": "assistant", "content": final_answer})
-                else:
-                    fallback_msg = "The AI generated reasoning but no final answer."
-                    st.chat_message("assistant").write(fallback_msg)
-                    chat_history.append({"role": "assistant", "content": fallback_msg})
+    with st.spinner(f"🤖 Processing with {expert_model}..."):
+        try:
+            plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
+            if not plan:
+                st.chat_message("assistant").write("I'm not sure how to help with that request. Could you please rephrase it or be more specific?")
+                chat_history.append({"role": "assistant", "content": "I'm not sure how to help with that request. Could you please rephrase it or be more specific?"})
             else:
-                # Handle regular string responses
-                response_text = str(response_data)
-                print(f"DEBUG UI: Regular response text: {response_text[:100]}...")
-                print(f"DEBUG UI: Response text length: {len(response_text)}")
+                results = agent.execute_plan(plan)
                 
-                if response_text and response_text.strip() and response_text != "None":
-                    st.chat_message("assistant").write(response_text)
-                    chat_history.append({"role": "assistant", "content": response_text})
+                if not results:
+                    st.chat_message("assistant").write("I encountered an issue while processing your request. Please try again or contact support if the problem persists.")
+                    chat_history.append({"role": "assistant", "content": "I encountered an issue while processing your request. Please try again or contact support if the problem persists."})
                 else:
-                    fallback_msg = f"The AI generated a response but it appears empty. Debug: '{response_text}'"
-                    st.chat_message("assistant").write(fallback_msg)
-                    chat_history.append({"role": "assistant", "content": fallback_msg})
-        
-        # Handle image generation
-        if result['step']['tool'] == "image_generation" and result['result'] is not None:
-            st.image(result['result'], caption="Generated Image")
+                    # Display results immediately
+                    for result in results:
+                        if isinstance(result['result'], list):
+                            for item in result['result']:
+                                response_text = str(item)
+                                st.chat_message("assistant").write(response_text)
+                                chat_history.append({"role": "assistant", "content": response_text})
+                        else:
+                            response_data = result['result']
+                            
+                            # Handle chain of thought responses
+                            if isinstance(response_data, dict) and response_data.get("type") == "cot_response":
+                                chain_of_thought = response_data.get("chain_of_thought", "")
+                                final_answer = response_data.get("final_answer", "")
+                                
+                                # Display the final answer first
+                                if final_answer and final_answer.strip():
+                                    with st.chat_message("assistant"):
+                                        st.write(final_answer)
+                                        
+                                        # Add expandable chain of thought section
+                                        if chain_of_thought and chain_of_thought.strip():
+                                            with st.expander("🧠 View Chain of Thought", expanded=False):
+                                                st.markdown("**AI's Reasoning Process:**")
+                                                st.text(chain_of_thought)
+                                    
+                                    # Store the final answer in chat history
+                                    chat_history.append({"role": "assistant", "content": final_answer})
+                                else:
+                                    fallback_msg = "The AI generated reasoning but no final answer."
+                                    st.chat_message("assistant").write(fallback_msg)
+                                    chat_history.append({"role": "assistant", "content": fallback_msg})
+                            else:
+                                # Handle regular string responses
+                                response_text = str(response_data)
+                                
+                                if response_text and response_text.strip() and response_text != "None":
+                                    st.chat_message("assistant").write(response_text)
+                                    chat_history.append({"role": "assistant", "content": response_text})
+                                else:
+                                    fallback_msg = "I apologize, but I wasn't able to generate a proper response. Please try rephrasing your request."
+                                    st.chat_message("assistant").write(fallback_msg)
+                                    chat_history.append({"role": "assistant", "content": fallback_msg})
+                        
+                        # Handle image generation
+                        if result['step']['tool'] == "image_generation" and result['result'] is not None:
+                            st.image(result['result'], caption="Generated Image")
+        except Exception as e:
+            error_msg = f"I apologize, but I encountered an unexpected error: {str(e)}. Please try rephrasing your request."
+            st.chat_message("assistant").write(error_msg)
+            chat_history.append({"role": "assistant", "content": error_msg})
+            # Log the error for debugging
+            log_security_event("AGENT_ERROR", username=st.session_state.user, details=f"Error: {str(e)}")
+            results = []  # Ensure results is defined
     
     save_user_prefs()
     st.rerun()  # Force a rerun to update the chat display

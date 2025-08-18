@@ -102,20 +102,12 @@ Always provide helpful, detailed responses. If asked about your capabilities, li
         # Add speculative decoding if draft model is provided
         if draft_model and draft_model != model:
             payload["draft_model"] = draft_model
-            print(f"DEBUG: Using speculative decoding with draft model: {draft_model}")
-        else:
-            print(f"DEBUG: No speculative decoding (draft_model: {draft_model})")
         
         try:
-            print(f"DEBUG: Sending request to Ollama with model: {model}")
-            print(f"DEBUG: Prompt length: {len(simple_prompt)}")
             res = requests.post(f"http://localhost:11434/api/generate", json=payload, timeout=120)
-            print(f"DEBUG: Response status: {res.status_code}")
             
             if res.ok:
                 data = res.json()
-                print(f"DEBUG: Response data keys: {list(data.keys())}")
-                print(f"DEBUG: Response data: {str(data)[:200]}...")
                 
                 # Ollama returns 'response' for some models, 'output' for others
                 response = data.get("response", "").strip()
@@ -131,17 +123,13 @@ Always provide helpful, detailed responses. If asked about your capabilities, li
                 
                 if response:
                     import re
-                    print(f"DEBUG: Looking for CoT in response: {response[:200]}...")
                     # Extract <think>...</think> blocks from DeepSeek models
                     think_matches = re.findall(r'<think>(.*?)</think>', response, flags=re.DOTALL)
-                    print(f"DEBUG: Found {len(think_matches)} think blocks")
                     
                     if think_matches:
                         chain_of_thought = "\n\n".join(think_matches).strip()
-                        print(f"DEBUG: CoT content preview: {chain_of_thought[:100]}...")
                         # Remove <think>...</think> blocks from final response
                         final_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
-                        print(f"DEBUG: Final response preview: {final_response[:100]}...")
                         
                         # Return both CoT and final response as a structured object
                         result = {
@@ -150,29 +138,19 @@ Always provide helpful, detailed responses. If asked about your capabilities, li
                             "final_answer": final_response,
                             "raw_response": response
                         }
-                        print(f"DEBUG: Returning structured CoT response")
                         return result
-                    else:
-                        print(f"DEBUG: No <think> blocks found, returning simple response")
                 
                 # No CoT found, return simple response
                 if not final_response:
-                    final_response = f"I received your question but got an empty response from the model. Debug info: {str(data)}"
+                    final_response = "I apologize, but I wasn't able to generate a proper response. Please try rephrasing your request."
                 
-                print(f"DEBUG: Final response length: {len(final_response)}")
                 return final_response
             else:
-                error_msg = f"LLM API error: {res.status_code} {res.text}"
-                print(f"DEBUG: {error_msg}")
-                return error_msg
+                return f"LLM API error: {res.status_code} - Please check your Ollama connection and model availability."
         except requests.exceptions.Timeout:
-            timeout_msg = f"The model '{model}' is taking too long to respond. Try using a smaller/faster model or check if Ollama is overloaded."
-            print(f"DEBUG: {timeout_msg}")
-            return timeout_msg
+            return f"The model '{model}' is taking too long to respond. Try using a smaller/faster model or check if Ollama is overloaded."
         except Exception as e:
-            error_msg = f"LLM API request failed: {e}"
-            print(f"DEBUG: {error_msg}")
-            return error_msg
+            return f"I encountered an error while processing your request: {str(e)}"
     else:
         payload = {
             "prompt": simple_prompt,

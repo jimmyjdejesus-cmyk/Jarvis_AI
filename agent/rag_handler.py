@@ -87,17 +87,12 @@ Please answer the user's question using the provided context. If the context doe
 
     # Make API call to LLM with the contextual prompt
     from agent.tools import llm_api_call
-    print(f"DEBUG RAG: Calling llm_api_call with expert_model: {expert_model}")
     result = llm_api_call(contextual_prompt, expert_model, None, chat_history, user, "http://localhost:11434")
-    print(f"DEBUG RAG: Got result type: {type(result)}")
-    print(f"DEBUG RAG: Result preview: {str(result)[:100]}...")
     
     # If the result is a structured CoT response, preserve it
     if isinstance(result, dict) and result.get("type") == "cot_response":
-        print(f"DEBUG RAG: Preserving CoT structure")
         return result
     else:
-        print(f"DEBUG RAG: Returning simple result")
         return result
 
 
