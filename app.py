@@ -419,7 +419,6 @@ def show_admin_panel():
                     progress_placeholder.success(f"✅ Successfully pulled {model_to_pull}")
                     
                     # Clear cache to show new model
-                    import ollama_client
                     ollama_client._model_cache = None
                     
                     # Auto-refresh after a short delay
