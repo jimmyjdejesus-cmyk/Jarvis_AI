@@ -409,7 +409,19 @@ def show_user_settings():
         st.session_state.show_user_settings = False
         st.rerun()
 
+
 login()
+# Ensure 'user' is initialized in session_state
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+
+# CRITICAL: Initialize model session state early to prevent empty model errors
+# This ensures that even if the sidebar model selection fails, we have a fallback
+if "selected_expert_model" not in st.session_state:
+    st.session_state["selected_expert_model"] = "qwen3:0.6b"  # Default to available model
+if "selected_draft_model" not in st.session_state:
+    st.session_state["selected_draft_model"] = "qwen3:0.6b"  # Default to available model
+
 USER = st.session_state.user
 USER_DATA = st.session_state.get("user_data", {})
 IS_ADMIN = st.session_state.get("is_admin", False)
@@ -480,12 +492,17 @@ if st.session_state.get("show_user_settings", False):
 if IS_ADMIN:
     st.markdown("**You are logged in as Admin.**")
 
+
 # --- Endpoint Configuration ---
 st.sidebar.markdown("## Endpoints")
 llm_endpoint = st.sidebar.text_input("LLM API Endpoint", value=st.session_state.get("llm_endpoint", "http://localhost:8000/llm"))
-rag_endpoint = st.sidebar.text_input("RAG API Endpoint", value=st.session_state.get("rag_endpoint", "http://localhost:8000/rag"))
 st.session_state.llm_endpoint = llm_endpoint
-st.session_state.rag_endpoint = rag_endpoint
+
+# --- RAG Enable Checkbox ---
+# User can now control RAG features via checkbox instead of always-on behavior
+enable_rag = st.sidebar.checkbox("Enable RAG features", value=False)
+st.session_state.enable_rag = enable_rag
+
 save_user_prefs()
 
 # --- File Upload ---
@@ -536,19 +553,36 @@ if user_msg:
     chat_history.append({"role": "user", "content": user_msg})
     uploaded_file_paths = [os.path.join("uploads", USER, f.name) for f in uploaded_files] if uploaded_files else []
 
-    # Source evaluation step for RAG actions
-    if "rag" in user_msg.lower() and uploaded_file_paths:
-        usable, unusable, summaries = evaluate_sources(uploaded_file_paths)
-        # Only pass usable files to RAG
-        rag_files = usable
-    else:
-        rag_files = uploaded_file_paths
 
+    # Only enable RAG logic if checkbox is checked
+    if st.session_state.get("enable_rag", False):
+        # Source evaluation step for RAG actions
+        if "rag" in user_msg.lower() and uploaded_file_paths:
+            usable, unusable, summaries = evaluate_sources(uploaded_file_paths)
+            # Only pass usable files to RAG
+            rag_files = usable
+        else:
+            rag_files = uploaded_file_paths
+    else:
+        rag_files = []
+
+    # Use RAG mode 'auto' for web-augmented context if enabled
+    rag_mode = "auto" if st.session_state.get("enable_rag", False) else "file"
+    
+    # CRITICAL: Ensure expert_model is always set for Ollama to prevent API 404 errors
+    # This is the final safeguard against empty model names that cause "model '' not found" errors
+    expert_model = st.session_state.get("selected_expert_model")
+    if not expert_model or expert_model.strip() == "":
+        expert_model = "qwen3:0.6b"  # Fallback to known available model
+    
+    # Set default rag_endpoint since we removed the textbox for cleaner UI
+    rag_endpoint = st.session_state.get("rag_endpoint", "http://localhost:8000/rag")
+    
     agent = JarvisAgent(
         st.session_state.get("persona_prompt"),
         tools,
-        human_in_loop.approval_callback,
-        expert_model=st.session_state.get("selected_expert_model"),
+        human_in_loop.request_human_reasoning,
+        expert_model=expert_model,
         draft_model=st.session_state.get("selected_draft_model"),
         user=USER,
         llm_endpoint=llm_endpoint,

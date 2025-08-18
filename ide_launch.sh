@@ -1,8 +1,14 @@
 #!/bin/bash
-# Automated launch script for Jarvis_AI
-# Usage: bash launch.sh
+# IDE launch script for Jarvis_AI
+# Usage: bash ide_launch.sh
 
 set -e
+
+# Install Ollama if not present
+if ! command -v ollama &> /dev/null; then
+    echo "Installing Ollama..."
+    curl -fsSL https://ollama.com/install.sh | sh
+fi
 
 # Start Ollama (if not running)
 if ! pgrep -x "ollama" > /dev/null; then
@@ -13,11 +19,9 @@ else
     echo "Ollama is already running."
 fi
 
-
-
-# Pull only qwen:6b model
-echo "Pulling model: qwen:6b"
-ollama pull "qwen:6b"
+# Pull only qwen3:0.6b model
+echo "Pulling model: qwen3:0.6b"
+ollama pull "qwen3:0.6b"
 
 # Launch the Streamlit app
 if [ -f "app.py" ]; then
