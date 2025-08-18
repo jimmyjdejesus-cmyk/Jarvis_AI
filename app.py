@@ -372,7 +372,7 @@ def show_admin_panel():
                                         st.success(f"Removed {model}")
                                         # Clear cache and refresh
                                         import ollama_client
-                                        ollama_client._model_cache = None
+                                        ollama_client.clear_model_cache()
                                         st.rerun()
                                     else:
                                         st.error(f"Failed to remove: {result.stderr}")
