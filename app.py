@@ -424,7 +424,6 @@ def show_admin_panel():
                     ollama_client.clear_model_cache()
                     
                     # Auto-refresh after a short delay
-                    import time
                     time.sleep(2)
                     st.rerun()
                     
@@ -477,7 +476,6 @@ def show_admin_panel():
                             })
                     
                     # Display results in a table
-                    import pandas as pd
                     df = pd.DataFrame(health_results)
                     st.dataframe(df, use_container_width=True)
                 else:
