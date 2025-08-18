@@ -174,7 +174,7 @@ def show_admin_panel():
     """Admin panel for user management"""
     st.markdown("## 🔧 Admin Panel")
     
-    tabs = st.tabs(["👥 User Management", "⏳ Pending Users", "📊 Security Logs", "⚙️ System Settings"])
+    tabs = st.tabs(["👥 User Management", "⏳ Pending Users", "📊 Security Logs", "🤖 Model Management", "⚙️ System Settings"])
     
     with tabs[0]:  # User Management
         st.markdown("### Active Users")
@@ -282,7 +282,210 @@ def show_admin_panel():
         else:
             st.info("No security logs found")
     
-    with tabs[3]:  # System Settings
+    with tabs[3]:  # Model Management
+        st.markdown("### 🤖 Ollama Model Management")
+        
+        # Import required functions
+        from ollama_client import get_available_models, pull_model_subprocess
+        
+        # Current endpoint configuration
+        col1, col2 = st.columns(2)
+        with col1:
+            current_endpoint = st.session_state.get("llm_endpoint", "http://localhost:11434")
+            new_endpoint = st.text_input("Ollama Endpoint", value=current_endpoint)
+            if new_endpoint != current_endpoint:
+                st.session_state.llm_endpoint = new_endpoint
+                st.session_state.rag_endpoint = new_endpoint  # Keep both endpoints in sync
+                st.success("Endpoint updated successfully")
+        
+        with col2:
+            if st.button("🔄 Test Connection"):
+                try:
+                    import requests
+                    response = requests.get(f"{new_endpoint}/api/tags", timeout=5)
+                    if response.ok:
+                        st.success("✅ Connection successful")
+                    else:
+                        st.error(f"❌ Connection failed: {response.status_code}")
+                except Exception as e:
+                    st.error(f"❌ Connection failed: {str(e)}")
+        
+        st.divider()
+        
+        # Available models section
+        st.markdown("#### Available Models")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            if st.button("🔄 Refresh Model List"):
+                # Clear cache to force refresh
+                import ollama_client
+                ollama_client._model_cache = None
+                st.rerun()
+        
+        with col2:
+            show_details = st.checkbox("Show Details")
+        
+        try:
+            available_models = get_available_models()
+            if available_models:
+                st.success(f"Found {len(available_models)} models")
+                
+                for i, model in enumerate(available_models):
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    
+                    with col1:
+                        st.write(f"📦 **{model}**")
+                        if show_details:
+                            # Try to get model info
+                            try:
+                                import requests
+                                response = requests.post(f"{new_endpoint}/api/show", 
+                                                       json={"name": model}, timeout=10)
+                                if response.ok:
+                                    info = response.json()
+                                    if 'details' in info:
+                                        details = info['details']
+                                        st.caption(f"Size: {details.get('parameter_size', 'Unknown')} | Family: {details.get('family', 'Unknown')}")
+                            except:
+                                pass
+                    
+                    with col2:
+                        if st.button("📊 Info", key=f"info_{i}"):
+                            try:
+                                import requests
+                                response = requests.post(f"{new_endpoint}/api/show", 
+                                                       json={"name": model}, timeout=10)
+                                if response.ok:
+                                    info = response.json()
+                                    st.json(info)
+                            except Exception as e:
+                                st.error(f"Failed to get model info: {e}")
+                    
+                    with col3:
+                        if st.button("🗑️ Remove", key=f"remove_{i}"):
+                            if st.session_state.get(f"confirm_remove_{i}", False):
+                                try:
+                                    import subprocess
+                                    result = subprocess.run(["ollama", "rm", model], 
+                                                          capture_output=True, text=True, timeout=30)
+                                    if result.returncode == 0:
+                                        st.success(f"Removed {model}")
+                                        # Clear cache and refresh
+                                        import ollama_client
+                                        ollama_client._model_cache = None
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Failed to remove: {result.stderr}")
+                                except Exception as e:
+                                    st.error(f"Error removing model: {e}")
+                                st.session_state[f"confirm_remove_{i}"] = False
+                            else:
+                                st.session_state[f"confirm_remove_{i}"] = True
+                                st.warning("Click again to confirm removal")
+            else:
+                st.warning("No models found. Check your Ollama connection.")
+        except Exception as e:
+            st.error(f"Error fetching models: {e}")
+        
+        st.divider()
+        
+        # Pull new models section
+        st.markdown("#### Pull New Models")
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            model_to_pull = st.text_input("Model name to pull", 
+                                        placeholder="e.g., llama2, qwen3:4b, gemma:1b")
+        
+        with col2:
+            st.markdown("**Recommended:**")
+            recommended_models = ["qwen3:4b", "qwen3:0.6b", "gemma:1b", "llama2", "codellama"]
+            selected_recommended = st.selectbox("Quick select", [""] + recommended_models)
+            if selected_recommended:
+                model_to_pull = selected_recommended
+        
+        if model_to_pull and st.button("📥 Pull Model"):
+            if model_to_pull:
+                st.info(f"Pulling {model_to_pull}... This may take several minutes.")
+                
+                # Create a placeholder for the progress
+                progress_placeholder = st.empty()
+                
+                try:
+                    # Stream the pull output
+                    for line in pull_model_subprocess(model_to_pull):
+                        progress_placeholder.text(line)
+                    
+                    progress_placeholder.success(f"✅ Successfully pulled {model_to_pull}")
+                    
+                    # Clear cache to show new model
+                    import ollama_client
+                    ollama_client._model_cache = None
+                    
+                    # Auto-refresh after a short delay
+                    import time
+                    time.sleep(2)
+                    st.rerun()
+                    
+                except Exception as e:
+                    progress_placeholder.error(f"❌ Failed to pull {model_to_pull}: {e}")
+        
+        st.divider()
+        
+        # Model health monitoring
+        st.markdown("#### Model Health & Performance")
+        
+        if st.button("🏥 Health Check All Models"):
+            try:
+                available_models = get_available_models()
+                if available_models:
+                    health_results = []
+                    
+                    for model in available_models:
+                        try:
+                            import requests
+                            import time
+                            
+                            # Simple test prompt
+                            start_time = time.time()
+                            response = requests.post(
+                                f"{new_endpoint}/api/generate",
+                                json={"model": model, "prompt": "Hello", "stream": False},
+                                timeout=30
+                            )
+                            end_time = time.time()
+                            
+                            if response.ok:
+                                response_time = round(end_time - start_time, 2)
+                                health_results.append({
+                                    "model": model,
+                                    "status": "✅ Healthy",
+                                    "response_time": f"{response_time}s"
+                                })
+                            else:
+                                health_results.append({
+                                    "model": model,
+                                    "status": "❌ Error",
+                                    "response_time": "N/A"
+                                })
+                        except Exception as e:
+                            health_results.append({
+                                "model": model,
+                                "status": f"❌ {str(e)[:50]}",
+                                "response_time": "N/A"
+                            })
+                    
+                    # Display results in a table
+                    import pandas as pd
+                    df = pd.DataFrame(health_results)
+                    st.dataframe(df, use_container_width=True)
+                else:
+                    st.warning("No models available for health check")
+            except Exception as e:
+                st.error(f"Health check failed: {e}")
+
+    with tabs[4]:  # System Settings
         st.markdown("### System Settings")
         st.info("System configuration options would be implemented here")
         
@@ -602,7 +805,7 @@ if user_msg:
         tools,
         human_in_loop.request_human_reasoning,
         expert_model=expert_model,
-        draft_model=st.session_state.get("selected_draft_model"),
+        draft_model=st.session_state.get("selected_draft_model") if st.session_state.get("enable_speculative_decoding", False) else None,
         user=USER,
         llm_endpoint=llm_endpoint,
         rag_endpoint=rag_endpoint
