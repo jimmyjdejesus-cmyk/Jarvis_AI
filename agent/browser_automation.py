@@ -18,8 +18,19 @@ def parse_natural_language_to_actions(nl_command: str):
         # Assume Google search page
         actions.append({"type": "type", "selector": "input[name='q']", "text": search_match.group(1)})
         actions.append({"type": "click", "selector": "input[type='submit']"})
-    # Add more natural language mappings as needed
-    return actions
+
+    def trigger_browser_task(nl_command: str):
+        """
+        Triggers browser automation using a natural language command and returns the result summary.
+        """
+        try:
+            results = automate_browser(nl_command)
+            return " | ".join(results)
+        except Exception as e:
+            return f"Browser automation failed: {str(e)}"
+    
+        # Add more natural language mappings as needed
+        return actions
 
 def automate_browser(actions_or_nl):
     """

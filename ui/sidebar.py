@@ -1,6 +1,6 @@
 import streamlit as st
 import uuid
-
+import json
 
 from ollama_client import get_available_models
 
@@ -84,12 +84,23 @@ def sidebar(user, save_user_prefs):
                 save_user_preference(user, "folders", st.session_state.folders)
                 save_user_preference(user, "current_folder", rename_folder)
         model_list = get_available_models()
-        expert_model = st.selectbox("🤖 Expert Model", model_list, index=0 if model_list else None)
-        if expert_model != st.session_state.get("selected_expert_model", (model_list[0] if model_list else None)):
+        # Ensure we have a fallback model if list is empty
+        if not model_list:
+            model_list = ["qwen3:0.6b"]
+        
+        # Initialize session state if not set
+        if "selected_expert_model" not in st.session_state:
+            st.session_state.selected_expert_model = model_list[0]
+        if "selected_draft_model" not in st.session_state:
+            st.session_state.selected_draft_model = model_list[0] if len(model_list) == 1 else model_list[1] if len(model_list) > 1 else model_list[0]
+        
+        expert_model = st.selectbox("🤖 Expert Model", model_list, index=model_list.index(st.session_state.selected_expert_model) if st.session_state.selected_expert_model in model_list else 0)
+        if expert_model != st.session_state.get("selected_expert_model"):
             st.session_state.selected_expert_model = expert_model
             save_user_preference(user, "selected_expert_model", expert_model)
-        draft_model = st.selectbox("🤖 Draft Model", model_list, index=1 if len(model_list) > 1 else 0)
-        if draft_model != st.session_state.get("selected_draft_model", (model_list[1] if len(model_list) > 1 else model_list[0] if model_list else None)):
+        
+        draft_model = st.selectbox("🤖 Draft Model", model_list, index=model_list.index(st.session_state.selected_draft_model) if st.session_state.selected_draft_model in model_list else (1 if len(model_list) > 1 else 0))
+        if draft_model != st.session_state.get("selected_draft_model"):
             st.session_state.selected_draft_model = draft_model
             save_user_preference(user, "selected_draft_model", draft_model)
         persona_prompt = st.text_area("🧠 Agent Persona Prompt", value=st.session_state.get("persona_prompt", f"You are an expert assistant using the {expert_model} (expert) and {draft_model} (draft) models."))

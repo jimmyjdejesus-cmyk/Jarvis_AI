@@ -25,24 +25,53 @@ def rag_answer(prompt: str, files: List[str], expert_model: str = None,
         Generated response with context from files
     """
     context = []
+    context_header = ""
     if mode == "file":
         if not files:
             return "No files provided for context."
-        # Read and prepare context from files
         for file_path in files:
             try:
                 if os.path.exists(file_path):
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
-                        context.append(f"File: {os.path.basename(file_path)}\n{content[:2000]}...")  # Limit content size
+                        context.append(f"File: {os.path.basename(file_path)}\n{content[:2000]}...")
             except Exception as e:
                 context.append(f"Error reading {file_path}: {str(e)}")
         context_header = "Context from uploaded files:"
     elif mode == "search":
-        # Use DuckDuckGo search for context
         search_results = duckduckgo_search(prompt)
         context.append(search_results)
         context_header = "Context from DuckDuckGo search:"
+    elif mode == "auto":
+        # Try file context first
+        if files:
+            for file_path in files:
+                try:
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            context.append(f"File: {os.path.basename(file_path)}\n{content[:2000]}...")
+                except Exception as e:
+                    context.append(f"Error reading {file_path}: {str(e)}")
+            context_header = "Context from uploaded files:"
+        else:
+            # Try DuckDuckGo search
+            search_results = duckduckgo_search(prompt)
+            if search_results and "No results found." not in search_results:
+                context.append(search_results)
+                context_header = "Context from DuckDuckGo search:"
+            else:
+                # Trigger browser automation and human-in-loop for unsupported tasks
+                from agent.browser_automation import trigger_browser_task
+                from agent.human_in_loop import request_human_reasoning
+                browser_result = trigger_browser_task(prompt)
+                human_reasoning = request_human_reasoning(
+                    prompt,
+                    reasoning_path="No relevant context found in files or search. Please provide reasoning or next steps in natural language."
+                )
+                context.append(f"Browser Automation Result: {browser_result}")
+                context.append(f"Human Reasoning: {human_reasoning}")
+                context_header = "Context from browser automation and human-in-loop:"
     else:
         return "Unsupported RAG mode."
 
@@ -53,7 +82,7 @@ def rag_answer(prompt: str, files: List[str], expert_model: str = None,
 
 User Question: {prompt}
 
-Please answer the user's question using the provided context. If the context doesn't contain relevant information, mention this in your response.
+Please answer the user's question using the provided context. If the context doesn't contain relevant information, mention this in your response. If browser automation and human-in-loop were triggered, follow the reasoning path provided.
 """
 def duckduckgo_search(query: str, max_results: int = 5) -> str:
     """
@@ -79,21 +108,25 @@ def duckduckgo_search(query: str, max_results: int = 5) -> str:
     
     # Make API call to RAG endpoint
     if endpoint:
+        # If endpoint is just the base URL, append /api/generate for Ollama
+        if endpoint.rstrip('/') == 'http://localhost:11434':
+            endpoint = 'http://localhost:11434/api/generate'
+        # Always use qwen3:0.6b for Ollama
+        model_name = expert_model if expert_model else "qwen3:0.6b"
         payload = {
+            "model": model_name,
             "prompt": contextual_prompt,
-            "expert_model": expert_model,
-            "chat_history": chat_history or [],
-            "user": user,
-            "files": files
         }
         try:
             response = requests.post(endpoint, json=payload, timeout=30)
             if response.ok:
-                return response.json().get("response", "No response from RAG endpoint.")
+                # Ollama returns streaming responses, but for sync API, get 'response' or 'message'
+                resp_json = response.json()
+                return resp_json.get("response") or resp_json.get("message") or str(resp_json)
             else:
-                return f"RAG API error: {response.status_code} {response.text}"
+                return f"LLM API error: {response.status_code} {response.text}"
         except Exception as e:
-            return f"RAG API request failed: {e}"
+            return f"LLM API request failed: {e}"
     
     # Fallback to simple context-aware response
     return f"Based on the provided files, here's my understanding:\n\n{contextual_prompt}\n\n(Note: This is a fallback response. Connect to a proper RAG endpoint for enhanced responses.)"
