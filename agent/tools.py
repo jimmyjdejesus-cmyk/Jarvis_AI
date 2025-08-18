@@ -69,34 +69,113 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
         return None
 
 def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint):
+    # Build a more comprehensive prompt with context
+    system_prompt = """You are Jarvis, an advanced AI assistant. Your areas of expertise include:
+- Software development and coding assistance
+- File analysis and document processing  
+- Git repository management
+- Code review and quality analysis
+- IDE integration and development tools
+- Note-taking and knowledge management
+- Web automation and data extraction
+- Image generation and processing
+
+Always provide helpful, detailed responses. If asked about your capabilities, list the specific areas above."""
+    
+    # For debugging, let's simplify the prompt first
+    simple_prompt = f"{system_prompt}\n\nUser question: {prompt}\n\nPlease provide a detailed response:"
+    
     # If endpoint is Ollama, use /api/generate and correct payload
-    if "11434" in endpoint:
+    if "11434" in str(endpoint):
         # Use expert_model as the model name
-        model = expert_model or "llama2"
+        model = expert_model or "llama3.2"
         payload = {
             "model": model,
-            "prompt": prompt,
-            "stream": False
+            "prompt": simple_prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.9
+            }
         }
+        
+        # Add speculative decoding if draft model is provided
+        if draft_model and draft_model != model:
+            payload["draft_model"] = draft_model
+            print(f"DEBUG: Using speculative decoding with draft model: {draft_model}")
+        else:
+            print(f"DEBUG: No speculative decoding (draft_model: {draft_model})")
+        
         try:
-            res = requests.post(f"http://localhost:11434/api/generate", json=payload, timeout=60)
+            print(f"DEBUG: Sending request to Ollama with model: {model}")
+            print(f"DEBUG: Prompt length: {len(simple_prompt)}")
+            res = requests.post(f"http://localhost:11434/api/generate", json=payload, timeout=120)
+            print(f"DEBUG: Response status: {res.status_code}")
+            
             if res.ok:
                 data = res.json()
+                print(f"DEBUG: Response data keys: {list(data.keys())}")
+                print(f"DEBUG: Response data: {str(data)[:200]}...")
+                
                 # Ollama returns 'response' for some models, 'output' for others
-                response = data.get("response")
-                if response is None:
-                    response = data.get("output")
-                if response is None:
-                    # Show the full JSON if no recognized field
-                    response = str(data)
-                return response
+                response = data.get("response", "").strip()
+                if not response:
+                    response = data.get("output", "").strip()
+                if not response:
+                    # Try other possible fields
+                    response = data.get("text", "").strip()
+                
+                # Extract and separate DeepSeek reasoning tokens
+                chain_of_thought = ""
+                final_response = response
+                
+                if response:
+                    import re
+                    print(f"DEBUG: Looking for CoT in response: {response[:200]}...")
+                    # Extract <think>...</think> blocks from DeepSeek models
+                    think_matches = re.findall(r'<think>(.*?)</think>', response, flags=re.DOTALL)
+                    print(f"DEBUG: Found {len(think_matches)} think blocks")
+                    
+                    if think_matches:
+                        chain_of_thought = "\n\n".join(think_matches).strip()
+                        print(f"DEBUG: CoT content preview: {chain_of_thought[:100]}...")
+                        # Remove <think>...</think> blocks from final response
+                        final_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+                        print(f"DEBUG: Final response preview: {final_response[:100]}...")
+                        
+                        # Return both CoT and final response as a structured object
+                        result = {
+                            "type": "cot_response",
+                            "chain_of_thought": chain_of_thought,
+                            "final_answer": final_response,
+                            "raw_response": response
+                        }
+                        print(f"DEBUG: Returning structured CoT response")
+                        return result
+                    else:
+                        print(f"DEBUG: No <think> blocks found, returning simple response")
+                
+                # No CoT found, return simple response
+                if not final_response:
+                    final_response = f"I received your question but got an empty response from the model. Debug info: {str(data)}"
+                
+                print(f"DEBUG: Final response length: {len(final_response)}")
+                return final_response
             else:
-                return f"LLM API error: {res.status_code} {res.text}"
+                error_msg = f"LLM API error: {res.status_code} {res.text}"
+                print(f"DEBUG: {error_msg}")
+                return error_msg
+        except requests.exceptions.Timeout:
+            timeout_msg = f"The model '{model}' is taking too long to respond. Try using a smaller/faster model or check if Ollama is overloaded."
+            print(f"DEBUG: {timeout_msg}")
+            return timeout_msg
         except Exception as e:
-            return f"LLM API request failed: {e}"
+            error_msg = f"LLM API request failed: {e}"
+            print(f"DEBUG: {error_msg}")
+            return error_msg
     else:
         payload = {
-            "prompt": prompt,
+            "prompt": simple_prompt,
             "expert_model": expert_model,
             "draft_model": draft_model,
             "chat_history": chat_history,

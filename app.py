@@ -631,9 +631,18 @@ if "user" not in st.session_state:
 # CRITICAL: Initialize model session state early to prevent empty model errors
 # This ensures that even if the sidebar model selection fails, we have a fallback
 if "selected_expert_model" not in st.session_state:
-    st.session_state["selected_expert_model"] = "qwen3:0.6b"  # Default to available model
+    try:
+        from ollama_client import get_available_models
+        available_models = get_available_models()
+        if available_models:
+            st.session_state["selected_expert_model"] = available_models[0]
+        else:
+            st.session_state["selected_expert_model"] = "llama3.2"
+    except:
+        st.session_state["selected_expert_model"] = "llama3.2"
+        
 if "selected_draft_model" not in st.session_state:
-    st.session_state["selected_draft_model"] = "qwen3:0.6b"  # Default to available model
+    st.session_state["selected_draft_model"] = st.session_state["selected_expert_model"]
 
 USER = st.session_state.user
 USER_DATA = st.session_state.get("user_data", {})
@@ -770,6 +779,8 @@ for msg in chat_history:
 
 user_msg = st.chat_input("Type your request.")
 if user_msg:
+    # Display user message immediately
+    st.chat_message("user").write(user_msg)
     chat_history.append({"role": "user", "content": user_msg})
     uploaded_file_paths = [os.path.join("uploads", USER, f.name) for f in uploaded_files] if uploaded_files else []
 
@@ -793,7 +804,16 @@ if user_msg:
     # This is the final safeguard against empty model names that cause "model '' not found" errors
     expert_model = st.session_state.get("selected_expert_model")
     if not expert_model or expert_model.strip() == "":
-        expert_model = "qwen3:0.6b"  # Fallback to known available model
+        # Try to get available models and use the first one as fallback
+        try:
+            from ollama_client import get_available_models
+            available_models = get_available_models()
+            if available_models:
+                expert_model = available_models[0]
+            else:
+                expert_model = "llama3.2"  # Common fallback model
+        except:
+            expert_model = "llama3.2"  # Fallback to common model
     
     # Set default rag_endpoint since we removed the textbox for cleaner UI
     rag_endpoint = st.session_state.get("rag_endpoint", "http://localhost:8000/rag")
@@ -808,14 +828,74 @@ if user_msg:
         llm_endpoint=llm_endpoint,
         rag_endpoint=rag_endpoint
     )
-    plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
-    results = agent.execute_plan(plan)
+    
+    # Show processing indicator
+    with st.spinner(f"Processing with model: {expert_model}..."):
+        plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
+        results = agent.execute_plan(plan)
+    
+    # Display results immediately
     for result in results:
+        print(f"DEBUG UI: Result type: {type(result)}")
+        print(f"DEBUG UI: Result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
+        print(f"DEBUG UI: Result content: {str(result)[:200]}...")
+        
         if isinstance(result['result'], list):
             for item in result['result']:
-                chat_history.append({"role": "assistant", "content": str(item)})
+                response_text = str(item)
+                print(f"DEBUG UI: List item response: {response_text[:100]}...")
+                st.chat_message("assistant").write(response_text)
+                chat_history.append({"role": "assistant", "content": response_text})
         else:
-            chat_history.append({"role": "assistant", "content": str(result['result'])})
+            response_data = result['result']
+            print(f"DEBUG UI: Single response data: {str(response_data)[:100]}...")
+            print(f"DEBUG UI: Response data type: {type(response_data)}")
+            
+            # Handle chain of thought responses
+            if isinstance(response_data, dict) and response_data.get("type") == "cot_response":
+                print(f"DEBUG UI: Found CoT response!")
+                chain_of_thought = response_data.get("chain_of_thought", "")
+                final_answer = response_data.get("final_answer", "")
+                print(f"DEBUG UI: CoT length: {len(chain_of_thought)}")
+                print(f"DEBUG UI: Final answer length: {len(final_answer)}")
+                
+                # Display the final answer first
+                if final_answer and final_answer.strip():
+                    with st.chat_message("assistant"):
+                        st.write(final_answer)
+                        
+                        # Add expandable chain of thought section
+                        if chain_of_thought and chain_of_thought.strip():
+                            print(f"DEBUG UI: Adding CoT expander")
+                            with st.expander("🧠 View Chain of Thought", expanded=False):
+                                st.markdown("**AI's Reasoning Process:**")
+                                st.text(chain_of_thought)
+                        else:
+                            print(f"DEBUG UI: No CoT content to display")
+                    
+                    # Store the final answer in chat history
+                    chat_history.append({"role": "assistant", "content": final_answer})
+                else:
+                    fallback_msg = "The AI generated reasoning but no final answer."
+                    st.chat_message("assistant").write(fallback_msg)
+                    chat_history.append({"role": "assistant", "content": fallback_msg})
+            else:
+                # Handle regular string responses
+                response_text = str(response_data)
+                print(f"DEBUG UI: Regular response text: {response_text[:100]}...")
+                print(f"DEBUG UI: Response text length: {len(response_text)}")
+                
+                if response_text and response_text.strip() and response_text != "None":
+                    st.chat_message("assistant").write(response_text)
+                    chat_history.append({"role": "assistant", "content": response_text})
+                else:
+                    fallback_msg = f"The AI generated a response but it appears empty. Debug: '{response_text}'"
+                    st.chat_message("assistant").write(fallback_msg)
+                    chat_history.append({"role": "assistant", "content": fallback_msg})
+        
+        # Handle image generation
         if result['step']['tool'] == "image_generation" and result['result'] is not None:
             st.image(result['result'], caption="Generated Image")
+    
     save_user_prefs()
+    st.rerun()  # Force a rerun to update the chat display

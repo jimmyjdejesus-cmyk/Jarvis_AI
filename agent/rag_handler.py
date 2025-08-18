@@ -84,6 +84,23 @@ User Question: {prompt}
 
 Please answer the user's question using the provided context. If the context doesn't contain relevant information, mention this in your response. If browser automation and human-in-loop were triggered, follow the reasoning path provided.
 """
+
+    # Make API call to LLM with the contextual prompt
+    from agent.tools import llm_api_call
+    print(f"DEBUG RAG: Calling llm_api_call with expert_model: {expert_model}")
+    result = llm_api_call(contextual_prompt, expert_model, None, chat_history, user, "http://localhost:11434")
+    print(f"DEBUG RAG: Got result type: {type(result)}")
+    print(f"DEBUG RAG: Result preview: {str(result)[:100]}...")
+    
+    # If the result is a structured CoT response, preserve it
+    if isinstance(result, dict) and result.get("type") == "cot_response":
+        print(f"DEBUG RAG: Preserving CoT structure")
+        return result
+    else:
+        print(f"DEBUG RAG: Returning simple result")
+        return result
+
+
 def duckduckgo_search(query: str, max_results: int = 5) -> str:
     """
     Perform a DuckDuckGo search and return summarized results.
@@ -93,14 +110,18 @@ def duckduckgo_search(query: str, max_results: int = 5) -> str:
         headers = {"User-Agent": "Mozilla/5.0"}
         resp = requests.get(url, headers=headers, timeout=10)
         if resp.ok:
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(resp.text, "html.parser")
-            results = []
-            for a in soup.select('.result__a')[:max_results]:
-                title = a.get_text()
-                href = a.get('href')
-                results.append(f"{title}: {href}")
-            return "\n".join(results) if results else "No results found."
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(resp.text, "html.parser")
+                results = []
+                for a in soup.select('.result__a')[:max_results]:
+                    title = a.get_text()
+                    href = a.get('href')
+                    results.append(f"{title}: {href}")
+                return "\n".join(results) if results else "No results found."
+            except ImportError:
+                # BeautifulSoup not available, return simple text parsing
+                return f"Search completed for '{query}' but BeautifulSoup not available for parsing. Install with: pip install beautifulsoup4"
         else:
             return f"DuckDuckGo error: {resp.status_code}"
     except Exception as e:
