@@ -1,0 +1,16 @@
+{
+  "generated_at": "2025-08-18T01:28:33.031777",
+  "repository_path": "/home/runner/work/Jarvis_AI/Jarvis_AI",
+  "analysis": {
+    "project_type": "unknown",
+    "dependency_files": [],
+    "dependencies": {},
+    "vulnerabilities": [],
+    "outdated_packages": [],
+    "license_issues": [],
+    "suggestions": [
+      "No dependency files found for unknown project"
+    ]
+  },
+  "recommendations": []
+}

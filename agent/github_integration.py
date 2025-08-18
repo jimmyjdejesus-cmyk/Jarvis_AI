@@ -498,6 +498,460 @@ def execute_git_command(command: str, repository_path: str = None) -> Dict[str, 
         return {"error": f"Unsupported git command: {command}"}
 
 
+    # CI/CD and Workflow Methods
+    def list_workflows(self, repo: str = None) -> List[Dict[str, Any]]:
+        """List GitHub Actions workflows in repository."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        result = self._make_request('GET', f'repos/{repo}/actions/workflows')
+        return result.get('workflows', []) if isinstance(result, dict) else []
+    
+    def get_workflow_runs(self, workflow_id: str, repo: str = None, 
+                         status: str = None, branch: str = None) -> List[Dict[str, Any]]:
+        """Get workflow runs for a specific workflow."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        params = {}
+        if status:
+            params['status'] = status
+        if branch:
+            params['branch'] = branch
+        
+        url = f'repos/{repo}/actions/workflows/{workflow_id}/runs'
+        if params:
+            url += '?' + '&'.join(f'{k}={v}' for k, v in params.items())
+        
+        result = self._make_request('GET', url)
+        return result.get('workflow_runs', []) if isinstance(result, dict) else []
+    
+    def trigger_workflow(self, workflow_id: str, ref: str = 'main', 
+                        inputs: Dict[str, str] = None, repo: str = None) -> Dict[str, Any]:
+        """Trigger a workflow dispatch event."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        data = {
+            "ref": ref,
+            "inputs": inputs or {}
+        }
+        
+        return self._make_request('POST', f'repos/{repo}/actions/workflows/{workflow_id}/dispatches', data)
+    
+    def create_workflow_file(self, workflow_name: str, workflow_content: str, 
+                           repo: str = None, branch: str = 'main') -> Dict[str, Any]:
+        """Create a new GitHub Actions workflow file."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        file_path = f'.github/workflows/{workflow_name}.yml'
+        
+        data = {
+            "message": f"Add {workflow_name} workflow",
+            "content": workflow_content,
+            "branch": branch
+        }
+        
+        return self._make_request('PUT', f'repos/{repo}/contents/{file_path}', data)
+    
+    def get_workflow_templates(self) -> Dict[str, str]:
+        """Get common CI/CD workflow templates."""
+        templates = {
+            "python_ci": """name: Python CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Test with pytest
+      run: |
+        pytest --cov=./ --cov-report=xml
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+""",
+            "node_ci": """name: Node.js CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test
+""",
+            "docker_build": """name: Docker Build and Push
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+""",
+            "deployment": """name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to server
+      run: |
+        # Add your deployment commands here
+        echo "Deploying to production..."
+"""
+        }
+        
+        return templates
+    
+    def setup_ci_cd(self, project_type: str, repo: str = None) -> Dict[str, Any]:
+        """Set up CI/CD pipeline for a project."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        templates = self.get_workflow_templates()
+        
+        results = {
+            "project_type": project_type,
+            "workflows_created": [],
+            "suggestions": []
+        }
+        
+        try:
+            if project_type.lower() == 'python':
+                # Create Python CI workflow
+                template = templates["python_ci"]
+                result = self.create_workflow_file("python-ci", template, repo)
+                if not result.get('error'):
+                    results["workflows_created"].append("python-ci.yml")
+                    results["suggestions"].extend([
+                        "Configure test coverage reporting",
+                        "Add code quality checks (flake8, black)",
+                        "Set up deployment workflow for production"
+                    ])
+            
+            elif project_type.lower() in ['javascript', 'node', 'nodejs']:
+                # Create Node.js CI workflow
+                template = templates["node_ci"]
+                result = self.create_workflow_file("node-ci", template, repo)
+                if not result.get('error'):
+                    results["workflows_created"].append("node-ci.yml")
+                    results["suggestions"].extend([
+                        "Add ESLint and Prettier checks",
+                        "Configure deployment to npm or hosting service",
+                        "Add security audit with npm audit"
+                    ])
+            
+            elif project_type.lower() == 'docker':
+                # Create Docker build workflow
+                template = templates["docker_build"]
+                result = self.create_workflow_file("docker-build", template, repo)
+                if not result.get('error'):
+                    results["workflows_created"].append("docker-build.yml")
+                    results["suggestions"].extend([
+                        "Add Dockerfile if not present",
+                        "Configure container security scanning",
+                        "Set up deployment to container registry"
+                    ])
+            
+            else:
+                results["error"] = f"Unsupported project type: {project_type}"
+            
+            return results
+            
+        except Exception as e:
+            return {"error": f"Failed to set up CI/CD: {str(e)}"}
+    
+    def get_deployment_status(self, repo: str = None) -> Dict[str, Any]:
+        """Get deployment status and environment information."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        # Get deployments
+        deployments = self._make_request('GET', f'repos/{repo}/deployments')
+        
+        # Get environments
+        environments = self._make_request('GET', f'repos/{repo}/environments')
+        
+        return {
+            "deployments": deployments if isinstance(deployments, list) else [],
+            "environments": environments.get('environments', []) if isinstance(environments, dict) else []
+        }
+    
+    def create_deployment(self, ref: str, environment: str = 'production', 
+                         description: str = None, repo: str = None) -> Dict[str, Any]:
+        """Create a new deployment."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        data = {
+            "ref": ref,
+            "environment": environment,
+            "description": description or f"Deploy {ref} to {environment}",
+            "auto_merge": False
+        }
+        
+        return self._make_request('POST', f'repos/{repo}/deployments', data)
+    
+    # Security and Vulnerability Management
+    def get_security_alerts(self, repo: str = None) -> List[Dict[str, Any]]:
+        """Get security vulnerability alerts."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        # Get Dependabot alerts
+        alerts = self._make_request('GET', f'repos/{repo}/dependabot/alerts')
+        return alerts if isinstance(alerts, list) else []
+    
+    def get_code_scanning_alerts(self, repo: str = None) -> List[Dict[str, Any]]:
+        """Get code scanning alerts."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        alerts = self._make_request('GET', f'repos/{repo}/code-scanning/alerts')
+        return alerts if isinstance(alerts, list) else []
+    
+    def enable_security_features(self, repo: str = None) -> Dict[str, Any]:
+        """Enable security features for the repository."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        results = {
+            "enabled_features": [],
+            "errors": []
+        }
+        
+        try:
+            # Enable vulnerability alerts
+            vuln_result = self._make_request('PUT', f'repos/{repo}/vulnerability-alerts')
+            if not vuln_result.get('error'):
+                results["enabled_features"].append("vulnerability_alerts")
+            
+            # Enable automated security fixes
+            security_result = self._make_request('PUT', f'repos/{repo}/automated-security-fixes')
+            if not security_result.get('error'):
+                results["enabled_features"].append("automated_security_fixes")
+            
+            return results
+            
+        except Exception as e:
+            results["errors"].append(str(e))
+            return results
+    
+    # Issue and PR Triage Automation
+    def triage_issues(self, repo: str = None, auto_label: bool = True, 
+                     auto_assign: bool = False) -> Dict[str, Any]:
+        """Automatically triage issues based on content and patterns."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        issues = self.list_issues(repo, state='open')
+        if isinstance(issues, dict) and 'error' in issues:
+            return issues
+        
+        results = {
+            "triaged_issues": [],
+            "labels_applied": [],
+            "assignments_made": []
+        }
+        
+        # Define triage rules
+        label_rules = {
+            "bug": ["bug", "error", "exception", "crash", "broken", "fail"],
+            "enhancement": ["feature", "enhancement", "improve", "add", "new"],
+            "documentation": ["doc", "readme", "document", "guide", "help"],
+            "question": ["question", "how", "why", "what", "help", "?"],
+            "security": ["security", "vulnerability", "exploit", "cve"]
+        }
+        
+        priority_rules = {
+            "high": ["urgent", "critical", "production", "security", "crash"],
+            "medium": ["important", "enhancement", "feature"],
+            "low": ["documentation", "cleanup", "refactor"]
+        }
+        
+        for issue in issues:
+            issue_text = (issue.get('title', '') + ' ' + issue.get('body', '')).lower()
+            issue_number = issue.get('number')
+            applied_labels = []
+            
+            if auto_label:
+                # Apply labels based on content
+                for label, keywords in label_rules.items():
+                    if any(keyword in issue_text for keyword in keywords):
+                        label_result = self.add_labels_to_issue(issue_number, [label], repo)
+                        if not label_result.get('error'):
+                            applied_labels.append(label)
+                
+                # Apply priority labels
+                for priority, keywords in priority_rules.items():
+                    if any(keyword in issue_text for keyword in keywords):
+                        priority_label = f"priority:{priority}"
+                        label_result = self.add_labels_to_issue(issue_number, [priority_label], repo)
+                        if not label_result.get('error'):
+                            applied_labels.append(priority_label)
+            
+            if applied_labels:
+                results["triaged_issues"].append({
+                    "issue_number": issue_number,
+                    "title": issue.get('title'),
+                    "labels_applied": applied_labels
+                })
+                results["labels_applied"].extend(applied_labels)
+        
+        return results
+    
+    def add_labels_to_issue(self, issue_number: int, labels: List[str], repo: str = None) -> Dict[str, Any]:
+        """Add labels to an issue."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        data = {"labels": labels}
+        return self._make_request('POST', f'repos/{repo}/issues/{issue_number}/labels', data)
+    
+    def auto_assign_reviewers(self, pr_number: int, repo: str = None) -> Dict[str, Any]:
+        """Automatically assign reviewers to a pull request based on code changes."""
+        repo = repo or self.repository
+        if not repo:
+            return {"error": "No repository specified"}
+        
+        # Get PR files
+        pr_files = self._make_request('GET', f'repos/{repo}/pulls/{pr_number}/files')
+        if isinstance(pr_files, dict) and 'error' in pr_files:
+            return pr_files
+        
+        # Define reviewer rules based on file patterns
+        reviewer_rules = {
+            "frontend": {
+                "patterns": [".js", ".ts", ".jsx", ".tsx", ".vue", ".css", ".scss"],
+                "reviewers": []  # Add frontend team members
+            },
+            "backend": {
+                "patterns": [".py", ".java", ".go", ".rb", ".php"],
+                "reviewers": []  # Add backend team members
+            },
+            "devops": {
+                "patterns": [".yml", ".yaml", "Dockerfile", ".sh", ".tf"],
+                "reviewers": []  # Add DevOps team members
+            },
+            "docs": {
+                "patterns": [".md", ".rst", ".txt"],
+                "reviewers": []  # Add documentation team members
+            }
+        }
+        
+        suggested_reviewers = set()
+        
+        for file_info in pr_files:
+            filename = file_info.get('filename', '')
+            for category, rules in reviewer_rules.items():
+                if any(pattern in filename for pattern in rules["patterns"]):
+                    suggested_reviewers.update(rules["reviewers"])
+        
+        # Remove PR author from reviewers
+        pr_info = self._make_request('GET', f'repos/{repo}/pulls/{pr_number}')
+        if isinstance(pr_info, dict):
+            author = pr_info.get('user', {}).get('login')
+            if author in suggested_reviewers:
+                suggested_reviewers.remove(author)
+        
+        if suggested_reviewers:
+            data = {"reviewers": list(suggested_reviewers)}
+            return self._make_request('POST', f'repos/{repo}/pulls/{pr_number}/requested_reviewers', data)
+        
+        return {"message": "No suitable reviewers found"}
+
+
 def github_integration_handler(action: str, **kwargs) -> Dict[str, Any]:
     """
     Handle GitHub integration actions.
@@ -528,5 +982,30 @@ def github_integration_handler(action: str, **kwargs) -> Dict[str, Any]:
         return github.create_branch(**kwargs)
     elif action == 'repo_info':
         return github.get_repository_info(**kwargs)
+    # CI/CD Actions
+    elif action == 'list_workflows':
+        return {"workflows": github.list_workflows(**kwargs)}
+    elif action == 'get_workflow_runs':
+        return {"workflow_runs": github.get_workflow_runs(**kwargs)}
+    elif action == 'trigger_workflow':
+        return github.trigger_workflow(**kwargs)
+    elif action == 'setup_cicd':
+        return github.setup_ci_cd(**kwargs)
+    elif action == 'deployment_status':
+        return github.get_deployment_status(**kwargs)
+    elif action == 'create_deployment':
+        return github.create_deployment(**kwargs)
+    # Security Actions
+    elif action == 'security_alerts':
+        return {"alerts": github.get_security_alerts(**kwargs)}
+    elif action == 'code_scanning_alerts':
+        return {"alerts": github.get_code_scanning_alerts(**kwargs)}
+    elif action == 'enable_security':
+        return github.enable_security_features(**kwargs)
+    # Triage Actions
+    elif action == 'triage_issues':
+        return github.triage_issues(**kwargs)
+    elif action == 'auto_assign_reviewers':
+        return github.auto_assign_reviewers(**kwargs)
     else:
         return {"error": f"Unsupported GitHub action: {action}"}

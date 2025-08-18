@@ -12,8 +12,46 @@ class JarvisAgent:
         self.user = user
         self.llm_endpoint = llm_endpoint
         self.rag_endpoint = rag_endpoint
+        
+        # Initialize plugin system
+        try:
+            from agent.tools import initialize_plugin_system
+            self.plugin_system_enabled = initialize_plugin_system()
+        except Exception as e:
+            print(f"Could not initialize plugin system: {e}")
+            self.plugin_system_enabled = False
 
     def parse_natural_language(self, user_msg, available_files, chat_history=None):
+        """Parse natural language into executable plans, supporting workflows."""
+        
+        # First, try to parse as a workflow if plugin system is enabled
+        if self.plugin_system_enabled:
+            try:
+                from agent.tools import parse_workflow_command
+                
+                context = {
+                    "files": available_files,
+                    "chat_history": chat_history,
+                    "user": self.user
+                }
+                
+                workflow = parse_workflow_command(user_msg, context)
+                if workflow:
+                    # Convert workflow to plan format for compatibility
+                    plan = []
+                    for step in workflow.steps:
+                        plan.append({
+                            "tool": step.action.name,
+                            "args": step.action.args,
+                            "description": step.action.description,
+                            "requires_approval": step.action.requires_approval,
+                            "workflow_step": True
+                        })
+                    return plan
+            except Exception as e:
+                print(f"Workflow parsing error: {e}")
+        
+        # Fallback to legacy parsing
         plan = []
         msg_lower = user_msg.lower()
         
@@ -96,8 +134,10 @@ class JarvisAgent:
                 }
             })
         
-        # GitHub API commands
-        elif any(phrase in msg_lower for phrase in ["create pr", "create pull request", "create issue", "list issues", "list prs"]):
+        # GitHub API commands (Enhanced with CI/CD)
+        elif any(phrase in msg_lower for phrase in ["create pr", "create pull request", "create issue", "list issues", "list prs", 
+                                                   "setup ci", "setup cicd", "list workflows", "trigger workflow", 
+                                                   "deployment status", "security alerts", "triage issues"]):
             action = "repo_info"  # default
             if "create pr" in msg_lower or "create pull request" in msg_lower:
                 action = "create_pr"
@@ -107,6 +147,18 @@ class JarvisAgent:
                 action = "list_issues"
             elif "list prs" in msg_lower:
                 action = "list_prs"
+            elif "setup ci" in msg_lower or "setup cicd" in msg_lower:
+                action = "setup_cicd"
+            elif "list workflows" in msg_lower:
+                action = "list_workflows"
+            elif "trigger workflow" in msg_lower:
+                action = "trigger_workflow"
+            elif "deployment status" in msg_lower:
+                action = "deployment_status"
+            elif "security alerts" in msg_lower:
+                action = "security_alerts"
+            elif "triage issues" in msg_lower:
+                action = "triage_issues"
             
             plan.append({
                 "tool": "github_api",
@@ -114,6 +166,88 @@ class JarvisAgent:
                     "action": action,
                     "token": None,  # Will use environment variables
                     "repository": None
+                }
+            })
+        
+        # Test generation commands
+        elif any(phrase in msg_lower for phrase in ["generate tests", "create tests", "test coverage", "analyze tests"]):
+            action = "generate"
+            if "coverage" in msg_lower:
+                action = "coverage"
+            elif "analyze" in msg_lower:
+                action = "improve"
+            
+            # Extract file path if mentioned
+            import re
+            file_match = re.search(r'([^\\s]+\\.(py|js|ts|java|cpp|c|h|hpp|go|rs))', user_msg)
+            file_path = file_match.group(1) if file_match else None
+            
+            plan.append({
+                "tool": "test_generator",
+                "args": {
+                    "action": action,
+                    "file_path": file_path,
+                    "test_type": "unit",
+                    "framework": None
+                }
+            })
+        
+        # Documentation generation commands
+        elif any(phrase in msg_lower for phrase in ["generate docs", "create documentation", "document code", "api docs"]):
+            action = "generate"
+            if "api" in msg_lower:
+                action = "api_docs"
+            
+            # Extract target path if mentioned
+            import re
+            path_match = re.search(r'([^\\s]+\\.(py|js|ts|java|cpp|c|h|hpp|go|rs|md))', user_msg)
+            target_path = path_match.group(1) if path_match else "."
+            
+            plan.append({
+                "tool": "doc_generator",
+                "args": {
+                    "action": action,
+                    "target_path": target_path,
+                    "doc_format": "markdown",
+                    "include_private": False
+                }
+            })
+        
+        # Dependency management commands
+        elif any(phrase in msg_lower for phrase in ["analyze dependencies", "check dependencies", "update dependencies", 
+                                                   "dependency report", "security vulnerabilities", "outdated packages"]):
+            action = "analyze"
+            if "update" in msg_lower:
+                action = "update"
+            elif "report" in msg_lower:
+                action = "report"
+            
+            plan.append({
+                "tool": "dependency_manager",
+                "args": {
+                    "action": action,
+                    "project_type": None,  # Auto-detect
+                    "dry_run": True
+                }
+            })
+        
+        # Persona management commands
+        elif any(phrase in msg_lower for phrase in ["list personas", "use persona", "switch persona", "recommend persona", 
+                                                   "create persona", "persona help"]):
+            action = "list"
+            if "recommend" in msg_lower:
+                action = "recommend"
+            elif "create" in msg_lower:
+                action = "create"
+            elif "use" in msg_lower or "switch" in msg_lower:
+                action = "get"
+            
+            plan.append({
+                "tool": "persona_manager",
+                "args": {
+                    "action": action,
+                    "task_type": None,
+                    "persona_name": None
                 }
             })
         

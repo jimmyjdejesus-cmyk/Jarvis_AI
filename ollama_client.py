@@ -110,3 +110,41 @@ def pull_model_subprocess(model_name):
         yield "Ollama command not found. Make sure Ollama is installed and in your system's PATH."
     except Exception as e:
         yield f"An unexpected error occurred: {e}"
+
+
+def get_model_details():
+    """
+    Get detailed information about installed models from Ollama API
+    """
+    try:
+        response = requests.get(f"{OLLAMA_ENDPOINT}/api/tags")
+        response.raise_for_status()
+        return response.json().get("models", [])
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching model details: {e}")
+        return []
+
+
+def delete_model(model_name):
+    """
+    Delete a model using Ollama API
+    """
+    try:
+        response = requests.delete(f"{OLLAMA_ENDPOINT}/api/delete", json={"name": model_name})
+        response.raise_for_status()
+        # Clear the cache since model list changed
+        global _model_cache
+        _model_cache = None
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"Error deleting model {model_name}: {e}")
+        return False
+
+
+def update_endpoint(new_endpoint):
+    """
+    Update the Ollama endpoint and clear cache
+    """
+    global OLLAMA_ENDPOINT, _model_cache
+    OLLAMA_ENDPOINT = new_endpoint
+    _model_cache = None  # Clear cache when endpoint changes
