@@ -114,7 +114,7 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "timestamp": "2024-01-01T00:00:00Z"}
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat() + "Z"}
 
 
 @app.get("/tools", response_model=ToolsResponse)
