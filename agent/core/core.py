@@ -2,8 +2,22 @@ import agent.tools as tools
 
 ACTION_TOOLS = {"file_update", "browser_automation", "automation_task", "git_command", "github_api", "ide_command"}
 
+# V2 LangGraph integration
+try:
+    from agent.core.langgraph_agent import get_agent as get_langgraph_agent, LANGGRAPH_AVAILABLE
+    from agent.core.langchain_tools import get_available_tools
+except ImportError:
+    LANGGRAPH_AVAILABLE = False
+    
+    def get_langgraph_agent(**kwargs):
+        return None
+    
+    def get_available_tools():
+        return []
+
+
 class JarvisAgent:
-    def __init__(self, persona_prompt, tool_registry, approval_callback, expert_model=None, draft_model=None, user=None, llm_endpoint=None, rag_endpoint=None, duckduckgo_fallback=True):
+    def __init__(self, persona_prompt, tool_registry, approval_callback, expert_model=None, draft_model=None, user=None, llm_endpoint=None, rag_endpoint=None, duckduckgo_fallback=True, use_langgraph=True):
         self.persona_prompt = persona_prompt
         self.tools = tool_registry
         self.approval_callback = approval_callback
@@ -13,6 +27,20 @@ class JarvisAgent:
         self.llm_endpoint = llm_endpoint
         self.rag_endpoint = rag_endpoint
         self.duckduckgo_fallback = duckduckgo_fallback
+        self.use_langgraph = use_langgraph and LANGGRAPH_AVAILABLE
+        
+        # Initialize V2 LangGraph agent if available
+        self.langgraph_agent = None
+        if self.use_langgraph:
+            try:
+                langchain_tools = get_available_tools()
+                self.langgraph_agent = get_langgraph_agent(
+                    expert_model=expert_model,
+                    tools=langchain_tools
+                )
+            except Exception as e:
+                print(f"Could not initialize LangGraph agent: {e}")
+                self.use_langgraph = False
         
         # Initialize plugin system
         try:
@@ -23,7 +51,24 @@ class JarvisAgent:
             self.plugin_system_enabled = False
 
     def parse_natural_language(self, user_msg, available_files, chat_history=None):
-        """Parse natural language into executable plans, supporting workflows."""
+        """Parse natural language into executable plans, supporting workflows and LangGraph V2."""
+        
+        # V2: Try LangGraph agent first if available
+        if self.use_langgraph and self.langgraph_agent:
+            try:
+                # Use LangGraph agent for more sophisticated planning
+                result = self.langgraph_agent.invoke(user_msg)
+                
+                # Convert LangGraph result to V1-compatible plan format
+                if isinstance(result, dict) and not result.get("error"):
+                    plan = self._langgraph_result_to_plan(result, available_files)
+                    if plan:
+                        return plan
+                else:
+                    print(f"LangGraph error: {result.get('error', 'Unknown error')}")
+            except Exception as e:
+                print(f"LangGraph agent error: {e}")
+                # Fall back to V1 planning
         
         # First, try to parse as a workflow if plugin system is enabled
         if self.plugin_system_enabled:
@@ -299,6 +344,103 @@ class JarvisAgent:
         else:
             plan.append({"tool": "llm_task", "args": {"prompt": user_msg, "chat_history": chat_history or [], "user": self.user, "llm_endpoint": self.llm_endpoint}})
         return plan
+
+    def _langgraph_result_to_plan(self, result, available_files):
+        """
+        Convert LangGraph workflow result to V1-compatible plan format.
+        
+        Args:
+            result: LangGraph workflow execution result
+            available_files: List of available files
+            
+        Returns:
+            List of plan steps in V1 format
+        """
+        plan = []
+        
+        try:
+            # Extract the plan from LangGraph result
+            langgraph_plan = result.get("plan", {})
+            
+            if not langgraph_plan:
+                # If no explicit plan, create one based on the task
+                task = langgraph_plan.get("task", "")
+                if "code" in task.lower():
+                    plan.append({
+                        "tool": "llm_task",
+                        "args": {
+                            "prompt": f"Generate code for: {task}",
+                            "chat_history": [],
+                            "user": self.user,
+                            "llm_endpoint": self.llm_endpoint
+                        }
+                    })
+                elif "file" in task.lower() and available_files:
+                    plan.append({
+                        "tool": "file_ingest",
+                        "args": {"files": available_files}
+                    })
+                elif "git" in task.lower():
+                    plan.append({
+                        "tool": "git_command",
+                        "args": {"command": task}
+                    })
+                else:
+                    # Default to LLM task
+                    plan.append({
+                        "tool": "llm_task",
+                        "args": {
+                            "prompt": task,
+                            "chat_history": [],
+                            "user": self.user,
+                            "llm_endpoint": self.llm_endpoint
+                        }
+                    })
+            else:
+                # Convert LangGraph plan steps to V1 format
+                steps = langgraph_plan.get("steps", [])
+                for step in steps:
+                    if "code" in step.lower():
+                        plan.append({
+                            "tool": "llm_task",
+                            "args": {
+                                "prompt": f"Code generation: {step}",
+                                "chat_history": [],
+                                "user": self.user,
+                                "llm_endpoint": self.llm_endpoint
+                            }
+                        })
+                    elif "test" in step.lower():
+                        plan.append({
+                            "tool": "llm_task",
+                            "args": {
+                                "prompt": f"Test generation: {step}",
+                                "chat_history": [],
+                                "user": self.user,
+                                "llm_endpoint": self.llm_endpoint
+                            }
+                        })
+                    elif "file" in step.lower():
+                        plan.append({
+                            "tool": "file_ingest",
+                            "args": {"files": available_files}
+                        })
+                    else:
+                        plan.append({
+                            "tool": "llm_task",
+                            "args": {
+                                "prompt": step,
+                                "chat_history": [],
+                                "user": self.user,
+                                "llm_endpoint": self.llm_endpoint
+                            }
+                        })
+            
+            return plan
+            
+        except Exception as e:
+            print(f"Error converting LangGraph result to plan: {e}")
+            return None
 
     def execute_plan(self, plan):
         results = []

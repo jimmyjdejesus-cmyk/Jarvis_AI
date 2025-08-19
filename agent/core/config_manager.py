@@ -66,6 +66,20 @@ class IntegrationConfig:
 
 
 @dataclass
+class V2Config:
+    """V2 LangGraph architecture configuration."""
+    enabled: bool = True
+    backend_url: str = "http://localhost:8001"
+    langgraph_checkpoint_path: str = "./checkpoints/jarvis_agent.db"
+    max_iterations: int = 15
+    expert_model: str = "llama3.2"
+    use_langchain_tools: bool = True
+    fallback_to_v1: bool = True
+    workflow_visualization: bool = True
+    langgraphui_enabled: bool = False
+
+
+@dataclass
 class JarvisConfig:
     """Main Jarvis AI configuration."""
     app_name: str = "Jarvis AI"
@@ -79,6 +93,7 @@ class JarvisConfig:
     performance: PerformanceConfig = field(default_factory=PerformanceConfig)
     rag: RAGConfig = field(default_factory=RAGConfig)
     integrations: IntegrationConfig = field(default_factory=IntegrationConfig)
+    v2: V2Config = field(default_factory=V2Config)  # V2 architecture settings
     
     # Custom settings
     custom: Dict[str, Any] = field(default_factory=dict)

@@ -1184,6 +1184,9 @@ if user_msg:
     # Set default rag_endpoint since we removed the textbox for cleaner UI
     rag_endpoint = st.session_state.get("rag_endpoint", "http://localhost:8000/rag")
     
+    # Get V2 configuration preference
+    use_langgraph_v2 = st.session_state.get("use_langgraph_v2", True)
+    
     agent = JarvisAgent(
         st.session_state.get("persona_prompt"),
         tools,
@@ -1193,7 +1196,8 @@ if user_msg:
         user=st.session_state.user,
         llm_endpoint=llm_endpoint,
         rag_endpoint=rag_endpoint,
-        duckduckgo_fallback=duckduckgo_fallback
+        duckduckgo_fallback=duckduckgo_fallback,
+        use_langgraph=use_langgraph_v2  # Enable V2 LangGraph architecture
     )
     
     # Show processing indicator

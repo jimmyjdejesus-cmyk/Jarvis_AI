@@ -23,6 +23,17 @@ plotly>=5.14.0
 # Search Integration
 duckduckgo-search>=4.0.0
 
+# Lang Family Tools for V2 Architecture
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+langgraph>=0.0.40
+langgraphstudio>=0.0.1
+
+# API Framework for V2 Backend
+fastapi>=0.100.0
+uvicorn>=0.22.0
+
 # Testing Framework
 pytest>=7.0.0
 pytest-asyncio>=0.21.0

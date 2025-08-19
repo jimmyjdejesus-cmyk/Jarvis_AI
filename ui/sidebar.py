@@ -181,6 +181,48 @@ def sidebar(user, save_user_prefs):
             user_prefs["langchain_api_key"] = new_langchain_api_key
             save_user_preference(user, "langchain_api_key", new_langchain_api_key)
 
+        # V2 LangGraph Architecture Toggle
+        st.markdown("---")
+        st.markdown("#### 🚀 V2 Architecture")
+        
+        use_langgraph_v2 = user_prefs.get("use_langgraph_v2", True)
+        new_use_langgraph_v2 = st.checkbox(
+            "Enable LangGraph V2",
+            value=use_langgraph_v2,
+            help="Use the new LangGraph-based agent architecture with cyclical reasoning workflow"
+        )
+        
+        if new_use_langgraph_v2 != use_langgraph_v2:
+            user_prefs["use_langgraph_v2"] = new_use_langgraph_v2
+            save_user_preference(user, "use_langgraph_v2", new_use_langgraph_v2)
+            st.session_state["use_langgraph_v2"] = new_use_langgraph_v2
+            if new_use_langgraph_v2:
+                st.success("✅ V2 LangGraph architecture enabled!")
+            else:
+                st.info("ℹ️ Using V1 compatibility mode")
+        
+        # Show V2 status indicator
+        if new_use_langgraph_v2:
+            try:
+                from agent.core.langgraph_agent import LANGGRAPH_AVAILABLE
+                if LANGGRAPH_AVAILABLE:
+                    st.success("🟢 V2 LangGraph: Available")
+                else:
+                    st.warning("🟡 V2 LangGraph: Dependencies missing")
+                    st.caption("Run: pip install langgraph langchain")
+            except ImportError:
+                st.error("🔴 V2 LangGraph: Not installed")
+        else:
+            st.info("🔵 V1 Compatibility Mode")
+        
+        # V2 Backend status (if enabled)
+        if new_use_langgraph_v2:
+            if st.button("🔧 Start V2 Backend"):
+                st.info("V2 Backend can be started with: python scripts/start_v2_backend.py")
+                st.code("cd /path/to/jarvis && python scripts/start_v2_backend.py --reload")
+        
+        st.session_state["use_langgraph_v2"] = new_use_langgraph_v2
+
         # Personal data backup/restore for all users
         st.markdown("---")
         st.markdown("## 💾 Data Management")
