@@ -1,0 +1,67 @@
+{
+  "preference_history": [
+    {
+      "timestamp": "2025-08-19T22:56:33.364489",
+      "type": "explanation_preference",
+      "context": {
+        "style": "concise",
+        "domain": "web_development",
+        "pattern": "react_component",
+        "description": "User preferred short explanation over detailed one"
+      },
+      "feedback": true,
+      "learning_rate": "Adaptive"
+    },
+    {
+      "timestamp": "2025-08-19T22:56:33.364721",
+      "type": "code_completion",
+      "context": {
+        "file_type": ".jsx",
+        "domain": "web_development",
+        "pattern": "function_component",
+        "description": "User accepted React functional component suggestion"
+      },
+      "feedback": true,
+      "learning_rate": "Adaptive"
+    }
+  ],
+  "interaction_patterns": {
+    "explanation_preference_web_development": {
+      "positive_count": 1,
+      "negative_count": 0,
+      "total_count": 1
+    },
+    "code_completion_web_development": {
+      "positive_count": 1,
+      "negative_count": 0,
+      "total_count": 1
+    }
+  },
+  "learning_adaptations": {
+    "explanation_preference": {
+      "preferences": {
+        "style": 0.5,
+        "domain": 0.5,
+        "pattern": 0.5,
+        "description": 0.5
+      },
+      "avoid_patterns": [],
+      "boost_patterns": [
+        "react_component"
+      ]
+    },
+    "code_completion": {
+      "preferences": {
+        "file_type": 0.5,
+        "domain": 0.5,
+        "pattern": 0.5,
+        "description": 0.5
+      },
+      "avoid_patterns": [],
+      "boost_patterns": [
+        "function_component"
+      ]
+    }
+  },
+  "last_updated": "2025-08-19T22:56:33.364755"
+}
