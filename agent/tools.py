@@ -8,7 +8,7 @@ import agent.github_integration as github_integration
 import agent.jetbrains_integration as jetbrains_integration
 import agent.note_integration as note_integration
 import agent.repo_context as repo_context
-import agent.code_intelligence as code_intelligence
+from tools.code_intelligence import engine as code_intelligence
 import requests
 
 def preview_tool_action(step):
@@ -55,14 +55,14 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
         cursor_line = step['args'].get("cursor_line", 1)
         cursor_column = step['args'].get("cursor_column", 0)
         model = step['args'].get("model", "llama3.2")
-        return code_intelligence.get_code_completion(file_path, cursor_line, cursor_column, model, user or 'anonymous')
+    return code_intelligence.get_code_completion(file_path, cursor_line, cursor_column, model, user or 'anonymous')
     elif step['tool'] == "code_completion_feedback":
         file_path = step['args'].get("file_path", "")
         cursor_line = step['args'].get("cursor_line", 1)
         cursor_column = step['args'].get("cursor_column", 0)
         suggestion = step['args'].get("suggestion", "")
         accepted = step['args'].get("accepted", False)
-        return code_intelligence.record_completion_feedback(file_path, cursor_line, cursor_column, suggestion, accepted, user or 'anonymous')
+    return code_intelligence.record_completion_feedback(file_path, cursor_line, cursor_column, suggestion, accepted, user or 'anonymous')
     elif step['tool'] == "github_api":
         action = step['args'].get("action", "")
         return github_integration.github_integration_handler(action, **step['args'])

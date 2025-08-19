@@ -11,7 +11,7 @@ import agent.tools as tools
 import agent.human_in_loop as human_in_loop
 import database
 from ui.analytics import render_analytics_dashboard
-from ui.code_intelligence import render_code_intelligence_interface
+from tools.code_intelligence.ui import render_code_intelligence_interface
 
 # Import system monitoring (with fallback if psutil not available)
 try:

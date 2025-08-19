@@ -1,0 +1,8 @@
+# Code Intelligence Configuration
+ollama_model: llama3.2
+supported_languages:
+  - Python
+  - JavaScript
+  - TypeScript
+feedback_enabled: true
+auto_cache_successful: true
