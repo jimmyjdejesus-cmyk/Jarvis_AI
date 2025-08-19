@@ -80,6 +80,55 @@ class V2Config:
 
 
 @dataclass
+class LangSmithConfig:
+    """LangSmith configuration for tracing and monitoring."""
+    enabled: bool = True
+    api_key: Optional[str] = None
+    project_name: str = "jarvis-ai"
+    endpoint: str = "https://api.smith.langchain.com"
+    trace_deployments: bool = True
+    trace_performance: bool = True
+
+
+@dataclass
+class LangGraphPlatformConfig:
+    """LangGraph Platform configuration."""
+    enabled: bool = False
+    api_key: Optional[str] = None
+    workspace_id: Optional[str] = None
+    enable_sharing: bool = False
+    enable_collaboration: bool = False
+    deployment_environment: str = "development"
+
+
+@dataclass
+class LangChainConfig:
+    """LangChain configuration."""
+    cache_enabled: bool = True
+    cache_type: str = "memory"
+    verbose_logging: bool = False
+
+
+@dataclass
+class DeploymentConfig:
+    """Deployment monitoring configuration."""
+    enable_telemetry: bool = True
+    performance_tracking: bool = True
+    error_tracking: bool = True
+    deployment_notifications: bool = False
+    notification_webhook: Optional[str] = None
+
+
+@dataclass
+class LangEcosystemConfig:
+    """Lang ecosystem integration configuration."""
+    langsmith: LangSmithConfig = field(default_factory=LangSmithConfig)
+    langgraph_platform: LangGraphPlatformConfig = field(default_factory=LangGraphPlatformConfig)
+    langchain: LangChainConfig = field(default_factory=LangChainConfig)
+    deployment: DeploymentConfig = field(default_factory=DeploymentConfig)
+
+
+@dataclass
 class JarvisConfig:
     """Main Jarvis AI configuration."""
     app_name: str = "Jarvis AI"
@@ -94,6 +143,7 @@ class JarvisConfig:
     rag: RAGConfig = field(default_factory=RAGConfig)
     integrations: IntegrationConfig = field(default_factory=IntegrationConfig)
     v2: V2Config = field(default_factory=V2Config)  # V2 architecture settings
+    lang_ecosystem: LangEcosystemConfig = field(default_factory=LangEcosystemConfig)  # Lang ecosystem settings
     
     # Custom settings
     custom: Dict[str, Any] = field(default_factory=dict)
@@ -168,13 +218,20 @@ class ConfigurationManager:
         # Update main config attributes
         for key, value in config_data.items():
             if hasattr(self.config, key) and key != 'custom':
-                if key in ['security', 'performance', 'rag', 'integrations']:
+                if key in ['security', 'performance', 'rag', 'integrations', 'v2', 'lang_ecosystem']:
                     # Update nested config objects
                     nested_config = getattr(self.config, key)
                     if isinstance(value, dict):
                         for nested_key, nested_value in value.items():
                             if hasattr(nested_config, nested_key):
-                                setattr(nested_config, nested_key, nested_value)
+                                # Handle further nested objects (like lang_ecosystem)
+                                if key == 'lang_ecosystem' and isinstance(nested_value, dict):
+                                    sub_nested_config = getattr(nested_config, nested_key)
+                                    for sub_key, sub_value in nested_value.items():
+                                        if hasattr(sub_nested_config, sub_key):
+                                            setattr(sub_nested_config, sub_key, sub_value)
+                                else:
+                                    setattr(nested_config, nested_key, nested_value)
                 else:
                     setattr(self.config, key, value)
             elif key == 'custom':
@@ -193,11 +250,58 @@ class ConfigurationManager:
             f"{self._env_prefix}GITHUB_TOKEN": ("integrations.github_token", str),
             f"{self._env_prefix}COOKIE_SECRET": ("security.cookie_secret_key", str),
             f"{self._env_prefix}SESSION_TIMEOUT": ("security.session_timeout_minutes", int),
+            # V2 Configuration
+            f"{self._env_prefix}V2_ENABLED": ("v2.enabled", bool),
+            f"{self._env_prefix}V2_EXPERT_MODEL": ("v2.expert_model", str),
+            f"{self._env_prefix}V2_BACKEND_URL": ("v2.backend_url", str),
+            f"{self._env_prefix}V2_MAX_ITERATIONS": ("v2.max_iterations", int),
+            f"{self._env_prefix}V2_FALLBACK_TO_V1": ("v2.fallback_to_v1", bool),
+            # Lang Ecosystem Configuration
+            f"{self._env_prefix}LANGSMITH_API_KEY": ("lang_ecosystem.langsmith.api_key", str),
+            f"{self._env_prefix}LANGSMITH_ENABLED": ("lang_ecosystem.langsmith.enabled", bool),
+            f"{self._env_prefix}LANGSMITH_PROJECT_NAME": ("lang_ecosystem.langsmith.project_name", str),
+            f"{self._env_prefix}LANGGRAPH_PLATFORM_API_KEY": ("lang_ecosystem.langgraph_platform.api_key", str),
+            f"{self._env_prefix}LANGGRAPH_PLATFORM_ENABLED": ("lang_ecosystem.langgraph_platform.enabled", bool),
+            f"{self._env_prefix}LANGGRAPH_PLATFORM_WORKSPACE_ID": ("lang_ecosystem.langgraph_platform.workspace_id", str),
+            f"{self._env_prefix}LANGGRAPH_PLATFORM_ENVIRONMENT": ("lang_ecosystem.langgraph_platform.deployment_environment", str),
+            f"{self._env_prefix}LANGCHAIN_CACHE_ENABLED": ("lang_ecosystem.langchain.cache_enabled", bool),
+            f"{self._env_prefix}LANGCHAIN_VERBOSE": ("lang_ecosystem.langchain.verbose_logging", bool),
+            f"{self._env_prefix}DEPLOYMENT_TELEMETRY": ("lang_ecosystem.deployment.enable_telemetry", bool),
+            f"{self._env_prefix}DEPLOYMENT_PERFORMANCE_TRACKING": ("lang_ecosystem.deployment.performance_tracking", bool),
+            # RAG Configuration
             f"{self._env_prefix}ENABLE_WEB_SEARCH": ("rag.enable_web_search", bool),
             f"{self._env_prefix}MAX_SEARCH_RESULTS": ("rag.max_search_results", int),
         }
         
+        # Also check for standard Lang ecosystem environment variables
+        standard_env_mappings = {
+            "LANGSMITH_API_KEY": ("lang_ecosystem.langsmith.api_key", str),
+            "LANGSMITH_PROJECT": ("lang_ecosystem.langsmith.project_name", str),
+            "LANGGRAPH_PLATFORM_API_KEY": ("lang_ecosystem.langgraph_platform.api_key", str),
+            "LANGCHAIN_VERBOSE": ("lang_ecosystem.langchain.verbose_logging", bool),
+        }
+        
+        # Process Jarvis-specific environment variables
         for env_var, (config_path, value_type) in env_mappings.items():
+            env_value = os.getenv(env_var)
+            if env_value is not None:
+                try:
+                    # Convert value to appropriate type
+                    if value_type == bool:
+                        converted_value = env_value.lower() in ('true', '1', 'yes', 'on')
+                    elif value_type == int:
+                        converted_value = int(env_value)
+                    else:
+                        converted_value = env_value
+                    
+                    # Set nested configuration value
+                    self._set_nested_config(config_path, converted_value)
+                    
+                except Exception as e:
+                    self.logger.logger.warning(f"Invalid environment variable {env_var}={env_value}: {e}")
+        
+        # Process standard Lang ecosystem environment variables
+        for env_var, (config_path, value_type) in standard_env_mappings.items():
             env_value = os.getenv(env_var)
             if env_value is not None:
                 try:
