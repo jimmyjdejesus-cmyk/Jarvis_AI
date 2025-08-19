@@ -11,6 +11,7 @@ import agent.tools as tools
 import agent.human_in_loop as human_in_loop
 import database
 from ui.analytics import render_analytics_dashboard
+from ui.code_intelligence import render_code_intelligence_interface
 
 # Import system monitoring (with fallback if psutil not available)
 try:
@@ -931,7 +932,7 @@ if len(st.session_state.chat_sessions.get(st.session_state.current_session, []))
     """)
 
 # User info and controls with better layout
-info_col1, info_col2, info_col3, info_col4, info_col5 = st.columns([3, 1, 1, 1, 1])
+info_col1, info_col2, info_col3, info_col4, info_col5, info_col6 = st.columns([3, 1, 1, 1, 1, 1])
 with info_col1:
     st.markdown(f"**👋 {USER_DATA.get('name', st.session_state.user)}** • *{USER_ROLE}*")
 with info_col2:
@@ -940,14 +941,18 @@ with info_col2:
             st.session_state.show_admin_panel = True
             st.rerun()
 with info_col3:
+    if st.button("🧠 Code AI", help="Code Intelligence Engine"):
+        st.session_state.show_code_intelligence = True
+        st.rerun()
+with info_col4:
     if st.button("⚙️ Settings", help="User preferences"):
         st.session_state.show_user_settings = True
         st.rerun()
-with info_col4:
+with info_col5:
     if st.button("💬 Feedback", help="Send feedback"):
         st.session_state.show_feedback = True
         st.rerun()
-with info_col5:
+with info_col6:
     if st.button("🚪 Logout", help="Sign out"):
         # Clear session state
         for key in list(st.session_state.keys()):
@@ -957,6 +962,15 @@ with info_col5:
 # Show various panels if requested
 if st.session_state.get("show_admin_panel", False) and IS_ADMIN:
     show_admin_panel()
+
+if st.session_state.get("show_code_intelligence", False):
+    # Show code intelligence interface
+    render_code_intelligence_interface()
+    
+    # Add close button
+    if st.button("❌ Close Code Intelligence"):
+        st.session_state.show_code_intelligence = False
+        st.rerun()
 
 if st.session_state.get("show_user_settings", False):
     show_user_settings()
