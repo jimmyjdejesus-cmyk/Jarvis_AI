@@ -153,7 +153,7 @@ def run_pytest() -> str:
             ["python", "-m", "pytest", "-v", "--tb=short"],
             capture_output=True,
             text=True,
-            timeout=300  # 5 minute timeout
+            timeout=timeout
         )
         
         output = f"Exit code: {result.returncode}\n"
