@@ -1,5 +1,74 @@
 # Jarvis AI
 
+A privacy-first modular AI development assistant with comprehensive deployment and distribution capabilities.
+
+## 🚀 Quick Start
+
+### Installation Methods
+
+#### 1. Pip Package (Recommended)
+```bash
+pip install jarvis-ai
+jarvis run
+```
+
+#### 2. Docker Container
+```bash
+docker-compose up -d
+# Or build from source
+docker build -t jarvis-ai .
+docker run -p 8501:8501 jarvis-ai
+```
+
+#### 3. One-Click Installer
+```bash
+# Unix/Linux/macOS
+curl -sSL https://raw.githubusercontent.com/jimmyjdejesus-cmyk/Jarvis_AI/main/scripts/installers/install-unix.sh | bash
+
+# Windows: Download and run scripts/installers/install-windows.bat
+```
+
+### Configuration
+
+```bash
+# Initialize configuration
+jarvis config --init
+
+# Validate settings
+jarvis config --validate
+
+# Show current config
+jarvis config --show
+```
+
+### Environment Variables (CI/CD Ready)
+```bash
+# General settings
+export JARVIS_DEBUG_MODE=true
+export JARVIS_V2_ENABLED=true
+
+# Lang Ecosystem Integration
+export LANGSMITH_API_KEY=your_key
+export JARVIS_LANGSMITH_ENABLED=true
+export LANGGRAPH_PLATFORM_API_KEY=your_platform_key
+```
+
+## 📋 Features
+
+### Deployment & Distribution ✨
+- **Python Package**: Install via `pip install jarvis-ai`
+- **Docker Support**: Multi-stage builds with health checks
+- **One-Click Installers**: For non-technical users
+- **YAML Configuration**: Hierarchical settings with validation
+- **Environment Overrides**: Perfect for CI/CD deployments
+- **UI Settings Manager**: Web-based configuration interface
+
+### Lang Ecosystem Integration 🤖
+- **LangSmith**: Production monitoring and tracing
+- **LangGraph Platform**: Team collaboration and agent sharing
+- **LangChain Tools**: Standardized plugin development
+- **Deployment Telemetry**: Performance and error tracking
+
 ## Repository Structure
 
 This repository is organized as follows:
@@ -14,15 +83,36 @@ All previous implementation of the Jarvis AI assistant has been archived in the 
 - Tools and plugins
 - Documentation
 
-## New Development
+### New Development
 The root directory now serves as the starting point for the next phase of development. Future implementations will be built here while preserving the legacy code for reference.
+
+## 📖 Documentation
+
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**: Comprehensive deployment and distribution documentation
+- **[Lang Ecosystem Integration](docs/LANG_ECOSYSTEM_ISSUE_INTEGRATION.md)**: Integration with LangChain, LangGraph, and LangSmith
+- **Legacy Documentation**: Available in the `legacy/` folder
+
+## 🔧 Development
+
+```bash
+# Clone repository
+git clone https://github.com/jimmyjdejesus-cmyk/Jarvis_AI.git
+cd Jarvis_AI
+
+# Install in development mode
+pip install -e .
+
+# Validate deployment
+./scripts/validate_deployment.sh
+```
 
 ## Getting Started
 
 To work with this repository:
 
-1. **Legacy Code**: Explore the `legacy/` folder for the previous implementation
-2. **New Development**: Build new features in the root directory
+1. **For End Users**: Use pip installation or one-click installer
+2. **For Developers**: Build new features in the root directory
+3. **Legacy Reference**: Explore the `legacy/` folder for previous implementation
 
 ## Contact
 
