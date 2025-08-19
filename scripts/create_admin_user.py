@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import database
-from agent.security import hash_password
+from agent.features.security import hash_password
 
 def create_admin_user():
     """Create admin user for testing"""

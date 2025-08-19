@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def create_sample_plugin():
     """Create a sample plugin for demo purposes."""
-    from agent.plugin_base import AutomationPlugin, PluginMetadata, PluginAction, PluginResult, PluginType
+    from agent.adapters.plugin_base import AutomationPlugin, PluginMetadata, PluginAction, PluginResult, PluginType
     
     class SamplePlugin(AutomationPlugin):
         def get_metadata(self):
@@ -69,9 +69,9 @@ def demo_core_features():
     
     try:
         # Import core components
-        from agent.plugin_base import BasePlugin, PluginMetadata, PluginType
-        from agent.plugin_registry import PluginRegistry, plugin_manager
-        from agent.workflow_system import workflow_parser, workflow_executor
+        from agent.adapters.plugin_base import BasePlugin, PluginMetadata, PluginType
+        from agent.adapters.plugin_registry import PluginRegistry, plugin_manager
+        from agent.features.workflow_system import workflow_parser, workflow_executor
         
         print("✅ Core imports successful")
         
@@ -135,8 +135,8 @@ def demo_core_features():
         print("\n4. 🔄 Workflow Creation Demo:")
         
         # Create a simple workflow
-        from agent.plugin_base import PluginAction
-        from agent.workflow_system import WorkflowStep, Workflow, WorkflowStatus
+        from agent.adapters.plugin_base import PluginAction
+        from agent.features.workflow_system import WorkflowStep, Workflow, WorkflowStatus
         
         # Create workflow steps
         step1 = WorkflowStep(

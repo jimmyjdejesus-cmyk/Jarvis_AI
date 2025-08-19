@@ -8,20 +8,21 @@ compatible with the new plugin architecture while maintaining backward compatibi
 import os
 from typing import Dict, List, Any, Optional
 
-from agent.plugin_base import (
+from agent.adapters.plugin_base import (
     AutomationPlugin, IntegrationPlugin, CommandPlugin,
     PluginMetadata, PluginAction, PluginResult, PluginType
 )
 
 # Import existing tool modules
 try:
-    import agent.github_integration as github_integration
-    import agent.jetbrains_integration as jetbrains_integration
-    import agent.note_integration as note_integration
-    import agent.code_review as code_review
-    import agent.code_search as code_search
-    import agent.repo_context as repo_context
-    import agent.browser_automation as browser_automation
+    # These modules will be implemented in the features directory in the future
+    github_integration = None
+    jetbrains_integration = None
+    note_integration = None
+    import agent.features.code_review as code_review
+    import agent.features.code_search as code_search
+    import agent.features.repo_context as repo_context
+    import agent.features.browser_automation as browser_automation
 except ImportError as e:
     print(f"Warning: Could not import some agent modules: {e}")
 

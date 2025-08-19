@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Type, Any
 import logging
 from pathlib import Path
 
-from agent.plugin_base import BasePlugin, PluginMetadata, PluginAction, PluginResult, PluginType
+from agent.adapters.plugin_base import BasePlugin, PluginMetadata, PluginAction, PluginResult, PluginType
 
 
 logger = logging.getLogger(__name__)

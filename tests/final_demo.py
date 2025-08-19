@@ -27,7 +27,7 @@ def final_demo():
         print("-" * 30)
         
         from agent.tools import initialize_plugin_system
-        from agent.plugin_registry import plugin_manager
+        from agent.adapters.plugin_registry import plugin_manager
         
         success = initialize_plugin_system()
         print(f"   Plugin system: {'✅ Initialized' if success else '❌ Failed'}")
@@ -69,7 +69,7 @@ def final_demo():
         print(f"\n3. 🔄 Workflow System Testing")
         print("-" * 30)
         
-        from agent.workflow_system import workflow_parser, workflow_executor
+        from agent.features.workflow_system import workflow_parser, workflow_executor
         
         workflow_commands = [
             "git status then git diff",
@@ -98,7 +98,7 @@ def final_demo():
         print(f"\n4. ⬅️ Backward Compatibility Testing")
         print("-" * 30)
         
-        from agent.core import JarvisAgent
+        from agent.core.core import JarvisAgent
         
         agent = JarvisAgent(
             persona_prompt="Test agent",

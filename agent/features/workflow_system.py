@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from enum import Enum
 import logging
 
-from agent.plugin_base import PluginAction, PluginResult, BasePlugin
-from agent.plugin_registry import plugin_manager
+from agent.adapters.plugin_base import PluginAction, PluginResult, BasePlugin
+from agent.adapters.plugin_registry import plugin_manager
 
 
 logger = logging.getLogger(__name__)

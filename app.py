@@ -3,19 +3,26 @@
 import streamlit as st
 import os
 import json
+import uuid
 import pandas as pd
-from agent.security import load_user_key, encrypt_json, decrypt_json, hash_password, verify_password, is_rate_limited, log_security_event, validate_password_strength
-from agent.core import JarvisAgent
+from agent.features.security import load_user_key, encrypt_json, decrypt_json, hash_password, verify_password, is_rate_limited, log_security_event, validate_password_strength
+from agent.core.core import JarvisAgent
+# Import sidebar function directly
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent))
 from ui.sidebar import sidebar
 import agent.tools as tools
-import agent.human_in_loop as human_in_loop
-import database
+import agent.features.human_in_loop as human_in_loop
+from database.database import init_db, get_user, get_user_preferences, save_user_preference, get_user_settings
+import database.database as database
 from ui.analytics import render_analytics_dashboard
 from tools.code_intelligence.ui import render_code_intelligence_interface
+from scripts.ollama_client import get_available_models, pull_model_subprocess
 
 # Import system monitoring (with fallback if psutil not available)
 try:
-    from system_monitor import check_system_resources
+    from scripts.system_monitor import check_system_resources
     SYSTEM_MONITOR_AVAILABLE = True
 except ImportError:
     SYSTEM_MONITOR_AVAILABLE = False
@@ -33,7 +40,7 @@ if "user_role" not in st.session_state:
     st.session_state["user_role"] = "user"
 
 # Initialize database
-database.init_db()
+init_db()
 
 def login():
     st.sidebar.title("🔐 Jarvis AI Login")
@@ -314,7 +321,7 @@ def show_admin_panel():
         st.markdown("### 🤖 Ollama Model Management")
         
         # Import required functions
-        from ollama_client import get_available_models, pull_model_subprocess
+        # Using import from top of file
         
         # Current endpoint configuration
         col1, col2 = st.columns(2)
@@ -347,7 +354,7 @@ def show_admin_panel():
         with col1:
             if st.button("🔄 Refresh Model List"):
                 # Clear cache to force refresh
-                import ollama_client
+                from scripts import ollama_client
                 ollama_client.clear_model_cache()
                 st.rerun()
         
@@ -400,7 +407,7 @@ def show_admin_panel():
                                     if result.returncode == 0:
                                         st.success(f"Removed {model}")
                                         # Clear cache and refresh
-                                        import ollama_client
+                                        from scripts import ollama_client
                                         ollama_client.clear_model_cache()
                                         st.rerun()
                                     else:
@@ -448,7 +455,7 @@ def show_admin_panel():
                     progress_placeholder.success(f"✅ Successfully pulled {model_to_pull}")
                     
                     # Clear cache to show new model
-                    import ollama_client
+                    from scripts import ollama_client
                     ollama_client.clear_model_cache()
                     
                     # Auto-refresh after a short delay
@@ -603,7 +610,7 @@ def show_admin_panel():
         st.markdown("### 📈 Analytics & Performance Monitor")
         render_analytics_dashboard()
     
-    if st.button("← Back to Main App"):
+    if st.button("← Back to Main App", key="admin_back_button"):
         st.session_state.show_admin_panel = False
         st.rerun()
 
@@ -627,7 +634,7 @@ def show_user_settings():
             st.write(f"**Member Since:** {USER_DATA.get('created_at', 'Unknown')}")
             st.write(f"**Last Login:** {USER_DATA.get('last_login', 'Unknown')}")
         
-        if st.button("Update Profile"):
+        if st.button("Update Profile", key="update_profile_button"):
             if new_name and new_email:
                 # Validate email format
                 import re
@@ -701,7 +708,7 @@ def show_user_settings():
         
         with col3:
             st.metric("Status", "🟢 Active")
-            if st.button("🚪 End Session"):
+            if st.button("🚪 End Session", key="end_session_button"):
                 # Clear session state and force logout
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
@@ -730,7 +737,7 @@ def show_user_settings():
                                          index=2,
                                          help="Automatically logout after inactivity")
         
-        if st.button("💾 Save Session Settings"):
+        if st.button("💾 Save Session Settings", key="save_session_settings_button"):
             session_prefs = {
                 "remember_me": remember_me,
                 "auto_save": auto_save,
@@ -766,7 +773,7 @@ def show_user_settings():
                                          ["Standard", "Technical", "Beginner-friendly"],
                                          help="How detailed should AI responses be")
         
-        if st.button("💾 Save AI Settings"):
+        if st.button("💾 Save AI Settings", key="save_ai_settings_button"):
             ai_prefs = {
                 "show_thinking": show_thinking,
                 "verbose_responses": verbose_responses,
@@ -794,7 +801,7 @@ def show_user_settings():
                 st.success("🔒 Two-Factor Authentication is ENABLED")
                 st.write("Your account is protected with 2FA.")
                 
-                if st.button("Disable 2FA"):
+                if st.button("Disable 2FA", key="disable_2fa_button"):
                     if disable_2fa(st.session_state.user):
                         st.success("Two-Factor Authentication has been disabled")
                         st.rerun()
@@ -804,7 +811,7 @@ def show_user_settings():
                 st.warning("🔓 Two-Factor Authentication is DISABLED")
                 st.write("Enable 2FA to add an extra layer of security to your account.")
                 
-                if st.button("Setup 2FA"):
+                if st.button("Setup 2FA", key="setup_2fa_button"):
                     st.session_state.setup_2fa = True
                     st.rerun()
                 
@@ -826,7 +833,7 @@ def show_user_settings():
                     
                     col1, col2 = st.columns(2)
                     with col1:
-                        if st.button("Enable 2FA"):
+                        if st.button("Enable 2FA", key="enable_2fa_button"):
                             if verification_code and len(verification_code) == 6:
                                 if enable_2fa(st.session_state.user, verification_code):
                                     st.success("Two-Factor Authentication has been enabled!")
@@ -838,14 +845,14 @@ def show_user_settings():
                                 st.error("Please enter a 6-digit verification code")
                     
                     with col2:
-                        if st.button("Cancel"):
+                        if st.button("Cancel", key="cancel_2fa_setup_button"):
                             st.session_state.setup_2fa = False
                             st.rerun()
         
         except ImportError:
             st.info("Two-Factor Authentication requires additional setup")
     
-    if st.button("← Back to Main App"):
+    if st.button("← Back to Main App", key="user_settings_back_button"):
         st.session_state.show_user_settings = False
         st.rerun()
 
@@ -859,7 +866,7 @@ if "user" not in st.session_state:
 # This ensures that even if the sidebar model selection fails, we have a fallback
 if "selected_expert_model" not in st.session_state:
     try:
-        from ollama_client import get_available_models
+        # Using import from top of file
         available_models = get_available_models()
         if available_models:
             st.session_state["selected_expert_model"] = available_models[0]
@@ -917,6 +924,12 @@ if SYSTEM_MONITOR_AVAILABLE:
 
 st.title(f"🤖 Jarvis AI Assistant")
 
+# Initialize chat session variables if they don't exist
+if "chat_sessions" not in st.session_state:
+    st.session_state.chat_sessions = {}
+if "current_session" not in st.session_state:
+    st.session_state.current_session = "Default"
+
 # Add a welcome message for new users
 if len(st.session_state.chat_sessions.get(st.session_state.current_session, [])) == 0:
     st.info("""
@@ -968,7 +981,7 @@ if st.session_state.get("show_code_intelligence", False):
     render_code_intelligence_interface()
     
     # Add close button
-    if st.button("❌ Close Code Intelligence"):
+    if st.button("❌ Close Code Intelligence", key="close_code_intelligence_button"):
         st.session_state.show_code_intelligence = False
         st.rerun()
 
@@ -1012,9 +1025,49 @@ if "chat_sessions" not in st.session_state:
 if "current_session" not in st.session_state:
     st.session_state.current_session = "Default"
 
+# Synchronize the old and new chat models
+if "current_chat" in st.session_state and st.session_state["current_chat"] is not None:
+    # If using the new chat model, update the chat_sessions model
+    current_chat_id = st.session_state["current_chat"]
+    if current_chat_id in st.session_state.get("chats", {}):
+        current_chat = st.session_state["chats"][current_chat_id]
+        st.session_state.chat_sessions["Default"] = current_chat.get("messages", [])
+else:
+    # If no current chat is selected, but we have chat sessions, initialize the new chat model
+    if st.session_state.current_session in st.session_state.chat_sessions and st.session_state.chat_sessions[st.session_state.current_session]:
+        if "chats" not in st.session_state:
+            st.session_state["chats"] = {}
+        
+        chat_id = str(uuid.uuid4())
+        st.session_state["current_chat"] = chat_id
+        st.session_state["chat_history"] = st.session_state.chat_sessions[st.session_state.current_session]
+        st.session_state["chats"][chat_id] = {
+            "id": chat_id,
+            "title": st.session_state.current_session,
+            "messages": st.session_state.chat_sessions[st.session_state.current_session]
+        }
+
 chat_history = st.session_state.chat_sessions[st.session_state.current_session]
 
 # --- Source Evaluation for RAG ---
+# Helper function to update chat history in both models
+def update_chat_history(message):
+    """
+    Updates both chat history models with a new message
+    """
+    # Update the chat_sessions model
+    chat_history = st.session_state.chat_sessions[st.session_state.current_session]
+    chat_history.append(message)
+    
+    # Also update the new chat model if it's in use
+    if "current_chat" in st.session_state and st.session_state["current_chat"] is not None:
+        current_chat_id = st.session_state["current_chat"]
+        if current_chat_id in st.session_state.get("chats", {}):
+            st.session_state["chats"][current_chat_id]["messages"].append(message)
+            st.session_state["chat_history"] = st.session_state["chats"][current_chat_id]["messages"]
+    
+    return chat_history
+
 def evaluate_sources(files):
     summaries = []
     usable = []
@@ -1074,7 +1127,10 @@ user_msg = st.chat_input("Ask me anything! I can help with code, files, research
 if user_msg:
     # Display user message immediately
     st.chat_message("user").write(user_msg)
-    chat_history.append({"role": "user", "content": user_msg})
+    
+    # Update both chat models
+    user_message = {"role": "user", "content": user_msg}
+    chat_history = update_chat_history(user_message)
     
     # Show helpful suggestions for new users
     if len(chat_history) <= 2:  # First interaction
@@ -1113,7 +1169,7 @@ if user_msg:
     if not expert_model or expert_model.strip() == "":
         # Try to get available models and use the first one as fallback
         try:
-            from ollama_client import get_available_models
+            # Using import from top of file
             available_models = get_available_models()
             if available_models:
                 expert_model = available_models[0]
@@ -1142,13 +1198,13 @@ if user_msg:
             plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
             if not plan:
                 st.chat_message("assistant").write("I'm not sure how to help with that request. Could you please rephrase it or be more specific?")
-                chat_history.append({"role": "assistant", "content": "I'm not sure how to help with that request. Could you please rephrase it or be more specific?"})
+                update_chat_history({"role": "assistant", "content": "I'm not sure how to help with that request. Could you please rephrase it or be more specific?"})
             else:
                 results = agent.execute_plan(plan)
                 
                 if not results:
                     st.chat_message("assistant").write("I encountered an issue while processing your request. Please try again or contact support if the problem persists.")
-                    chat_history.append({"role": "assistant", "content": "I encountered an issue while processing your request. Please try again or contact support if the problem persists."})
+                    update_chat_history({"role": "assistant", "content": "I encountered an issue while processing your request. Please try again or contact support if the problem persists."})
                 else:
                     # Display results immediately
                     for result in results:
@@ -1156,7 +1212,7 @@ if user_msg:
                             for item in result['result']:
                                 response_text = str(item)
                                 st.chat_message("assistant").write(response_text)
-                                chat_history.append({"role": "assistant", "content": response_text})
+                                update_chat_history({"role": "assistant", "content": response_text})
                         else:
                             response_data = result['result']
                             
@@ -1178,7 +1234,7 @@ if user_msg:
                                         "final_answer": final_answer,
                                         "chain_of_thought": chain_of_thought if st.session_state.get("show_chain_of_thought", True) else ""
                                     }
-                                    chat_history.append({"role": "assistant", "content": structured_response})
+                                    update_chat_history({"role": "assistant", "content": structured_response})
                                 else:
                                     fallback_msg = "The AI generated reasoning but no final answer."
                                     st.chat_message("assistant").write(fallback_msg)
@@ -1186,18 +1242,18 @@ if user_msg:
                                         "final_answer": fallback_msg,
                                         "chain_of_thought": chain_of_thought if st.session_state.get("show_chain_of_thought", True) else ""
                                     }
-                                    chat_history.append({"role": "assistant", "content": structured_response})
+                                    update_chat_history({"role": "assistant", "content": structured_response})
                             else:
                                 # Handle regular string responses
                                 response_text = str(response_data)
                                 
                                 if response_text and response_text.strip() and response_text != "None":
                                     st.chat_message("assistant").write(response_text)
-                                    chat_history.append({"role": "assistant", "content": response_text})
+                                    update_chat_history({"role": "assistant", "content": response_text})
                                 else:
                                     fallback_msg = "I apologize, but I wasn't able to generate a proper response. Please try rephrasing your request."
                                     st.chat_message("assistant").write(fallback_msg)
-                                    chat_history.append({"role": "assistant", "content": fallback_msg})
+                                    update_chat_history({"role": "assistant", "content": fallback_msg})
                         
                         # Handle image generation
                         if result['step']['tool'] == "image_generation" and result['result'] is not None:
@@ -1205,7 +1261,7 @@ if user_msg:
         except Exception as e:
             error_msg = f"I apologize, but I encountered an unexpected error: {str(e)}. Please try rephrasing your request."
             st.chat_message("assistant").write(error_msg)
-            chat_history.append({"role": "assistant", "content": error_msg})
+            update_chat_history({"role": "assistant", "content": error_msg})
             # Log the error for debugging
             log_security_event("AGENT_ERROR", username=st.session_state.user, details=f"Error: {str(e)}")
             results = []  # Ensure results is defined

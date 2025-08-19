@@ -9,7 +9,7 @@ import io
 import base64
 from datetime import datetime
 import database
-from agent.security import log_security_event
+from agent.features.security import log_security_event
 
 def generate_2fa_secret(username: str) -> str:
     """Generate a new 2FA secret for user"""

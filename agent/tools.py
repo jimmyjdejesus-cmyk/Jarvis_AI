@@ -1,13 +1,10 @@
-import agent.file_ingest as file_ingest
-import agent.browser_automation as browser_automation
-import agent.image_generation as image_generation
-import agent.rag_handler as rag_handler
-import agent.code_review as code_review
-import agent.code_search as code_search
-import agent.github_integration as github_integration
-import agent.jetbrains_integration as jetbrains_integration
-import agent.note_integration as note_integration
-import agent.repo_context as repo_context
+import agent.features.file_ingest as file_ingest
+import agent.features.browser_automation as browser_automation
+import agent.features.image_generation as image_generation
+import agent.features.rag_handler as rag_handler
+import agent.features.code_review as code_review
+import agent.features.code_search as code_search
+import agent.features.repo_context as repo_context
 from tools.code_intelligence import engine as code_intelligence
 import requests
 
@@ -38,7 +35,8 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
     elif step['tool'] == "git_command":
         command = step['args'].get("command", "")
         repository_path = step['args'].get("repository_path")
-        return github_integration.execute_git_command(command, repository_path)
+        # TODO: Implement proper git command handling
+        return f"Git command '{command}' requested but github_integration module not available yet"
     elif step['tool'] == "code_review":
         file_path = step['args'].get("file_path", "")
         check_types = step['args'].get("check_types")
@@ -55,32 +53,40 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
         cursor_line = step['args'].get("cursor_line", 1)
         cursor_column = step['args'].get("cursor_column", 0)
         model = step['args'].get("model", "llama3.2")
-    return code_intelligence.get_code_completion(file_path, cursor_line, cursor_column, model, user or 'anonymous')
+        return code_intelligence.get_code_completion(file_path, cursor_line, cursor_column, model, user or 'anonymous')
     elif step['tool'] == "code_completion_feedback":
         file_path = step['args'].get("file_path", "")
         cursor_line = step['args'].get("cursor_line", 1)
         cursor_column = step['args'].get("cursor_column", 0)
         suggestion = step['args'].get("suggestion", "")
         accepted = step['args'].get("accepted", False)
-    return code_intelligence.record_completion_feedback(file_path, cursor_line, cursor_column, suggestion, accepted, user or 'anonymous')
+        return code_intelligence.record_completion_feedback(file_path, cursor_line, cursor_column, suggestion, accepted, user or 'anonymous')
     elif step['tool'] == "github_api":
         action = step['args'].get("action", "")
-        return github_integration.github_integration_handler(action, **step['args'])
+        # TODO: Implement proper github API integration
+        return f"GitHub API action '{action}' requested but integration module not available yet"
     elif step['tool'] == "ide_command":
         command = step['args'].get("command", "")
-        return jetbrains_integration.execute_ide_command(command)
+        # TODO: Implement proper IDE command integration
+        return f"IDE command '{command}' requested but jetbrains_integration module not available yet"
     elif step['tool'] == "note_command":
         command = step['args'].get("command", "")
-        notion_token = step['args'].get("notion_token")
-        notion_db_id = step['args'].get("notion_db_id")
-        onenote_token = step['args'].get("onenote_token")
-        onenote_section_id = step['args'].get("onenote_section_id")
-        return note_integration.execute_note_command(command, notion_token, notion_db_id, onenote_token, onenote_section_id)
+        # TODO: Implement proper note integration
+        return f"Note command '{command}' requested but note_integration module not available yet"
     elif step['tool'] == "repo_context":
         repository_path = step['args'].get("repository_path")
         return repo_context.get_repository_context(repository_path)
     else:
         return None
+
+def initialize_plugin_system():
+    """Initialize the plugin system and register all plugins."""
+    try:
+        from agent.adapters.plugin_registry import plugin_manager
+        return plugin_manager.initialize()
+    except Exception as e:
+        print(f"Error initializing plugin system: {e}")
+        return False
 
 def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint):
     # Build a more comprehensive prompt with context

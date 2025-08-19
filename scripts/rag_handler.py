@@ -3,7 +3,7 @@ Enhanced RAG Handler - Consolidated version for local Ollama integration
 Uses local context processing with fallback to browser automation only for unsupported tasks.
 """
 
-from agent.rag_handler import rag_answer as enhanced_rag_answer
+from agent.features.rag_handler import rag_answer as enhanced_rag_answer
 
 def rag_answer(prompt, files, model_name, chat_history, user, endpoint):
     """

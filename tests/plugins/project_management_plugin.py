@@ -13,7 +13,7 @@ import json
 import time
 from typing import Dict, Any, Optional
 
-from agent.plugin_base import (
+from agent.adapters.plugin_base import (
     AutomationPlugin, PluginMetadata, PluginAction, PluginResult, PluginType
 )
 

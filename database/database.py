@@ -547,6 +547,65 @@ def is_user_locked(username: str) -> bool:
         return datetime.now() < locked_until
     return False
 
+def update_user(username: str, **kwargs):
+    """
+    Update user information in the database
+    
+    Args:
+        username: Username of the user to update
+        **kwargs: Key-value pairs of fields to update
+    """
+    if not kwargs:
+        return False
+    
+    allowed_fields = [
+        'name', 'email', 'role', 'is_active', 'locked_until', 
+        'password_hash', 'reset_token', 'reset_token_expiry',
+        'two_fa_enabled', 'two_fa_secret', 'two_fa_pending'
+    ]
+    
+    # Filter out any fields that aren't in allowed_fields
+    valid_updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+    
+    if not valid_updates:
+        return False
+        
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    try:
+        # Build SET clause for SQL query
+        set_clause = ', '.join([f"{key} = ?" for key in valid_updates.keys()])
+        values = list(valid_updates.values())
+        values.append(username)  # For the WHERE clause
+        
+        # Execute update
+        cursor.execute(
+            f"UPDATE users SET {set_clause} WHERE username = ?",
+            values
+        )
+        
+        conn.commit()
+        result = cursor.rowcount > 0
+        conn.close()
+        return result
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        logger.error(f"Failed to update user {username}: {e}")
+        return False
+
+def update_user_field(username: str, field: str, value):
+    """
+    Update a specific field for a user
+    
+    Args:
+        username: Username of the user to update
+        field: Field name to update
+        value: New value for the field
+    """
+    return update_user(username, **{field: value})
+
 def update_user_password(username: str, new_hashed_password: str):
     """Update user password"""
     conn = sqlite3.connect(DB_NAME)
@@ -716,16 +775,43 @@ def get_user_settings(username: str) -> Dict[str, Any]:
     # ...existing code...
 
 # Backup/export/import utilities
-def backup_user_data(username: str) -> Dict[str, Any]:
-    """Export all user data (preferences, settings, chat logs) as a dict"""
-    data = {
-        "preferences": get_user_preferences(username),
-        "settings": get_user_settings(username),
-        "chat_sessions": [],
-        "chat_logs": []
+def backup_user_data(username: str = None) -> str:
+    """Export all user data (preferences, settings, chat logs) as a JSON file
+    If username is None, backs up all users"""
+    
+    # Get all users if username not specified
+    if username is None:
+        all_users = get_all_users()
+        usernames = [user["username"] for user in all_users]
+    else:
+        usernames = [username]
+    
+    # Initialize data structure
+    backup_data = {
+        "users": [],
+        "preferences": [],
+        "settings": []
     }
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    
+    # Get data for each user
+    for user in usernames:
+        backup_data["users"].append(get_user(user))
+        backup_data["preferences"].append({"username": user, "preferences": get_user_preferences(user)})
+        backup_data["settings"].append({"username": user, "settings": get_user_settings(user)})
+    
+    # Create backup file
+    import os
+    import json
+    from datetime import datetime
+    
+    backup_dir = "backups"
+    os.makedirs(backup_dir, exist_ok=True)
+    backup_file = os.path.join(backup_dir, f"jarvis_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    
+    with open(backup_file, "w") as f:
+        json.dump(backup_data, f, indent=2)
+    
+    return backup_file
     cursor.execute("SELECT id, project_name, session_name, timestamp FROM chat_sessions WHERE username = ?", (username,))
     sessions = cursor.fetchall()
     for s in sessions:

@@ -11,7 +11,7 @@ import logging
 from typing import Optional
 
 import database
-from agent.security import generate_reset_token, log_security_event
+from agent.features.security import generate_reset_token, log_security_event
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def request_password_reset(email: str) -> tuple[bool, str]:
 
 def reset_password_with_token(token: str, new_password: str) -> tuple[bool, str]:
     """Reset password using valid token"""
-    from agent.security import hash_password, validate_password_strength
+    from agent.features.security import hash_password, validate_password_strength
     
     # Validate new password
     is_strong, message = validate_password_strength(new_password)

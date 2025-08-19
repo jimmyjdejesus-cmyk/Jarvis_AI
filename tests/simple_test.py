@@ -16,16 +16,16 @@ def simple_test():
     try:
         # Test imports
         print("Testing imports...")
-        from agent.plugin_base import BasePlugin, PluginMetadata, PluginType
+        from agent.adapters.plugin_base import BasePlugin, PluginMetadata, PluginType
         print("   ✅ plugin_base imported")
         
-        from agent.plugin_registry import PluginRegistry, plugin_manager
+        from agent.adapters.plugin_registry import PluginRegistry, plugin_manager
         print("   ✅ plugin_registry imported")
         
-        from agent.workflow_system import workflow_parser
+        from agent.features.workflow_system import workflow_parser
         print("   ✅ workflow_system imported")
         
-        from agent.plugin_adapters import GitPlugin
+        from agent.adapters.plugin_adapters import GitPlugin
         print("   ✅ plugin_adapters imported")
         
         # Test plugin creation

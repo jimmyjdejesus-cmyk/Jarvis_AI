@@ -16,7 +16,7 @@ def test_plugin_system():
     print("🔧 Testing Plugin System...")
     
     try:
-        from agent.plugin_registry import plugin_manager
+        from agent.adapters.plugin_registry import plugin_manager
         from agent.tools import initialize_plugin_system
         
         # Initialize the plugin system
@@ -40,7 +40,7 @@ def test_workflow_parsing():
     print("\n🔄 Testing Workflow Parsing...")
     
     try:
-        from agent.workflow_system import workflow_parser
+        from agent.features.workflow_system import workflow_parser
         
         test_commands = [
             "git status then git diff",
@@ -71,7 +71,7 @@ def test_approval_preview():
     print("\n👁️ Testing Approval Preview...")
     
     try:
-        from agent.workflow_system import workflow_parser, workflow_executor
+        from agent.features.workflow_system import workflow_parser, workflow_executor
         
         # Test a workflow that requires approval
         command = "git commit 'test commit' then git push"
@@ -102,8 +102,8 @@ def test_plugin_adapters():
     print("\n🔌 Testing Plugin Adapters...")
     
     try:
-        from agent.plugin_adapters import GitPlugin, IDEPlugin, CodeReviewPlugin
-        from agent.plugin_base import PluginAction
+        from agent.adapters.plugin_adapters import GitPlugin, IDEPlugin, CodeReviewPlugin
+        from agent.adapters.plugin_base import PluginAction
         
         # Test Git plugin
         git_plugin = GitPlugin()
@@ -167,7 +167,7 @@ def test_natural_language_triggers():
     print("\n🗣️ Testing Natural Language Triggers...")
     
     try:
-        from agent.plugin_registry import plugin_manager
+        from agent.adapters.plugin_registry import plugin_manager
         
         test_commands = [
             "git status",
