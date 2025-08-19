@@ -1,4 +1,4 @@
- # ...existing code...
+﻿ # ...existing code...
 
 import streamlit as st
 import os
@@ -52,7 +52,7 @@ if "user_role" not in st.session_state:
 init_db()
 
 def login():
-    st.sidebar.title("🔐 Jarvis AI Login")
+    st.sidebar.title("ðŸ” Jarvis AI Login")
     
     # Check if user is already logged in
     if "user" in st.session_state and st.session_state.user:
@@ -107,11 +107,11 @@ def login():
     
     # Registration link
     st.sidebar.markdown("---")
-    if st.sidebar.button("📝 Register New Account"):
+    if st.sidebar.button("ðŸ“ Register New Account"):
         st.session_state.show_registration = True
         st.rerun()
     
-    if st.sidebar.button("🔄 Reset Password"):
+    if st.sidebar.button("ðŸ”„ Reset Password"):
         st.session_state.show_password_reset = True
         st.rerun()
     
@@ -128,7 +128,7 @@ def login():
 
 def show_registration_form():
     """Show user registration form"""
-    st.sidebar.markdown("### 📝 Register New Account")
+    st.sidebar.markdown("### ðŸ“ Register New Account")
     
     with st.sidebar.form("registration_form"):
         reg_username = st.text_input("Username*")
@@ -171,13 +171,13 @@ def show_registration_form():
             else:
                 st.error("Registration failed. Username or email may already exist.")
     
-    if st.sidebar.button("← Back to Login"):
+    if st.sidebar.button("â† Back to Login"):
         st.session_state.show_registration = False
         st.rerun()
 
 def show_password_reset_form():
     """Show password reset form"""
-    st.sidebar.markdown("### 🔄 Reset Password")
+    st.sidebar.markdown("### ðŸ”„ Reset Password")
     
     with st.sidebar.form("password_reset_form"):
         reset_email = st.text_input("Email Address*")
@@ -194,15 +194,15 @@ def show_password_reset_form():
             except ImportError:
                 st.info("Password reset functionality requires email configuration")
     
-    if st.sidebar.button("← Back to Login"):
+    if st.sidebar.button("â† Back to Login"):
         st.session_state.show_password_reset = False
         st.rerun()
 
 def show_admin_panel():
     """Admin panel for user management"""
-    st.markdown("## 🔧 Admin Panel")
+    st.markdown("## ðŸ”§ Admin Panel")
     
-    tabs = st.tabs(["👥 User Management", "⏳ Pending Users", "📊 Security Logs", "🤖 Model Management", "⚙️ System Settings", "📈 Analytics"])
+    tabs = st.tabs(["ðŸ‘¥ User Management", "â³ Pending Users", "ðŸ“Š Security Logs", "ðŸ¤– Model Management", "âš™ï¸ System Settings", "ðŸ“ˆ Analytics"])
     
     with tabs[0]:  # User Management
         st.markdown("### Active Users")
@@ -213,10 +213,10 @@ def show_admin_panel():
                 col1, col2, col3, col4, col5 = st.columns([2, 2, 1, 1, 1])
                 
                 with col1:
-                    status = "🟢" if user["is_active"] else "🔴"
-                    verified = "✅" if user["is_verified"] else "❌"
+                    status = "ðŸŸ¢" if user["is_active"] else "ðŸ”´"
+                    verified = "âœ…" if user["is_verified"] else "âŒ"
                     st.write(f"{status} **{user['username']}** ({user['name']})")
-                    st.write(f"📧 {user['email']} {verified}")
+                    st.write(f"ðŸ“§ {user['email']} {verified}")
                 
                 with col2:
                     st.write(f"**Role:** {user['role']}")
@@ -265,7 +265,7 @@ def show_admin_panel():
                         # Display the temporary password securely
                         st.success(f"Password reset for {user['username']}")
                         st.code(f"Temporary Password: {temp_password}")
-                        st.warning("⚠️ Please share this password securely with the user. They should change it immediately.")
+                        st.warning("âš ï¸ Please share this password securely with the user. They should change it immediately.")
                 
                 st.divider()
         else:
@@ -281,10 +281,10 @@ def show_admin_panel():
                 
                 with col1:
                     st.write(f"**{pending['username']}** ({pending['name']})")
-                    st.write(f"📧 {pending['email']}")
+                    st.write(f"ðŸ“§ {pending['email']}")
                 
                 with col2:
-                    if st.button("✅ Approve", key=f"approve_{pending['username']}"):
+                    if st.button("âœ… Approve", key=f"approve_{pending['username']}"):
                         if database.approve_pending_user(pending["username"], st.session_state.user):
                             st.success(f"Approved {pending['username']}")
                             st.rerun()
@@ -292,7 +292,7 @@ def show_admin_panel():
                             st.error("Failed to approve user")
                 
                 with col3:
-                    if st.button("❌ Reject", key=f"reject_{pending['username']}"):
+                    if st.button("âŒ Reject", key=f"reject_{pending['username']}"):
                         database.remove_pending_user(pending["username"])
                         st.success(f"Rejected {pending['username']}")
                         st.rerun()
@@ -311,23 +311,23 @@ def show_admin_panel():
                 
                 with col1:
                     st.write(f"**{log['event_type']}**")
-                    st.write(f"🕒 {log['timestamp']}")
+                    st.write(f"ðŸ•’ {log['timestamp']}")
                 
                 with col2:
-                    st.write(f"👤 {log['username'] or 'Unknown'}")
+                    st.write(f"ðŸ‘¤ {log['username'] or 'Unknown'}")
                     if log['details']:
-                        st.write(f"📝 {log['details']}")
+                        st.write(f"ðŸ“ {log['details']}")
                 
                 with col3:
                     if log['ip_address']:
-                        st.write(f"🌐 {log['ip_address']}")
+                        st.write(f"ðŸŒ {log['ip_address']}")
                 
                 st.divider()
         else:
             st.info("No security logs found")
     
     with tabs[3]:  # Model Management
-        st.markdown("### 🤖 Ollama Model Management")
+        st.markdown("### ðŸ¤– Ollama Model Management")
         
         # Import required functions
         # Using import from top of file
@@ -343,16 +343,16 @@ def show_admin_panel():
                 st.success("Endpoint updated successfully")
         
         with col2:
-            if st.button("🔄 Test Connection"):
+            if st.button("ðŸ”„ Test Connection"):
                 try:
                     import requests
                     response = requests.get(f"{new_endpoint}/api/tags", timeout=5)
                     if response.ok:
-                        st.success("✅ Connection successful")
+                        st.success("âœ… Connection successful")
                     else:
-                        st.error(f"❌ Connection failed: {response.status_code}")
+                        st.error(f"âŒ Connection failed: {response.status_code}")
                 except Exception as e:
-                    st.error(f"❌ Connection failed: {str(e)}")
+                    st.error(f"âŒ Connection failed: {str(e)}")
         
         st.divider()
         
@@ -361,7 +361,7 @@ def show_admin_panel():
         
         col1, col2 = st.columns([3, 1])
         with col1:
-            if st.button("🔄 Refresh Model List"):
+            if st.button("ðŸ”„ Refresh Model List"):
                 # Clear cache to force refresh
                 from scripts import ollama_client
                 ollama_client.clear_model_cache()
@@ -379,7 +379,7 @@ def show_admin_panel():
                     col1, col2, col3 = st.columns([3, 1, 1])
                     
                     with col1:
-                        st.write(f"📦 **{model}**")
+                        st.write(f"ðŸ“¦ **{model}**")
                         if show_details:
                             # Try to get model info
                             try:
@@ -395,7 +395,7 @@ def show_admin_panel():
                                 pass
                     
                     with col2:
-                        if st.button("📊 Info", key=f"info_{i}"):
+                        if st.button("ðŸ“Š Info", key=f"info_{i}"):
                             try:
                                 import requests
                                 response = requests.post(f"{new_endpoint}/api/show", 
@@ -407,7 +407,7 @@ def show_admin_panel():
                                 st.error(f"Failed to get model info: {e}")
                     
                     with col3:
-                        if st.button("🗑️ Remove", key=f"remove_{i}"):
+                        if st.button("ðŸ—‘ï¸ Remove", key=f"remove_{i}"):
                             if st.session_state.get(f"confirm_remove_{i}", False):
                                 try:
                                     import subprocess
@@ -449,7 +449,7 @@ def show_admin_panel():
             if selected_recommended:
                 model_to_pull = selected_recommended
         
-        if model_to_pull and st.button("📥 Pull Model"):
+        if model_to_pull and st.button("ðŸ“¥ Pull Model"):
             if model_to_pull:
                 st.info(f"Pulling {model_to_pull}... This may take several minutes.")
                 
@@ -461,7 +461,7 @@ def show_admin_panel():
                     for line in pull_model_subprocess(model_to_pull):
                         progress_placeholder.text(line)
                     
-                    progress_placeholder.success(f"✅ Successfully pulled {model_to_pull}")
+                    progress_placeholder.success(f"âœ… Successfully pulled {model_to_pull}")
                     
                     # Clear cache to show new model
                     from scripts import ollama_client
@@ -472,14 +472,14 @@ def show_admin_panel():
                     st.rerun()
                     
                 except Exception as e:
-                    progress_placeholder.error(f"❌ Failed to pull {model_to_pull}: {e}")
+                    progress_placeholder.error(f"âŒ Failed to pull {model_to_pull}: {e}")
         
         st.divider()
         
         # Model health monitoring
         st.markdown("#### Model Health & Performance")
         
-        if st.button("🏥 Health Check All Models"):
+        if st.button("ðŸ¥ Health Check All Models"):
             try:
                 available_models = get_available_models()
                 if available_models:
@@ -502,19 +502,19 @@ def show_admin_panel():
                                 response_time = round(end_time - start_time, 2)
                                 health_results.append({
                                     "model": model,
-                                    "status": "✅ Healthy",
+                                    "status": "âœ… Healthy",
                                     "response_time": f"{response_time}s"
                                 })
                             else:
                                 health_results.append({
                                     "model": model,
-                                    "status": "❌ Error",
+                                    "status": "âŒ Error",
                                     "response_time": "N/A"
                                 })
                         except Exception as e:
                             health_results.append({
                                 "model": model,
-                                "status": f"❌ {str(e)[:50]}",
+                                "status": f"âŒ {str(e)[:50]}",
                                 "response_time": "N/A"
                             })
                     
@@ -545,7 +545,7 @@ def show_admin_panel():
             cleanup_days = st.number_input("Log cleanup (days)", min_value=7, max_value=365, value=90,
                                          help="Automatically delete security logs older than this")
         
-        if st.button("💾 Update Security Settings"):
+        if st.button("ðŸ’¾ Update Security Settings"):
             # Save settings to database or config
             security_config = {
                 "max_login_attempts": max_attempts,
@@ -556,7 +556,7 @@ def show_admin_panel():
                 "updated_at": "now"
             }
             # In a real implementation, save to database
-            st.success("✅ Security settings updated successfully!")
+            st.success("âœ… Security settings updated successfully!")
             log_security_event("SETTINGS_UPDATED", username=st.session_state.user, 
                              details=f"Updated security configuration")
         
@@ -579,7 +579,7 @@ def show_admin_panel():
             max_file_size = st.number_input("Max upload size (MB)", min_value=1, max_value=100, value=10,
                                           help="Maximum file upload size")
         
-        if st.button("💾 Update App Settings"):
+        if st.button("ðŸ’¾ Update App Settings"):
             app_config = {
                 "default_model": default_model,
                 "enable_registration": enable_registration,
@@ -587,7 +587,7 @@ def show_admin_panel():
                 "max_file_size_mb": max_file_size,
                 "updated_by": st.session_state.user
             }
-            st.success("✅ Application settings updated successfully!")
+            st.success("âœ… Application settings updated successfully!")
         
         st.divider()
         
@@ -597,36 +597,36 @@ def show_admin_panel():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("🧹 Cleanup Old Logs"):
+            if st.button("ðŸ§¹ Cleanup Old Logs"):
                 # Simulate log cleanup
                 st.info("Cleaning up security logs older than 90 days...")
                 # In real implementation: database.cleanup_old_logs(90)
-                st.success("✅ Log cleanup completed!")
+                st.success("âœ… Log cleanup completed!")
         
         with col2:
-            if st.button("📊 Generate Report"):
+            if st.button("ðŸ“Š Generate Report"):
                 st.info("Generating system usage report...")
                 # In real implementation: generate comprehensive report
-                st.success("✅ Report generated and saved to admin folder!")
+                st.success("âœ… Report generated and saved to admin folder!")
         
         with col3:
-            if st.button("🔄 Restart Services"):
-                st.warning("⚠️ This would restart background services")
+            if st.button("ðŸ”„ Restart Services"):
+                st.warning("âš ï¸ This would restart background services")
                 st.info("Service restart functionality requires system-level permissions")
     
     with tabs[5]:  # Analytics
-        st.markdown("### 📈 Analytics & Performance Monitor")
+        st.markdown("### ðŸ“ˆ Analytics & Performance Monitor")
         render_analytics_dashboard()
     
-    if st.button("← Back to Main App", key="admin_back_button"):
+    if st.button("â† Back to Main App", key="admin_back_button"):
         st.session_state.show_admin_panel = False
         st.rerun()
 
 def show_user_settings():
     """User settings panel"""
-    st.markdown("## ⚙️ User Settings")
+    st.markdown("## âš™ï¸ User Settings")
     
-    tabs = st.tabs(["👤 Profile", "🔒 Security", "⚙️ Preferences", "🔑 Two-Factor Auth"])
+    tabs = st.tabs(["ðŸ‘¤ Profile", "ðŸ”’ Security", "âš™ï¸ Preferences", "ðŸ”‘ Two-Factor Auth"])
     
     with tabs[0]:  # Profile
         st.markdown("### Profile Information")
@@ -658,18 +658,18 @@ def show_user_settings():
                         st.session_state.user_data['name'] = new_name
                         st.session_state.user_data['email'] = new_email
                         
-                        st.success("✅ Profile updated successfully!")
+                        st.success("âœ… Profile updated successfully!")
                         log_security_event("PROFILE_UPDATED", username=st.session_state.user, 
                                          details=f"Updated name and email")
                         
                         # Refresh the page to show updated info
                         st.rerun()
                     except Exception as e:
-                        st.error(f"❌ Failed to update profile: {str(e)}")
+                        st.error(f"âŒ Failed to update profile: {str(e)}")
                 else:
-                    st.error("❌ Please enter a valid email address")
+                    st.error("âŒ Please enter a valid email address")
             else:
-                st.error("❌ Please fill in all required fields")
+                st.error("âŒ Please fill in all required fields")
     
     with tabs[1]:  # Security
         st.markdown("### Security Settings")
@@ -715,12 +715,12 @@ def show_user_settings():
             st.metric("User Agent", "Streamlit App")
         
         with col3:
-            st.metric("Status", "🟢 Active")
-            if st.button("🚪 End Session", key="end_session_button"):
+            st.metric("Status", "ðŸŸ¢ Active")
+            if st.button("ðŸšª End Session", key="end_session_button"):
                 # Clear session state and force logout
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
-                st.success("✅ Session ended successfully")
+                st.success("âœ… Session ended successfully")
                 st.rerun()
     
     with tabs[2]:  # Preferences
@@ -745,7 +745,7 @@ def show_user_settings():
                                          index=2,
                                          help="Automatically logout after inactivity")
         
-        if st.button("💾 Save Session Settings", key="save_session_settings_button"):
+        if st.button("ðŸ’¾ Save Session Settings", key="save_session_settings_button"):
             session_prefs = {
                 "remember_me": remember_me,
                 "auto_save": auto_save,
@@ -758,7 +758,7 @@ def show_user_settings():
                     st.session_state[key] = value
                 database.save_user_preference(st.session_state.user, f"session_{key}", value)
             
-            st.success("✅ Session preferences saved!")
+            st.success("âœ… Session preferences saved!")
         
         st.divider()
         
@@ -781,7 +781,7 @@ def show_user_settings():
                                          ["Standard", "Technical", "Beginner-friendly"],
                                          help="How detailed should AI responses be")
         
-        if st.button("💾 Save AI Settings", key="save_ai_settings_button"):
+        if st.button("ðŸ’¾ Save AI Settings", key="save_ai_settings_button"):
             ai_prefs = {
                 "show_thinking": show_thinking,
                 "verbose_responses": verbose_responses,
@@ -795,7 +795,7 @@ def show_user_settings():
                     st.session_state["inline_chain_of_thought"] = value
                 database.save_user_preference(st.session_state.user, f"ai_{key}", value)
             
-            st.success("✅ AI response settings saved!")
+            st.success("âœ… AI response settings saved!")
 
     with tabs[3]:  # Two-Factor Auth
         st.markdown("### Two-Factor Authentication")
@@ -806,7 +806,7 @@ def show_user_settings():
             two_fa_enabled = is_2fa_enabled(st.session_state.user)
             
             if two_fa_enabled:
-                st.success("🔒 Two-Factor Authentication is ENABLED")
+                st.success("ðŸ”’ Two-Factor Authentication is ENABLED")
                 st.write("Your account is protected with 2FA.")
                 
                 if st.button("Disable 2FA", key="disable_2fa_button"):
@@ -816,7 +816,7 @@ def show_user_settings():
                     else:
                         st.error("Failed to disable 2FA")
             else:
-                st.warning("🔓 Two-Factor Authentication is DISABLED")
+                st.warning("ðŸ”“ Two-Factor Authentication is DISABLED")
                 st.write("Enable 2FA to add an extra layer of security to your account.")
                 
                 if st.button("Setup 2FA", key="setup_2fa_button"):
@@ -860,7 +860,7 @@ def show_user_settings():
         except ImportError:
             st.info("Two-Factor Authentication requires additional setup")
     
-    if st.button("← Back to Main App", key="user_settings_back_button"):
+    if st.button("â† Back to Main App", key="user_settings_back_button"):
         st.session_state.show_user_settings = False
         st.rerun()
 
@@ -930,7 +930,7 @@ sidebar(USER, save_user_prefs)
 if SYSTEM_MONITOR_AVAILABLE:
     check_system_resources()
 
-st.title(f"🤖 Jarvis AI Assistant")
+st.title(f"ðŸ¤– Jarvis AI Assistant")
 
 # Initialize chat session variables if they don't exist
 if "chat_sessions" not in st.session_state:
@@ -941,13 +941,13 @@ if "current_session" not in st.session_state:
 # Add a welcome message for new users
 if len(st.session_state.chat_sessions.get(st.session_state.current_session, [])) == 0:
     st.info("""
-    👋 **Welcome to Jarvis AI!** I'm your intelligent assistant that can help you with:
+    ðŸ‘‹ **Welcome to Jarvis AI!** I'm your intelligent assistant that can help you with:
     
-    🔍 **Code Analysis** - Review, debug, and improve your code  
-    📝 **Documentation** - Generate docs, comments, and explanations  
-    🔍 **Research** - Search the web and analyze information  
-    📁 **File Processing** - Analyze documents, images, and data  
-    🧪 **Testing** - Generate unit tests and test strategies  
+    ðŸ” **Code Analysis** - Review, debug, and improve your code  
+    ðŸ“ **Documentation** - Generate docs, comments, and explanations  
+    ðŸ” **Research** - Search the web and analyze information  
+    ðŸ“ **File Processing** - Analyze documents, images, and data  
+    ðŸ§ª **Testing** - Generate unit tests and test strategies  
     
     **Just ask me anything in natural language!**
     """)
@@ -956,45 +956,46 @@ if len(st.session_state.chat_sessions.get(st.session_state.current_session, []))
 if LANG_UI_AVAILABLE:
     info_col1, info_col2, info_col3, info_col4, info_col5, info_col6, info_col7 = st.columns([3, 1, 1, 1, 1, 1, 1])
 else:
-# Always create 7 columns for consistent layout
-info_col1, info_col2, info_col3, info_col4, info_col5, info_col6, info_col7 = st.columns([3, 1, 1, 1, 1, 1, 1])
+    # Always create 7 columns for consistent layout
+    info_col1, info_col2, info_col3, info_col4, info_col5, info_col6, info_col7 = st.columns([3, 1, 1, 1, 1, 1, 1])
 
 with info_col1:
-    st.markdown(f"**👋 {USER_DATA.get('name', st.session_state.user)}** • *{USER_ROLE}*")
+    st.markdown(f"**ðŸ‘‹ {USER_DATA.get('name', st.session_state.user)}** â€¢ *{USER_ROLE}*")
 with info_col2:
     if IS_ADMIN:
-        if st.button("🔧 Admin", help="Access admin panel"):
+        if st.button("ðŸ”§ Admin", help="Access admin panel"):
             st.session_state.show_admin_panel = True
             st.rerun()
 with info_col3:
-    if st.button("🧠 Code AI", help="Code Intelligence Engine"):
+    if st.button("ðŸ§  Code AI", help="Code Intelligence Engine"):
         st.session_state.show_code_intelligence = True
+
         st.rerun()
 with info_col4:
     if LANG_UI_AVAILABLE:
-        if st.button("🔄 Workflow", help="LangGraph Workflow Visualization"):
+        if st.button("ðŸ”„ Workflow", help="LangGraph Workflow Visualization"):
             st.session_state.show_langgraph_ui = True
             st.rerun()
     else:
-        if st.button("⚙️ Settings", help="User preferences"):
+        if st.button("âš™ï¸ Settings", help="User preferences"):
             st.session_state.show_user_settings = True
             st.rerun()
 with info_col5:
     if LANG_UI_AVAILABLE:
-        if st.button("⚙️ Settings", help="User preferences"):
+        if st.button("âš™ï¸ Settings", help="User preferences"):
             st.session_state.show_user_settings = True
             st.rerun()
     else:
-        if st.button("💬 Feedback", help="Send feedback"):
+        if st.button("ðŸ’¬ Feedback", help="Send feedback"):
             st.session_state.show_feedback = True
             st.rerun()
 with info_col6:
     if LANG_UI_AVAILABLE:
-        if st.button("💬 Feedback", help="Send feedback"):
+        if st.button("ðŸ’¬ Feedback", help="Send feedback"):
             st.session_state.show_feedback = True
             st.rerun()
     else:
-        if st.button("🚪 Logout", help="Sign out"):
+        if st.button("ðŸšª Logout", help="Sign out"):
             # Clear session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
@@ -1002,7 +1003,7 @@ with info_col6:
 
 if LANG_UI_AVAILABLE:
     with info_col7:
-        if st.button("🚪 Logout", help="Sign out"):
+        if st.button("ðŸšª Logout", help="Sign out"):
             # Clear session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
@@ -1017,17 +1018,17 @@ if st.session_state.get("show_code_intelligence", False):
     render_code_intelligence_interface()
     
     # Add close button
-    if st.button("❌ Close Code Intelligence", key="close_code_intelligence_button"):
+    if st.button("âŒ Close Code Intelligence", key="close_code_intelligence_button"):
         st.session_state.show_code_intelligence = False
         st.rerun()
 
 if st.session_state.get("show_langgraph_ui", False) and LANG_UI_AVAILABLE:
     # Show LangGraph workflow visualization
-    st.markdown("## 🔄 LangGraph Workflow Dashboard")
+    st.markdown("## ðŸ”„ LangGraph Workflow Dashboard")
     render_langgraph_ui()
     
     # Add close button
-    if st.button("❌ Close Workflow Dashboard", key="close_langgraph_button"):
+    if st.button("âŒ Close Workflow Dashboard", key="close_langgraph_button"):
         st.session_state.show_langgraph_ui = False
         st.rerun()
 
@@ -1158,11 +1159,11 @@ for msg in chat_history:
                 
                 if inline_cot:
                     st.markdown("---")
-                    st.markdown("**🤔 AI's Thinking Process:**")
+                    st.markdown("**ðŸ¤” AI's Thinking Process:**")
                     st.info(chain_of_thought)
                 else:
-                    with st.expander("🧠 Chain of Thought Reasoning", expanded=True):
-                        st.markdown("**🤔 AI's Thinking Process:**")
+                    with st.expander("ðŸ§  Chain of Thought Reasoning", expanded=True):
+                        st.markdown("**ðŸ¤” AI's Thinking Process:**")
                         st.code(chain_of_thought, language="text")
     else:
         # Handle simple string messages
@@ -1180,7 +1181,7 @@ if user_msg:
     
     # Show helpful suggestions for new users
     if len(chat_history) <= 2:  # First interaction
-        with st.expander("💡 Quick Start Tips", expanded=False):
+        with st.expander("ðŸ’¡ Quick Start Tips", expanded=False):
             st.markdown("""
             **Try these natural language commands:**
             - "Help me review this Python code for bugs"
@@ -1247,7 +1248,7 @@ if user_msg:
     )
     
     # Show processing indicator
-    with st.spinner(f"🤖 Processing with {expert_model}..."):
+    with st.spinner(f"ðŸ¤– Processing with {expert_model}..."):
         try:
             # Check if user wants to use LangGraph workflow
             use_langgraph = st.session_state.get("use_langgraph_workflow", False)
@@ -1271,7 +1272,7 @@ if user_msg:
                         visualizer.add_execution(workflow_result)
                         
                         # Show workflow visualization in expander
-                        with st.expander("🔍 View Workflow Analysis", expanded=False):
+                        with st.expander("ðŸ” View Workflow Analysis", expanded=False):
                             render_langgraph_ui(workflow_result)
                 else:
                     st.chat_message("assistant").write("I encountered an issue with the workflow. Please try again.")
