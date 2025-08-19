@@ -80,10 +80,16 @@ def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint
 - Web automation and data extraction
 - Image generation and processing
 
+When answering complex questions, show your reasoning process using <think>...</think> tags before providing your final answer.
+
 Always provide helpful, detailed responses. If asked about your capabilities, list the specific areas above."""
     
     # For debugging, let's simplify the prompt first
-    simple_prompt = f"{system_prompt}\n\nUser question: {prompt}\n\nPlease provide a detailed response:"
+    simple_prompt = f"""{system_prompt}
+
+User question: {prompt}
+
+Please think through this step by step and provide a detailed response. Use <think>...</think> tags to show your reasoning process if this is a complex question."""
     
     # If endpoint is Ollama, use /api/generate and correct payload
     if "11434" in str(endpoint):
@@ -117,19 +123,57 @@ Always provide helpful, detailed responses. If asked about your capabilities, li
                     # Try other possible fields
                     response = data.get("text", "").strip()
                 
-                # Extract and separate DeepSeek reasoning tokens
+                # Extract and separate reasoning tokens from various models
                 chain_of_thought = ""
                 final_response = response
                 
                 if response:
                     import re
+                    
                     # Extract <think>...</think> blocks from DeepSeek models
                     think_matches = re.findall(r'<think>(.*?)</think>', response, flags=re.DOTALL)
                     
+                    # Extract <reasoning>...</reasoning> blocks from other models
+                    if not think_matches:
+                        think_matches = re.findall(r'<reasoning>(.*?)</reasoning>', response, flags=re.DOTALL)
+                    
+                    # Extract **Thinking:** sections from models like Claude
+                    if not think_matches:
+                        think_matches = re.findall(r'\*\*Thinking:\*\*(.*?)(?=\*\*[A-Z]|$)', response, flags=re.DOTALL)
+                    
+                    # Extract Chain of Thought: sections
+                    if not think_matches:
+                        think_matches = re.findall(r'Chain of Thought:(.*?)(?=Answer:|Final Answer:|$)', response, flags=re.DOTALL)
+                    
+                    # Extract Let me think... patterns
+                    if not think_matches:
+                        think_matches = re.findall(r'Let me think[^.]*\.(.*?)(?=(?:So|Therefore|In conclusion|Final answer))', response, flags=re.DOTALL)
+                    
                     if think_matches:
                         chain_of_thought = "\n\n".join(think_matches).strip()
-                        # Remove <think>...</think> blocks from final response
-                        final_response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+                        # Remove all reasoning blocks from final response
+                        patterns_to_remove = [
+                            r'<think>.*?</think>',
+                            r'<reasoning>.*?</reasoning>',
+                            r'\*\*Thinking:\*\*.*?(?=\*\*[A-Z]|$)',
+                            r'Chain of Thought:.*?(?=Answer:|Final Answer:|$)',
+                            r'Let me think[^.]*\..*?(?=(?:So|Therefore|In conclusion|Final answer))'
+                        ]
+                        for pattern in patterns_to_remove:
+                            final_response = re.sub(pattern, '', final_response, flags=re.DOTALL).strip()
+                    
+                    if think_matches:
+                        chain_of_thought = "\n\n".join(think_matches).strip()
+                        # Remove all reasoning blocks from final response
+                        patterns_to_remove = [
+                            r'<think>.*?</think>',
+                            r'<reasoning>.*?</reasoning>',
+                            r'\*\*Thinking:\*\*.*?(?=\*\*[A-Z]|$)',
+                            r'Chain of Thought:.*?(?=Answer:|Final Answer:|$)',
+                            r'Let me think[^.]*\..*?(?=(?:So|Therefore|In conclusion|Final answer))'
+                        ]
+                        for pattern in patterns_to_remove:
+                            final_response = re.sub(pattern, '', final_response, flags=re.DOTALL).strip()
                         
                         # Return both CoT and final response as a structured object
                         result = {

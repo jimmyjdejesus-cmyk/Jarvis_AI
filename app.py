@@ -610,7 +610,7 @@ def show_user_settings():
     """User settings panel"""
     st.markdown("## ⚙️ User Settings")
     
-    tabs = st.tabs(["👤 Profile", "🔒 Security", "🔑 Two-Factor Auth"])
+    tabs = st.tabs(["👤 Profile", "🔒 Security", "⚙️ Preferences", "🔑 Two-Factor Auth"])
     
     with tabs[0]:  # Profile
         st.markdown("### Profile Information")
@@ -706,8 +706,9 @@ def show_user_settings():
                     del st.session_state[key]
                 st.success("✅ Session ended successfully")
                 st.rerun()
-        
-        st.divider()
+    
+    with tabs[2]:  # Preferences
+        st.markdown("### User Preferences")
         
         # Session settings
         st.markdown("#### Session Preferences")
@@ -718,6 +719,9 @@ def show_user_settings():
                                     help="Stay logged in across browser sessions")
             auto_save = st.checkbox("Auto-save conversations", value=True,
                                   help="Automatically save chat history")
+            show_cot = st.checkbox("Show Chain of Thought", 
+                                 value=st.session_state.get("show_chain_of_thought", True),
+                                 help="Display AI's reasoning process with responses")
         
         with col2:
             session_timeout = st.selectbox("Auto-logout after", 
@@ -729,15 +733,55 @@ def show_user_settings():
             session_prefs = {
                 "remember_me": remember_me,
                 "auto_save": auto_save,
-                "session_timeout": session_timeout
+                "session_timeout": session_timeout,
+                "show_chain_of_thought": show_cot
             }
             # Save to user preferences
             for key, value in session_prefs.items():
+                if key == "show_chain_of_thought":
+                    st.session_state[key] = value
                 database.save_user_preference(st.session_state.user, f"session_{key}", value)
             
             st.success("✅ Session preferences saved!")
-    
-    with tabs[2]:  # Two-Factor Auth
+        
+        st.divider()
+        
+        # AI Response settings
+        st.markdown("#### AI Response Settings")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            show_thinking = st.checkbox("Always expand reasoning", 
+                                      value=st.session_state.get("show_chain_of_thought", True),
+                                      help="Automatically expand AI's chain of thought reasoning")
+            verbose_responses = st.checkbox("Verbose responses", value=False,
+                                          help="Request more detailed AI responses")
+            inline_thinking = st.checkbox("Show thinking inline", 
+                                        value=st.session_state.get("inline_chain_of_thought", False),
+                                        help="Display reasoning directly without expandable section")
+        
+        with col2:
+            response_format = st.selectbox("Preferred response format",
+                                         ["Standard", "Technical", "Beginner-friendly"],
+                                         help="How detailed should AI responses be")
+        
+        if st.button("💾 Save AI Settings"):
+            ai_prefs = {
+                "show_thinking": show_thinking,
+                "verbose_responses": verbose_responses,
+                "response_format": response_format,
+                "inline_thinking": inline_thinking
+            }
+            for key, value in ai_prefs.items():
+                if key == "show_thinking":
+                    st.session_state["show_chain_of_thought"] = value
+                elif key == "inline_thinking":
+                    st.session_state["inline_chain_of_thought"] = value
+                database.save_user_preference(st.session_state.user, f"ai_{key}", value)
+            
+            st.success("✅ AI response settings saved!")
+
+    with tabs[3]:  # Two-Factor Auth
         st.markdown("### Two-Factor Authentication")
         
         try:
@@ -848,6 +892,8 @@ def save_user_prefs():
         "chat_contexts": st.session_state.get("chat_contexts"),
         "rag_endpoint": st.session_state.get("rag_endpoint", ""),
         "llm_endpoint": st.session_state.get("llm_endpoint", ""),
+        "show_chain_of_thought": st.session_state.get("show_chain_of_thought", True),
+        "inline_chain_of_thought": st.session_state.get("inline_chain_of_thought", False),
     }
     try:
         current_prefs = database.get_user_preferences(st.session_state.user)
@@ -978,8 +1024,37 @@ def evaluate_sources(files):
     return usable, unusable, summaries
 
 st.markdown("## Chat")
+# Display chat history with chain of thought support
 for msg in chat_history:
-    st.chat_message(msg["role"]).write(msg["content"])
+    if msg["role"] == "assistant" and isinstance(msg.get("content"), dict):
+        # Handle structured response with chain of thought
+        content_data = msg["content"]
+        final_answer = content_data.get("final_answer", "")
+        chain_of_thought = content_data.get("chain_of_thought", "")
+        
+        with st.chat_message("assistant"):
+            if final_answer:
+                st.write(final_answer)
+            
+            # Display chain of thought if it exists and setting is enabled
+            if chain_of_thought and st.session_state.get("show_chain_of_thought", True):
+                inline_cot = st.session_state.get("inline_chain_of_thought", False)
+                
+                # Debug info (only for testing)
+                # st.caption(f"Debug: CoT length: {len(chain_of_thought)}, Inline: {inline_cot}")
+                
+                if inline_cot:
+                    st.markdown("---")
+                    st.markdown("**🤔 AI's Thinking Process:**")
+                    st.info(chain_of_thought)
+                else:
+                    with st.expander("🧠 Chain of Thought Reasoning", expanded=True):
+                        st.markdown("**🤔 AI's Thinking Process:**")
+                        st.code(chain_of_thought, language="text")
+    else:
+        # Handle simple string messages
+        content = msg["content"] if isinstance(msg["content"], str) else str(msg["content"])
+        st.chat_message(msg["role"]).write(content)
 
 user_msg = st.chat_input("Ask me anything! I can help with code, files, research, and more...")
 if user_msg:
@@ -1081,18 +1156,23 @@ if user_msg:
                                     with st.chat_message("assistant"):
                                         st.write(final_answer)
                                         
-                                        # Add expandable chain of thought section
-                                        if chain_of_thought and chain_of_thought.strip():
-                                            with st.expander("🧠 View Chain of Thought", expanded=False):
-                                                st.markdown("**AI's Reasoning Process:**")
-                                                st.text(chain_of_thought)
+                                        # Chain of thought will be displayed through chat history persistence
+                                        # No need for real-time display that disappears
                                     
-                                    # Store the final answer in chat history
-                                    chat_history.append({"role": "assistant", "content": final_answer})
+                                    # Store the structured response in chat history (with chain of thought)
+                                    structured_response = {
+                                        "final_answer": final_answer,
+                                        "chain_of_thought": chain_of_thought if st.session_state.get("show_chain_of_thought", True) else ""
+                                    }
+                                    chat_history.append({"role": "assistant", "content": structured_response})
                                 else:
                                     fallback_msg = "The AI generated reasoning but no final answer."
                                     st.chat_message("assistant").write(fallback_msg)
-                                    chat_history.append({"role": "assistant", "content": fallback_msg})
+                                    structured_response = {
+                                        "final_answer": fallback_msg,
+                                        "chain_of_thought": chain_of_thought if st.session_state.get("show_chain_of_thought", True) else ""
+                                    }
+                                    chat_history.append({"role": "assistant", "content": structured_response})
                             else:
                                 # Handle regular string responses
                                 response_text = str(response_data)
