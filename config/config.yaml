@@ -1,10 +1,43 @@
-credentials:
-  usernames:
-    moodeux: # <-- Create your admin user here
-      email: jimmydejesus1129@gmail.com
-      name: Replicator
-      password: 'Passcode' # Use a temporary password, it will be hashed on first login
-cookies:
-  cookie_name: janus_auth_cookie
-  key: 'jims_secret_key' # IMPORTANT: Change this!
+app_name: Jarvis AI
+custom: {}
+data_directory: C:\Users\jimmy\Documents\data
+debug_mode: true
+integrations:
+  default_model: llama3
+  enable_github: true
+  enable_jetbrains: true
+  enable_notion: false
+  enable_onenote: false
+  github_token: null
+  notion_token: null
+  ollama_endpoint: http://localhost:11434
+logs_directory: C:\Users\jimmy\Documents\logs
+performance:
+  cache_size_mb: 100
+  enable_caching: true
+  enable_metrics: true
+  log_level: INFO
+  log_retention_days: 30
+  max_concurrent_requests: 10
+  max_log_file_size_mb: 50
+  request_timeout_seconds: 30
+plugins_directory: C:\Users\jimmy\Documents\plugins
+rag:
+  enable_browser_automation: true
+  enable_file_context: true
+  enable_human_in_loop: true
+  enable_web_search: true
+  max_context_length: 8000
+  max_file_size_mb: 10
+  max_search_results: 5
+  search_timeout_seconds: 10
+security:
   cookie_expiry_days: 30
+  cookie_secret_key: ZDUCx5DVNjPE-A7Ba__z7qO4Kr3YfAMJhXUX3ejnSkM
+  enable_2fa: false
+  login_lockout_minutes: 15
+  max_login_attempts: 5
+  password_min_length: 8
+  require_special_chars: true
+  session_timeout_minutes: 60
+version: 2.0.0

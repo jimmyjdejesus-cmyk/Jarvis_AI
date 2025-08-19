@@ -736,13 +736,18 @@ def save_user_preference(username: str, key: str, value: Any):
     cursor = conn.cursor()
     
     value_json = json.dumps(value) if value is not None else None
-    
-    cursor.execute(
-        "INSERT OR REPLACE INTO user_preferences (username, preference_key, preference_value, updated_at) VALUES (?, ?, ?, ?)",
-        (username, key, value_json, datetime.now())
-    )
-    conn.commit()
-    conn.close()
+    print(f"[DEBUG] save_user_preference: username={username}, key={key}, value_json={value_json}, time={datetime.now()}")
+    try:
+        cursor.execute(
+            "INSERT OR REPLACE INTO user_preferences (username, preference_key, preference_value, updated_at) VALUES (?, ?, ?, ?)",
+            (username, key, value_json, datetime.now())
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as e:
+        print(f"[ERROR] IntegrityError in save_user_preference: {e}")
+        raise
+    finally:
+        conn.close()
 
 # User settings CRUD
 def save_user_settings(username: str, settings: Dict[str, Any]):

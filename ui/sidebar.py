@@ -92,6 +92,7 @@ def sidebar(user, save_user_prefs):
         
         if user_prefs.get("model") != selected_model:
             user_prefs["model"] = selected_model
+            print(f"[DEBUG] sidebar: user={user}, selected_model={selected_model}")
             save_user_preference(user, "model", selected_model)
 
         # Draft model selection
