@@ -89,6 +89,22 @@ class GitPlugin(AutomationPlugin):
         
         return None
     
+    def preview_action(self, action: PluginAction) -> str:
+        """Preview what the git action will do."""
+        if action.name == "git_status":
+            return "Check git repository status (shows modified files)"
+        elif action.name == "git_commit":
+            message = action.args.get("message", "Auto-commit")
+            return f"Add all files and commit with message: '{message}'"
+        elif action.name == "git_push":
+            return "Push local commits to remote repository"
+        elif action.name == "git_pull":
+            return "Pull latest changes from remote repository"
+        elif action.name == "git_branch":
+            return "List all local and remote branches"
+        else:
+            return f"Execute git action: {action.description}"
+    
     def execute_action(self, action: PluginAction, context: Dict[str, Any] = None) -> PluginResult:
         try:
             path = action.args.get("path", ".")

@@ -1,0 +1,20 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Jarvis AI Plugin System API",
+    "description": "API for interacting with the Jarvis AI extensibility framework",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/plugins": {
+      "get": {
+        "summary": "List all registered plugins",
+        "responses": {
+          "200": {
+            "description": "List of plugins"
+          }
+        }
+      }
+    }
+  }
+}

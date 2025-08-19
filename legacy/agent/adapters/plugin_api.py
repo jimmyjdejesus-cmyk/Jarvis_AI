@@ -32,11 +32,11 @@ from agent.adapters.extensibility_sdk import PluginManifest
 # Pydantic models for API documentation
 class PluginMetadataModel(BaseModel):
     """API model for plugin metadata."""
-    name: str = Field(..., description="Unique name of the plugin")
-    description: str = Field(..., description="Description of what the plugin does")
-    version: str = Field(..., description="Plugin version in semver format")
-    author: str = Field(..., description="Plugin author or organization")
-    plugin_type: str = Field(..., description="Type of plugin (automation, integration, command, workflow)")
+    name: str = Field(default=..., description="Unique name of the plugin")
+    description: str = Field(default=..., description="Description of what the plugin does")
+    version: str = Field(default=..., description="Plugin version in semver format")
+    author: str = Field(default=..., description="Plugin author or organization")
+    plugin_type: str = Field(default=..., description="Type of plugin (automation, integration, command, workflow)")
     triggers: List[str] = Field(default=[], description="Natural language triggers for the plugin")
     dependencies: List[str] = Field(default=[], description="List of required dependencies")
     tags: List[str] = Field(default=[], description="Tags for categorizing the plugin")
@@ -44,8 +44,8 @@ class PluginMetadataModel(BaseModel):
 
 class PluginActionModel(BaseModel):
     """API model for plugin actions."""
-    name: str = Field(..., description="Name of the action")
-    description: str = Field(..., description="Description of what the action does")
+    name: str = Field(default=..., description="Name of the action")
+    description: str = Field(default=..., description="Description of what the action does")
     args: Dict[str, Any] = Field(default={}, description="Arguments for the action")
     preview: str = Field(default="", description="Preview of what the action will do")
     requires_approval: bool = Field(default=False, description="Whether the action requires user approval")
@@ -53,22 +53,22 @@ class PluginActionModel(BaseModel):
 
 class PluginResultModel(BaseModel):
     """API model for plugin execution results."""
-    success: bool = Field(..., description="Whether the action was successful")
-    output: Optional[Any] = Field(None, description="Output from the action execution")
-    error: Optional[str] = Field(None, description="Error message if the action failed")
+    success: bool = Field(default=..., description="Whether the action was successful")
+    output: Optional[Any] = Field(default=None, description="Output from the action execution")
+    error: Optional[str] = Field(default=None, description="Error message if the action failed")
     metadata: Dict[str, Any] = Field(default={}, description="Additional metadata about the execution")
 
 
 class PluginRegistrationModel(BaseModel):
     """API model for plugin registration."""
-    plugin_manifest: PluginManifest = Field(..., description="Plugin manifest with metadata")
-    entry_point: str = Field(..., description="Entry point module path")
-    installation_path: str = Field(..., description="Path where the plugin is installed")
+    plugin_manifest: PluginManifest = Field(default=..., description="Plugin manifest with metadata")
+    entry_point: str = Field(default=..., description="Entry point module path")
+    installation_path: str = Field(default=..., description="Path where the plugin is installed")
 
 
 class PluginQueryModel(BaseModel):
     """API model for querying plugins."""
-    command: str = Field(..., description="Natural language command to match against plugins")
+    command: str = Field(default=..., description="Natural language command to match against plugins")
     context: Dict[str, Any] = Field(default={}, description="Context information for command parsing")
     plugin_types: Optional[List[str]] = Field(None, description="Filter by plugin types")
     tags: Optional[List[str]] = Field(None, description="Filter by plugin tags")
@@ -76,7 +76,7 @@ class PluginQueryModel(BaseModel):
 
 class KnowledgeSourceQueryModel(BaseModel):
     """API model for knowledge source queries."""
-    query: str = Field(..., description="Query string")
+    query: str = Field(default=..., description="Query string")
     max_results: int = Field(default=10, description="Maximum number of results to return")
     source_filter: Optional[List[str]] = Field(None, description="Filter by knowledge source names")
     context: Dict[str, Any] = Field(default={}, description="Additional context for the query")
@@ -84,14 +84,14 @@ class KnowledgeSourceQueryModel(BaseModel):
 
 class BuildCommandModel(BaseModel):
     """API model for build system commands."""
-    project_path: str = Field(..., description="Path to the project")
-    command: str = Field(..., description="Build command to execute")
+    project_path: str = Field(default=..., description="Path to the project")
+    command: str = Field(default=..., description="Build command to execute")
     options: Dict[str, Any] = Field(default={}, description="Additional options for the command")
 
 
 class TestCommandModel(BaseModel):
     """API model for testing framework commands."""
-    project_path: str = Field(..., description="Path to the project")
+    project_path: str = Field(default=..., description="Path to the project")
     test_path: Optional[str] = Field(None, description="Specific test file or directory")
     framework: Optional[str] = Field(None, description="Testing framework to use (auto-detected if not specified)")
     options: Dict[str, Any] = Field(default={}, description="Additional options for test execution")
