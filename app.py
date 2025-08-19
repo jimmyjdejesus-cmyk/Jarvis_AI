@@ -19,6 +19,14 @@ import database.database as database
 from ui.analytics import render_analytics_dashboard
 from tools.code_intelligence.ui import render_code_intelligence_interface
 from scripts.ollama_client import get_available_models, pull_model_subprocess
+
+# Import Lang family integrations
+try:
+    from agent.adapters.langgraph_ui import render_langgraph_ui, get_workflow_visualizer
+    LANG_UI_AVAILABLE = True
+except ImportError:
+    LANG_UI_AVAILABLE = False
+    
 import time
 
 # Import system monitoring (with fallback if psutil not available)
@@ -945,7 +953,11 @@ if len(st.session_state.chat_sessions.get(st.session_state.current_session, []))
     """)
 
 # User info and controls with better layout
-info_col1, info_col2, info_col3, info_col4, info_col5, info_col6 = st.columns([3, 1, 1, 1, 1, 1])
+if LANG_UI_AVAILABLE:
+    info_col1, info_col2, info_col3, info_col4, info_col5, info_col6, info_col7 = st.columns([3, 1, 1, 1, 1, 1, 1])
+else:
+    info_col1, info_col2, info_col3, info_col4, info_col5, info_col6 = st.columns([3, 1, 1, 1, 1, 1])
+
 with info_col1:
     st.markdown(f"**👋 {USER_DATA.get('name', st.session_state.user)}** • *{USER_ROLE}*")
 with info_col2:
@@ -958,19 +970,42 @@ with info_col3:
         st.session_state.show_code_intelligence = True
         st.rerun()
 with info_col4:
-    if st.button("⚙️ Settings", help="User preferences"):
-        st.session_state.show_user_settings = True
-        st.rerun()
+    if LANG_UI_AVAILABLE:
+        if st.button("🔄 Workflow", help="LangGraph Workflow Visualization"):
+            st.session_state.show_langgraph_ui = True
+            st.rerun()
+    else:
+        if st.button("⚙️ Settings", help="User preferences"):
+            st.session_state.show_user_settings = True
+            st.rerun()
 with info_col5:
-    if st.button("💬 Feedback", help="Send feedback"):
-        st.session_state.show_feedback = True
-        st.rerun()
+    if LANG_UI_AVAILABLE:
+        if st.button("⚙️ Settings", help="User preferences"):
+            st.session_state.show_user_settings = True
+            st.rerun()
+    else:
+        if st.button("💬 Feedback", help="Send feedback"):
+            st.session_state.show_feedback = True
+            st.rerun()
 with info_col6:
-    if st.button("🚪 Logout", help="Sign out"):
-        # Clear session state
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+    if LANG_UI_AVAILABLE:
+        if st.button("💬 Feedback", help="Send feedback"):
+            st.session_state.show_feedback = True
+            st.rerun()
+    else:
+        if st.button("🚪 Logout", help="Sign out"):
+            # Clear session state
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+
+if LANG_UI_AVAILABLE:
+    with info_col7:
+        if st.button("🚪 Logout", help="Sign out"):
+            # Clear session state
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
 # Show various panels if requested
 if st.session_state.get("show_admin_panel", False) and IS_ADMIN:
@@ -983,6 +1018,16 @@ if st.session_state.get("show_code_intelligence", False):
     # Add close button
     if st.button("❌ Close Code Intelligence", key="close_code_intelligence_button"):
         st.session_state.show_code_intelligence = False
+        st.rerun()
+
+if st.session_state.get("show_langgraph_ui", False) and LANG_UI_AVAILABLE:
+    # Show LangGraph workflow visualization
+    st.markdown("## 🔄 LangGraph Workflow Dashboard")
+    render_langgraph_ui()
+    
+    # Add close button
+    if st.button("❌ Close Workflow Dashboard", key="close_langgraph_button"):
+        st.session_state.show_langgraph_ui = False
         st.rerun()
 
 if st.session_state.get("show_user_settings", False):
@@ -1199,12 +1244,41 @@ if user_msg:
     # Show processing indicator
     with st.spinner(f"🤖 Processing with {expert_model}..."):
         try:
-            plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
-            if not plan:
-                st.chat_message("assistant").write("I'm not sure how to help with that request. Could you please rephrase it or be more specific?")
-                update_chat_history({"role": "assistant", "content": "I'm not sure how to help with that request. Could you please rephrase it or be more specific?"})
+            # Check if user wants to use LangGraph workflow
+            use_langgraph = st.session_state.get("use_langgraph_workflow", False)
+            
+            if use_langgraph and hasattr(agent, 'langgraph_workflow') and agent.langgraph_workflow:
+                # Use LangGraph workflow execution
+                workflow_result = agent.execute_langgraph_workflow(user_msg, rag_files)
+                
+                if workflow_result.get('success'):
+                    # Display workflow results
+                    if workflow_result.get('results'):
+                        results = workflow_result['results']
+                        for result in (results if isinstance(results, list) else [results]):
+                            response_text = str(result)
+                            st.chat_message("assistant").write(response_text)
+                            update_chat_history({"role": "assistant", "content": response_text})
+                    
+                    # Store workflow result for visualization
+                    if LANG_UI_AVAILABLE:
+                        visualizer = get_workflow_visualizer()
+                        visualizer.add_execution(workflow_result)
+                        
+                        # Show workflow visualization in expander
+                        with st.expander("🔍 View Workflow Analysis", expanded=False):
+                            render_langgraph_ui(workflow_result)
+                else:
+                    st.chat_message("assistant").write("I encountered an issue with the workflow. Please try again.")
+                    update_chat_history({"role": "assistant", "content": "I encountered an issue with the workflow. Please try again."})
             else:
-                results = agent.execute_plan(plan)
+                # Use traditional execution
+                plan = agent.parse_natural_language(user_msg, rag_files, chat_history)
+                if not plan:
+                    st.chat_message("assistant").write("I'm not sure how to help with that request. Could you please rephrase it or be more specific?")
+                    update_chat_history({"role": "assistant", "content": "I'm not sure how to help with that request. Could you please rephrase it or be more specific?"})
+                else:
+                    results = agent.execute_plan(plan)
                 
                 if not results:
                     st.chat_message("assistant").write("I encountered an issue while processing your request. Please try again or contact support if the problem persists.")

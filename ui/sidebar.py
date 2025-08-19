@@ -146,6 +146,29 @@ def sidebar(user, save_user_prefs):
             user_prefs["duckduckgo_fallback"] = duckduckgo_fallback
             save_user_preference(user, "duckduckgo_fallback", duckduckgo_fallback)
 
+        # LangGraph Workflow Toggle
+        try:
+            from agent.core.core import LANG_FAMILY_AVAILABLE
+            if LANG_FAMILY_AVAILABLE:
+                langgraph_default = user_prefs.get("use_langgraph_workflow", False)
+                use_langgraph = st.checkbox(
+                    "🔄 Use LangGraph Workflow (V2)",
+                    value=langgraph_default,
+                    help="Enable enhanced Plan->Code->Test->Reflect workflow with visualization"
+                )
+                if user_prefs.get("use_langgraph_workflow") != use_langgraph:
+                    user_prefs["use_langgraph_workflow"] = use_langgraph
+                    save_user_preference(user, "use_langgraph_workflow", use_langgraph)
+                
+                st.session_state["use_langgraph_workflow"] = use_langgraph
+                
+                if use_langgraph:
+                    st.info("💡 LangGraph V2 workflow enabled")
+            else:
+                st.session_state["use_langgraph_workflow"] = False
+        except ImportError:
+            st.session_state["use_langgraph_workflow"] = False
+
         # Reasoning display preference
         reasoning_display_options = ["Expandable", "Inline", "Hidden"]
         
