@@ -1,5 +1,14 @@
 import agent.tools as tools
 
+# Import Lang family integrations (with fallback)
+try:
+    from agent.adapters.langchain_tools import create_langchain_tools
+    from agent.adapters.langgraph_workflow import create_jarvis_workflow
+    from agent.adapters.document_loaders import load_jarvis_knowledge
+    LANG_FAMILY_AVAILABLE = True
+except ImportError:
+    LANG_FAMILY_AVAILABLE = False
+
 ACTION_TOOLS = {"file_update", "browser_automation", "automation_task", "git_command", "github_api", "ide_command"}
 
 class JarvisAgent:
@@ -21,6 +30,22 @@ class JarvisAgent:
         except Exception as e:
             print(f"Could not initialize plugin system: {e}")
             self.plugin_system_enabled = False
+        
+        # Initialize Lang family components
+        self.langchain_tools = []
+        self.langgraph_workflow = None
+        self.knowledge_documents = []
+        
+        if LANG_FAMILY_AVAILABLE:
+            try:
+                self.langchain_tools = create_langchain_tools()
+                self.langgraph_workflow = create_jarvis_workflow(self)
+                self.knowledge_documents = load_jarvis_knowledge()
+                print(f"Lang family initialized: {len(self.langchain_tools)} tools, {len(self.knowledge_documents)} knowledge docs")
+            except Exception as e:
+                print(f"Could not initialize Lang family: {e}")
+        else:
+            print("Lang family not available - using fallback implementation")
 
     def parse_natural_language(self, user_msg, available_files, chat_history=None):
         """Parse natural language into executable plans, supporting workflows."""
@@ -316,3 +341,30 @@ class JarvisAgent:
             )
             results.append({"step": step, "result": result})
         return results
+    
+    def execute_langgraph_workflow(self, user_input: str, available_files: list = None):
+        """Execute a workflow using LangGraph if available."""
+        if self.langgraph_workflow:
+            try:
+                return self.langgraph_workflow.execute_workflow(user_input, available_files or [])
+            except Exception as e:
+                print(f"LangGraph workflow error: {e}")
+                # Fallback to regular execution
+                plan = self.parse_natural_language(user_input, available_files or [])
+                results = self.execute_plan(plan)
+                return {
+                    "plan": plan,
+                    "results": results,
+                    "reflection": f"Executed using fallback (LangGraph error: {e})",
+                    "success": True
+                }
+        else:
+            # Use regular agent execution
+            plan = self.parse_natural_language(user_input, available_files or [])
+            results = self.execute_plan(plan)
+            return {
+                "plan": plan,
+                "results": results,
+                "reflection": "Executed using standard agent (LangGraph not available)",
+                "success": True
+            }
