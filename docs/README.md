@@ -20,6 +20,40 @@ Why use Jarvis AI?
 - Makes common developer tasks faster (search, refactor suggestions, PR prep)
 - Extensible adapters let you add proprietary integrations securely
 
+## 🚀 V2 LangGraph Architecture (NEW!)
+
+Jarvis AI V2 introduces a revolutionary **LangGraph-based architecture** that provides sophisticated agent reasoning with cyclical workflows:
+
+### **Core V2 Features**
+- **🧠 Stateful Reasoning**: Plan → Code → Test → Reflect workflow cycles
+- **🛠️ LangChain Tools**: Standardized tool system with automatic discovery
+- **🔄 Conditional Logic**: Smart error handling and graceful degradation
+- **📊 Workflow Visualization**: Real-time agent reasoning display
+- **⚡ FastAPI Backend**: Scalable API service for agent operations
+
+### **Enhanced Agent Nodes**
+- **Planner**: Sophisticated task analysis and step generation
+- **CodeWriter**: Context-aware code generation and modification
+- **Debugger**: Automated testing and validation
+- **ToolExecutor**: Robust tool execution with error recovery
+- **GitManager**: Advanced version control operations
+- **Critic**: Self-reflection and quality assessment
+
+### **Getting Started with V2**
+```bash
+# Quick setup
+python scripts/quick_start.py
+
+# Or manual setup
+pip install -r requirements_enhanced.txt
+python scripts/start_v2_backend.py --reload
+streamlit run app.py
+```
+
+**Enable V2**: Toggle "Enable LangGraph V2" in the Streamlit sidebar
+
+📚 **Migration Guide**: See [V2_MIGRATION_GUIDE.md](V2_MIGRATION_GUIDE.md) for detailed transition instructions
+
 ---
 
 ## 🚀 Enhanced Features

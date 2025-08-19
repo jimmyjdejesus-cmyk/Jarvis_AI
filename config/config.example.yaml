@@ -1,0 +1,115 @@
+# Jarvis AI V2 Configuration Example
+# Copy this file to config/config.yaml and customize as needed
+
+# Application Settings
+app_name: "Jarvis AI"
+version: "2.0.0"
+debug_mode: false
+data_directory: "data"
+logs_directory: "logs"
+plugins_directory: "plugins"
+
+# Security Configuration
+security:
+  encryption_enabled: true
+  key_rotation_days: 90
+  session_timeout_minutes: 480
+  max_login_attempts: 5
+  lockout_duration_minutes: 30
+  require_2fa: false
+  password_policy:
+    min_length: 8
+    require_uppercase: true
+    require_lowercase: true
+    require_numbers: true
+    require_special: true
+
+# Performance Settings
+performance:
+  cache_enabled: true
+  cache_size_mb: 512
+  cache_ttl_hours: 24
+  request_timeout_seconds: 30
+  max_concurrent_requests: 10
+  enable_compression: true
+  monitoring_enabled: true
+
+# RAG (Retrieval Augmented Generation) Settings
+rag:
+  enabled: true
+  chunk_size: 1000
+  chunk_overlap: 200
+  max_chunks: 10
+  similarity_threshold: 0.7
+  cache_enabled: true
+  fallback_enabled: true
+
+# External Integrations
+integrations:
+  openai_api_key: ""  # Set via environment variable JARVIS_INTEGRATIONS_OPENAI_API_KEY
+  github_token: ""    # Set via environment variable JARVIS_INTEGRATIONS_GITHUB_TOKEN
+  google_api_key: ""  # Set via environment variable JARVIS_INTEGRATIONS_GOOGLE_API_KEY
+  slack_token: ""     # Set via environment variable JARVIS_INTEGRATIONS_SLACK_TOKEN
+  jira_url: ""
+  jira_username: ""
+  jira_token: ""
+
+# V2 LangGraph Architecture Settings
+v2:
+  # Enable/disable V2 LangGraph features
+  enabled: true
+  
+  # Backend API configuration
+  backend_url: "http://localhost:8001"
+  
+  # LangGraph checkpoint storage (for conversation memory)
+  langgraph_checkpoint_path: "./checkpoints/jarvis_agent.db"
+  
+  # Maximum iterations for the agent workflow (prevents infinite loops)
+  max_iterations: 15
+  
+  # Default model for LLM operations
+  expert_model: "llama3.2"
+  
+  # Use LangChain tools (recommended)
+  use_langchain_tools: true
+  
+  # Fallback to V1 if V2 fails
+  fallback_to_v1: true
+  
+  # Enable workflow visualization
+  workflow_visualization: true
+  
+  # Enable LangGraphUI (requires additional setup)
+  langgraphui_enabled: false
+
+# Custom Settings (add your own configurations here)
+custom:
+  # Example custom settings
+  default_persona: "Senior Staff Engineer"
+  auto_save_interval: 300  # seconds
+  max_file_size_mb: 10
+  supported_languages: ["python", "javascript", "typescript", "java", "go", "rust"]
+  
+  # Ollama configuration
+  ollama:
+    endpoint: "http://localhost:11434"
+    default_model: "llama3.2"
+    timeout_seconds: 60
+    max_retries: 3
+  
+  # Streamlit UI settings
+  ui:
+    theme: "dark"
+    sidebar_expanded: true
+    show_performance_metrics: true
+    enable_file_upload: true
+    max_upload_size_mb: 100
+
+# Environment Variable Overrides
+# Any setting can be overridden using environment variables with the prefix JARVIS_
+# Examples:
+#   JARVIS_V2_ENABLED=false
+#   JARVIS_V2_EXPERT_MODEL=qwen2.5
+#   JARVIS_SECURITY_REQUIRE_2FA=true
+#   JARVIS_PERFORMANCE_CACHE_SIZE_MB=1024
