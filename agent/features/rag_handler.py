@@ -1,17 +1,79 @@
 """
-RAG (Retrieval Augmented Generation) Handler Module
-Handles retrieval and augmentation of context for LLM responses.
+Enhanced RAG (Retrieval Augmented Generation) Handler Module
+Handles retrieval and augmentation of context for LLM responses with improved error handling and performance.
 """
 import requests
 import os
-from typing import List, Dict, Any
+import time
+import hashlib
+from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime, timedelta
+from agent.core.error_handling import robust_operation, get_logger, get_error_handler
+from agent.core.config_manager import get_config
 
 
+class RAGCache:
+    """Simple caching system for RAG results to improve performance."""
+    
+    def __init__(self, max_size: int = 100, ttl_minutes: int = 30):
+        self.cache = {}
+        self.max_size = max_size
+        self.ttl = timedelta(minutes=ttl_minutes)
+        self.logger = get_logger()
+    
+    def _get_cache_key(self, prompt: str, files: List[str], mode: str) -> str:
+        """Generate cache key for the request."""
+        content = f"{prompt}:{','.join(sorted(files))}:{mode}"
+        return hashlib.md5(content.encode()).hexdigest()
+    
+    def get(self, prompt: str, files: List[str], mode: str) -> Optional[str]:
+        """Get cached result if available and not expired."""
+        key = self._get_cache_key(prompt, files, mode)
+        
+        if key in self.cache:
+            result, timestamp = self.cache[key]
+            if datetime.now() - timestamp < self.ttl:
+                self.logger.logger.debug(f"Cache hit for RAG query: {key[:8]}...")
+                return result
+            else:
+                # Remove expired entry
+                del self.cache[key]
+        
+        return None
+    
+    def set(self, prompt: str, files: List[str], mode: str, result: str):
+        """Cache the result."""
+        key = self._get_cache_key(prompt, files, mode)
+        
+        # Remove oldest entries if cache is full
+        if len(self.cache) >= self.max_size:
+            oldest_key = min(self.cache.keys(), key=lambda k: self.cache[k][1])
+            del self.cache[oldest_key]
+        
+        self.cache[key] = (result, datetime.now())
+        self.logger.logger.debug(f"Cached RAG result: {key[:8]}...")
+
+
+# Global cache instance
+_rag_cache = None
+
+
+def get_rag_cache() -> RAGCache:
+    """Get global RAG cache instance."""
+    global _rag_cache
+    if _rag_cache is None:
+        config = get_config()
+        cache_size = config.performance.cache_size_mb if hasattr(config.performance, 'cache_size_mb') else 100
+        _rag_cache = RAGCache(max_size=cache_size)
+    return _rag_cache
+
+
+@robust_operation(operation_name="rag_answer")
 def rag_answer(prompt: str, files: List[str], expert_model: str = None, 
                chat_history: List[Dict] = None, user: str = None, 
                endpoint: str = None, mode: str = "file") -> str:
     """
-    Generate an answer using RAG with provided files as context.
+    Enhanced RAG function with caching, error handling, and performance monitoring.
     
     Args:
         prompt: The user's question/prompt
@@ -20,10 +82,165 @@ def rag_answer(prompt: str, files: List[str], expert_model: str = None,
         chat_history: Previous chat history
         user: Username
         endpoint: RAG API endpoint
+        mode: "file", "search", or "auto"
         
     Returns:
         Generated response with context from files
     """
+    logger = get_logger()
+    config = get_config()
+    start_time = time.time()
+    
+    # Check cache first if enabled
+    if config.performance.enable_caching:
+        cached_result = get_rag_cache().get(prompt, files, mode)
+        if cached_result:
+            duration = time.time() - start_time
+            logger.log_performance("rag_answer_cached", duration, {"cache_hit": True})
+            return cached_result
+    
+    try:
+        context = []
+        context_header = ""
+        
+        if mode == "file":
+            context, context_header = _process_file_context(files, config)
+        elif mode == "search":
+            context, context_header = _process_search_context(prompt, config)
+        elif mode == "auto":
+            context, context_header = _process_auto_context(prompt, files, config)
+        else:
+            raise ValueError(f"Unsupported RAG mode: {mode}")
+        
+        # Generate contextual prompt
+        contextual_prompt = _build_contextual_prompt(prompt, context, context_header)
+        
+        # Make API call to LLM
+        result = _call_llm_api(contextual_prompt, expert_model, endpoint, user, config)
+        
+        # Cache result if enabled
+        if config.performance.enable_caching:
+            get_rag_cache().set(prompt, files, mode, result)
+        
+        # Log performance
+        duration = time.time() - start_time
+        logger.log_performance("rag_answer", duration, {
+            "mode": mode, 
+            "files_count": len(files), 
+            "context_length": len(str(context))
+        })
+        
+        return result
+        
+    except Exception as e:
+        error_handler = get_error_handler()
+        error_info = error_handler.handle_error(e, {
+            "prompt": prompt[:100],
+            "mode": mode,
+            "files_count": len(files),
+            "user": user
+        }, "rag_answer")
+        
+        # Return helpful error message
+        return f"I apologize, but I encountered an error while processing your request: {str(e)}. Please try again or contact support if the issue persists."
+
+
+def _process_file_context(files: List[str], config) -> Tuple[List[str], str]:
+    """Process file-based context."""
+    context = []
+    if not files:
+        return ["No files provided for context."], "No file context available:"
+    
+    for file_path in files:
+        try:
+            if os.path.exists(file_path):
+                content = extract_file_content(file_path, config.rag.max_file_size_mb * 1024 * 1024)
+                context.append(f"File: {os.path.basename(file_path)}\n{content}")
+            else:
+                context.append(f"File not found: {file_path}")
+        except Exception as e:
+            context.append(f"Error reading {file_path}: {str(e)}")
+    
+    return context, "Context from uploaded files:"
+
+
+def _process_search_context(prompt: str, config) -> Tuple[List[str], str]:
+    """Process search-based context."""
+    search_results = duckduckgo_search(prompt, config.rag.max_search_results)
+    return [search_results], "Context from DuckDuckGo search:"
+
+
+def _process_auto_context(prompt: str, files: List[str], config) -> Tuple[List[str], str]:
+    """Process automatic context selection."""
+    context = []
+    
+    # Try file context first
+    if files:
+        file_context, _ = _process_file_context(files, config)
+        context.extend(file_context)
+        context_header = "Context from uploaded files:"
+    else:
+        # Try search if no files
+        search_context, _ = _process_search_context(prompt, config)
+        if search_context and "No results found." not in search_context[0]:
+            context.extend(search_context)
+            context_header = "Context from DuckDuckGo search:"
+        else:
+            # Fallback to browser automation if enabled
+            if config.rag.enable_browser_automation:
+                try:
+                    from agent.browser_automation import trigger_browser_task
+                    browser_result = trigger_browser_task(prompt)
+                    context.append(f"Browser Automation Result: {browser_result}")
+                    context_header = "Context from browser automation:"
+                except ImportError:
+                    context.append("Browser automation not available")
+                    context_header = "Limited context available:"
+            
+            # Human-in-loop if enabled
+            if config.rag.enable_human_in_loop:
+                try:
+                    from agent.human_in_loop import request_human_reasoning
+                    human_reasoning = request_human_reasoning(
+                        prompt,
+                        reasoning_path="No relevant context found. Please provide reasoning or next steps."
+                    )
+                    context.append(f"Human Reasoning: {human_reasoning}")
+                except ImportError:
+                    pass
+    
+    return context, context_header
+
+
+def _build_contextual_prompt(prompt: str, context: List[str], context_header: str) -> str:
+    """Build the contextual prompt for the LLM."""
+    return f"""
+{context_header}
+{chr(10).join(context)}
+
+User Question: {prompt}
+
+Please answer the user's question using the provided context. If the context doesn't contain relevant information, mention this in your response and provide the best answer you can based on your knowledge.
+"""
+
+
+def _call_llm_api(contextual_prompt: str, expert_model: str, endpoint: str, user: str, config) -> str:
+    """Make API call to LLM with proper error handling."""
+    try:
+        from agent.tools import llm_api_call
+        return llm_api_call(
+            contextual_prompt, 
+            expert_model or config.integrations.default_model,
+            endpoint or config.integrations.ollama_endpoint,
+            user
+        )
+    except Exception as e:
+        raise Exception(f"LLM API call failed: {str(e)}")
+
+
+def rag_answer_old(prompt: str, files: List[str], expert_model: str = None, 
+               chat_history: List[Dict] = None, user: str = None, 
+               endpoint: str = None, mode: str = "file") -> str:
     context = []
     context_header = ""
     if mode == "file":
