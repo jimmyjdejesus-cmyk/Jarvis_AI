@@ -115,7 +115,10 @@ echo "✅ Testing package metadata..."
 if python -c "import jarvis_ai; print(jarvis_ai.__version__)" | grep -q "2.0.0"; then
     echo "   ✓ Package version correct"
 else
-    echo "   ❌ Package version incorrect"
+if python -c "import jarvis_ai; print(jarvis_ai.__version__)" | grep -q "$EXPECTED_VERSION"; then
+    echo "   ✓ Package version correct ($EXPECTED_VERSION)"
+else
+    echo "   ❌ Package version incorrect (expected $EXPECTED_VERSION)"
     exit 1
 fi
 
