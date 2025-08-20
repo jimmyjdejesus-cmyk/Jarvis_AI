@@ -22,7 +22,7 @@ echo Checking system requirements...
 
 REM Check if Python is installed
 python --version >nul 2>&1
-if %errorlevel% neq 0 (
+if !errorlevel! neq 0 (
     echo Python not found. Checking for python3...
     python3 --version >nul 2>&1
     if !errorlevel! neq 0 (
