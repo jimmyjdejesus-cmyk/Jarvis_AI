@@ -147,6 +147,14 @@ class AutomationPlugin(WorkflowPlugin):
             plugin_type=PluginType.AUTOMATION,
             triggers=[]
         )
+    
+    def get_output_schema(self) -> Dict[str, Any]:
+        """Default output schema for automation plugins."""
+        return {"output": "string", "success": "boolean", "error": "string"}
+    
+    def get_input_schema(self) -> Dict[str, Any]:
+        """Default input schema for automation plugins."""
+        return {"command": "string", "context": "object"}
 
 
 class IntegrationPlugin(WorkflowPlugin):
@@ -162,6 +170,14 @@ class IntegrationPlugin(WorkflowPlugin):
             plugin_type=PluginType.INTEGRATION,
             triggers=[]
         )
+    
+    def get_output_schema(self) -> Dict[str, Any]:
+        """Default output schema for integration plugins."""
+        return {"output": "string", "success": "boolean", "error": "string"}
+    
+    def get_input_schema(self) -> Dict[str, Any]:
+        """Default input schema for integration plugins."""
+        return {"command": "string", "context": "object"}
     
     @abstractmethod
     def check_authentication(self) -> bool:
@@ -182,6 +198,10 @@ class CommandPlugin(BasePlugin):
             plugin_type=PluginType.COMMAND,
             triggers=[]
         )
+    
+    def preview_action(self, action: PluginAction) -> str:
+        """Default preview for command plugins."""
+        return f"Execute command: {action.description}"
     
     def get_output_schema(self) -> Dict[str, Any]:
         """Simple commands typically return string output."""

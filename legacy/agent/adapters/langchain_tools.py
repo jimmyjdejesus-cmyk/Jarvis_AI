@@ -7,44 +7,89 @@ enabling seamless integration with the Lang family ecosystem while preserving
 existing functionality.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 import json
+import logging
+from functools import wraps
+
+logger = logging.getLogger(__name__)
 
 try:
     from langchain.tools import Tool
     from langchain.agents import AgentType
-    from langchain_core.tools import BaseTool
+    from langchain_core.tools import BaseTool, tool
     from pydantic import BaseModel, Field
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     # Fallback classes when LangChain is not available
     class Tool:
         def __init__(self, **kwargs):
-            pass
+            self.name = kwargs.get('name', 'unknown')
+            self.description = kwargs.get('description', '')
+            self.func = kwargs.get('func', lambda x: x)
     
     class BaseTool:
         def __init__(self, **kwargs):
-            pass
+            self.name = kwargs.get('name', 'unknown')
+            self.description = kwargs.get('description', '')
     
     class BaseModel:
         def __init__(self, **kwargs):
             pass
         
-    class Field:
-        def __init__(self, default=None, **kwargs):
-            self.default = default
-    
     def Field(default=None, **kwargs):
         return default
     
+    def tool(func: Callable = None, *, name: str = None, description: str = None):
+        """Fallback tool decorator when LangChain is not available."""
+        def decorator(f):
+            f._tool_name = name or f.__name__
+            f._tool_description = description or f.__doc__ or ""
+            return f
+        
+        if func is None:
+            return decorator
+        return decorator(func)
+    
     LANGCHAIN_AVAILABLE = False
 
-# Import existing Jarvis AI tools
-import agent.tools as jarvis_tools
-import agent.features.rag_handler as rag_handler
-import agent.features.code_review as code_review
-import agent.features.code_search as code_search
-import agent.features.repo_context as repo_context
+# Import existing Jarvis AI components
+try:
+    from agent.adapters.plugin_base import BasePlugin, PluginAction, PluginResult
+    from agent.adapters.plugin_registry import plugin_manager
+except ImportError:
+    logger.warning("Could not import plugin system components")
+
+
+class PluginToolWrapper(BaseTool):
+    """Wrapper for converting Jarvis AI plugins to LangChain Tools."""
+    
+    def __init__(self, plugin: "BasePlugin", **kwargs):
+        super().__init__(**kwargs)
+        self.plugin = plugin
+        self.name = plugin.metadata.name.lower().replace(" ", "_")
+        self.description = plugin.metadata.description
+    
+    def _run(self, command: str, **kwargs) -> str:
+        """Execute the plugin via the plugin system."""
+        try:
+            if not self.plugin.can_handle(command, kwargs):
+                return f"Plugin {self.plugin.metadata.name} cannot handle command: {command}"
+            
+            action = self.plugin.parse_command(command, kwargs)
+            if not action:
+                return f"Plugin {self.plugin.metadata.name} could not parse command: {command}"
+            
+            result = self.plugin.execute_action(action, kwargs)
+            
+            if result.success:
+                return str(result.output) if result.output else "Command executed successfully"
+            else:
+                return f"Error: {result.error}"
+                
+        except Exception as e:
+            logger.error(f"Error executing plugin {self.plugin.metadata.name}: {e}")
+            return f"Plugin execution failed: {str(e)}"
 
 
 class JarvisToolWrapper(BaseTool):
@@ -219,7 +264,59 @@ def create_langchain_tools() -> List[BaseTool]:
         CheckOllamaStatusTool()
     ]
     
+    # Add plugin-based tools
+    try:
+        from agent.adapters.plugin_registry import plugin_manager
+        plugin_manager.initialize()
+        
+        for plugin in plugin_manager.registry.list_plugins():
+            tools.append(PluginToolWrapper(plugin))
+            
+    except Exception as e:
+        logger.warning(f"Could not load plugin-based tools: {e}")
+    
     return tools
+
+
+def create_plugin_tools() -> List[BaseTool]:
+    """Create LangChain tools from registered plugins."""
+    tools = []
+    
+    if not LANGCHAIN_AVAILABLE:
+        return tools
+    
+    try:
+        from agent.adapters.plugin_registry import plugin_manager
+        plugin_manager.initialize()
+        
+        for plugin in plugin_manager.registry.list_plugins():
+            tools.append(PluginToolWrapper(plugin))
+            
+    except Exception as e:
+        logger.warning(f"Could not create plugin tools: {e}")
+    
+    return tools
+
+
+# Enhanced tool decorators for plugin development
+def jarvis_tool(name: str = None, description: str = None, 
+               plugin_type: str = "automation", triggers: List[str] = None):
+    """Enhanced tool decorator that integrates with both Jarvis plugin system and LangChain."""
+    
+    def decorator(func):
+        # Apply LangChain tool decorator if available
+        if LANGCHAIN_AVAILABLE:
+            func = tool(name=name or func.__name__, description=description or func.__doc__ or "")(func)
+        
+        # Add Jarvis plugin metadata
+        func._jarvis_tool_name = name or func.__name__
+        func._jarvis_tool_description = description or func.__doc__ or ""
+        func._jarvis_plugin_type = plugin_type
+        func._jarvis_triggers = triggers or []
+        
+        return func
+    
+    return decorator
 
 
 def get_tool_by_name(name: str) -> Optional[BaseTool]:
