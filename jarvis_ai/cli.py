@@ -107,7 +107,12 @@ def manage_config(args):
     """Manage configuration."""
     try:
         from legacy.agent.core.config_manager import get_config_manager
-        
+        # Dynamically import get_config_manager from legacy.agent.core.config_manager
+        config_manager_path = current_dir / "legacy" / "agent" / "core" / "config_manager.py"
+        spec = importlib.util.spec_from_file_location("config_manager", str(config_manager_path))
+        config_manager_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(config_manager_module)
+        get_config_manager = config_manager_module.get_config_manager
         config_manager = get_config_manager()
         
         if args.show:
