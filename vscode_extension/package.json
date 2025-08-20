@@ -1,0 +1,136 @@
+{
+  "name": "jarvis-ai-assistant",
+  "displayName": "Jarvis AI Coding Assistant",
+  "description": "AI-powered coding assistant with deep understanding capabilities",
+  "version": "1.0.0",
+  "publisher": "jarvis-ai",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Snippets"
+  ],
+  "keywords": [
+    "ai",
+    "assistant",
+    "coding",
+    "code review",
+    "debugging",
+    "refactoring"
+  ],
+  "activationEvents": [
+    "onCommand:jarvis.analyzeFile",
+    "onCommand:jarvis.reviewCode",
+    "onCommand:jarvis.generateTests",
+    "onCommand:jarvis.explainCode",
+    "onCommand:jarvis.debugError",
+    "onCommand:jarvis.analyzeWorkspace"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "jarvis.analyzeFile",
+        "title": "Analyze Current File",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.reviewCode",
+        "title": "Review Code",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.generateTests",
+        "title": "Generate Tests",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.explainCode",
+        "title": "Explain Selected Code",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.debugError",
+        "title": "Debug Error",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.analyzeWorkspace",
+        "title": "Analyze Workspace",
+        "category": "Jarvis AI"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorHasSelection",
+          "command": "jarvis.explainCode",
+          "group": "jarvis"
+        },
+        {
+          "command": "jarvis.reviewCode",
+          "group": "jarvis"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "resourceExtname =~ /\\.(py|js|ts|java|cpp|c|cs|go|rs)$/",
+          "command": "jarvis.analyzeFile",
+          "group": "jarvis"
+        },
+        {
+          "when": "resourceExtname =~ /\\.(py|js|ts|java|cpp|c|cs|go|rs)$/",
+          "command": "jarvis.generateTests",
+          "group": "jarvis"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "jarvis.explainCode",
+        "key": "ctrl+shift+e",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "jarvis.reviewCode",
+        "key": "ctrl+shift+r"
+      },
+      {
+        "command": "jarvis.analyzeFile",
+        "key": "ctrl+shift+a"
+      }
+    ],
+    "configuration": {
+      "title": "Jarvis AI Assistant",
+      "properties": {
+        "jarvis.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable"
+        },
+        "jarvis.scriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Jarvis AI integration script"
+        },
+        "jarvis.autoAnalyze": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically analyze files when opened"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "@types/node": "14.x",
+    "typescript": "^4.4.4"
+  }
+}
