@@ -1,0 +1,42 @@
+{
+  "entries": {
+    "892e5bb78dbd2a5b6d98d19dd197983a297f4b0f7eb3998d44c80699574c419c": {
+      "timestamp": "2025-08-19T22:57:20.854205",
+      "size": 132,
+      "prompt_preview": "What can you do in offline mode?",
+      "mode": "offline"
+    },
+    "a1786b5e91623a223759e2d248c8fda8a36ea656c40cc70912f90188cf6544b5": {
+      "timestamp": "2025-08-19T22:58:13.051556",
+      "size": 129,
+      "prompt_preview": "system health check",
+      "mode": "full"
+    },
+    "c62dd59f8a09720fcb8d8722a1b946ed5fd40805f48a028af1c9abac86a8a233": {
+      "timestamp": "2025-08-19T22:58:13.052094",
+      "size": 129,
+      "prompt_preview": "What is the system status?",
+      "mode": "full"
+    },
+    "5176620b1e3fcc4d7268822c9c4db6e14d1dfb3ec03c039edc74adebd95ebec0": {
+      "timestamp": "2025-08-19T23:00:48.263544",
+      "size": 129,
+      "prompt_preview": "What are the system capabilities?",
+      "mode": "offline"
+    },
+    "cbd485844725ef86200e210b330530c999e0c6b680f87d044e6939ec2491393d": {
+      "timestamp": "2025-08-19T23:00:48.263996",
+      "size": 129,
+      "prompt_preview": "How do I check system status?",
+      "mode": "offline"
+    },
+    "107c3fc56483ff85562e63e6910c4cd60d8f59b115f00fc1ebb7080166396729": {
+      "timestamp": "2025-08-19T23:00:48.264363",
+      "size": 119,
+      "prompt_preview": "What commands are available?",
+      "mode": "offline"
+    }
+  },
+  "last_cleanup": null,
+  "total_size": 6
+}
