@@ -48,6 +48,17 @@ rag:
 integrations:
   openai_api_key: ""  # Set via environment variable JARVIS_INTEGRATIONS_OPENAI_API_KEY
   github_token: ""    # Set via environment variable JARVIS_INTEGRATIONS_GITHUB_TOKEN
+  
+  # LangSmith Configuration (for workflow monitoring)
+  langsmith:
+    api_key: ""       # Set via environment variable LANGSMITH_API_KEY
+    tracing_enabled: true
+    project_name: "jarvis-workflows"
+    
+  # Ollama Configuration (local LLM)
+  ollama:
+    base_url: "http://localhost:11434"
+    default_model: "llama2"
   google_api_key: ""  # Set via environment variable JARVIS_INTEGRATIONS_GOOGLE_API_KEY
   slack_token: ""     # Set via environment variable JARVIS_INTEGRATIONS_SLACK_TOKEN
   jira_url: ""
