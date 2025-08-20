@@ -71,7 +71,7 @@ echo Downloading Jarvis AI...
 if exist ".git" (
     git pull origin main
 ) else (
-    git clone https://github.com/jimmyjdejesus-cmyk/Jarvis_AI.git .
+    git clone %REPO_URL% .
 )
 
 if %errorlevel% neq 0 (
