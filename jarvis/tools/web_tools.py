@@ -35,7 +35,12 @@ class WebReaderTool:
     def read(self, url: str) -> str:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        return response.text
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            return response.text
+        except requests.RequestException as e:
+            raise RuntimeError(f"Failed to read URL '{url}': {e}")
 
     def execute(self, url: str) -> str:
         return self.read(url)
