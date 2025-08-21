@@ -166,7 +166,7 @@ class MetaAgent(AIAgent):
             result = {"success": False, "error": f"Unknown meta-task: {task_type}"}
 
         if self.blue_team:
-            result["blue_team"] = self.blue_team.evaluate(result)
+            result["blue_team_evaluation"] = self.blue_team.evaluate(result)
 
         return result
     
