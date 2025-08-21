@@ -30,3 +30,8 @@ build/
 # Logs
 *.log
 logs/
+
+# Node artifacts
+node_modules/
+extensions/**/node_modules/
+extensions/**/out/

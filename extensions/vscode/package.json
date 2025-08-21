@@ -1,0 +1,53 @@
+{
+  "name": "jarvis-vscode",
+  "displayName": "Jarvis AI for VS Code",
+  "description": "Inline suggestions, repository context streaming, and autonomous debugging prompts via Jarvis",
+  "version": "0.1.0",
+  "publisher": "jarvis-ai",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:jarvis.streamContext",
+    "onCommand:jarvis.debugError"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "jarvis.streamContext",
+        "title": "Jarvis: Stream Repository Context"
+      },
+      {
+        "command": "jarvis.debugError",
+        "title": "Jarvis: Debug Error"
+      }
+    ],
+    "configuration": {
+      "title": "Jarvis",
+      "properties": {
+        "jarvis.serverUrl": {
+          "type": "string",
+          "default": "ws://localhost:8765",
+          "description": "URL of the Jarvis websocket server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npx vsce package"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.0.0",
+    "@types/ws": "^8.5.4",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.4"
+  }
+}
