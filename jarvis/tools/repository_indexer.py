@@ -111,7 +111,7 @@ class RepositoryIndexer:
             path = self.repo_path / self.files[idx]
             try:
                 text = path.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
+            except (FileNotFoundError, PermissionError, UnicodeDecodeError):
                 snippet = ""
             else:
                 snippet = text[:200].replace("\n", " ")
