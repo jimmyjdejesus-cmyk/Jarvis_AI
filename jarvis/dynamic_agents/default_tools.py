@@ -11,6 +11,8 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 def _call_llm(prompt: str) -> str:
     """Send a prompt to the local Ollama server and return the response."""
 
+    if prompt is None or str(prompt).strip() == "":
+        return "(LLM error: prompt is empty or None)"
     payload = {"model": OLLAMA_MODEL, "prompt": prompt, "stream": False}
     try:
         response = requests.post(
