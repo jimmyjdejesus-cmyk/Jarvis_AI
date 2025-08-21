@@ -40,6 +40,7 @@ dependencies = [
     "duckduckgo-search>=4.0.0",
     "pillow>=10.0.0",
     "structlog>=23.1.0",
+    "graphviz>=0.20.1",
     "chromadb>=0.5.0",
     
     # Lang Family Tools for V2 Architecture

@@ -32,6 +32,21 @@ jarvis config --validate
 jarvis config --show
 ```
 
+## 📈 Graphviz
+
+Some features use the [`graphviz`](https://pypi.org/project/graphviz/) package to render diagrams.
+Install the Graphviz system binaries to enable visualization:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install graphviz
+
+# macOS
+brew install graphviz
+```
+
+If Graphviz is not installed, these features will be skipped or fall back to text-based output.
+
 ## 🗂️ Logging
 
 Jarvis uses [structlog](https://www.structlog.org/) for structured logging.
