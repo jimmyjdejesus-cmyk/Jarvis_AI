@@ -30,3 +30,6 @@ build/
 # Logs
 *.log
 logs/
+
+# Repository search indices
+data/repo_index/

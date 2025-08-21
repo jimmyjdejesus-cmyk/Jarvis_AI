@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from abc import ABC, abstractmethod
 import logging
+from pathlib import Path
+
+from jarvis.tools.repository_indexer import RepositoryIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +126,11 @@ class MetaAgent(AIAgent):
         ])
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
+        try:
+            self.repo_indexer = RepositoryIndexer(Path.cwd())
+        except Exception as exc:  # pragma: no cover - optional dependency
+            logger.warning("Repository indexer unavailable: %s", exc)
+            self.repo_indexer = None
     
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Execute meta-level coordination tasks"""
@@ -136,6 +144,10 @@ class MetaAgent(AIAgent):
             return await self._evolve_system_capabilities()
         elif task_type == "create_agent":
             return await self._create_new_agent(task)
+        elif task_type == "search_repository":
+            query = task.get("query", "")
+            k = task.get("k", 5)
+            return {"success": True, "results": self.search_repository(query, k)}
         else:
             return {"success": False, "error": f"Unknown meta-task: {task_type}"}
     
@@ -264,15 +276,25 @@ class MetaAgent(AIAgent):
             capabilities = [AgentCapability(cap) for cap in required_capabilities if cap in [c.value for c in AgentCapability]]
             new_agent = SpecialistAIAgent(agent_id, capabilities)
             self.managed_agents[agent_id] = new_agent
-            
+
             return {
                 "success": True,
                 "agent_id": agent_id,
                 "capabilities": [cap.value for cap in capabilities]
             }
-        
+
         return {"success": False, "error": "No valid capabilities specified"}
-    
+
+    def search_repository(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Expose repository search to agents."""
+        if not self.repo_indexer:
+            return []
+        try:
+            return self.repo_indexer.search(query, k)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("Repository search failed: %s", exc)
+            return []
+
     def _adjust_evolution_plan(self, plan: SystemEvolutionPlan, feedback: Dict[str, Any]):
         """Adjust evolution plan based on feedback"""
         success_rate = feedback.get("success_rate", 0.5)
