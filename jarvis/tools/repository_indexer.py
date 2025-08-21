@@ -16,7 +16,16 @@ class RepositoryIndexer:
 
     def __init__(self, repo_path: Path | str = Path.cwd(), index_dir: Path | str = Path("data/repo_index"), dim: int = 300):
         self.repo_path = Path(repo_path)
-        self.index_dir = Path(index_dir)
+    def __init__(self, repo_path: Path | str = Path.cwd(), index_dir: Optional[Path | str] = None, dim: int = 300):
+        self.repo_path = Path(repo_path)
+        # Determine index_dir: environment variable > argument > default relative to repo_path
+        env_index_dir = os.environ.get("REPO_INDEX_DIR")
+        if index_dir is not None:
+            self.index_dir = Path(index_dir)
+        elif env_index_dir:
+            self.index_dir = Path(env_index_dir)
+        else:
+            self.index_dir = self.repo_path / "data" / "repo_index"
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.dim = dim
         self.version = self._get_repo_version()
