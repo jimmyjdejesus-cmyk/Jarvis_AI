@@ -8,10 +8,18 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
 
+from .base_specialist import BaseSpecialist
+
 logger = logging.getLogger(__name__)
 
-class SpecialistAgent:
-    """Base class for specialist agents with expertise in specific domains"""
+class SpecialistAgent(BaseSpecialist):
+    """Concrete implementation of :class:`BaseSpecialist`.
+
+    The class provides common functionality used by all specialist agents
+    such as context handling and prompt generation.  It previously acted as
+    the base class directly; now it implements the :class:`BaseSpecialist`
+    interface to provide a consistent contract for the orchestrator.
+    """
     
     def __init__(self, specialization: str, preferred_models: List[str], mcp_client):
         """

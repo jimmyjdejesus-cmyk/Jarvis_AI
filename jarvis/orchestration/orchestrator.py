@@ -4,6 +4,8 @@ Coordinates multiple specialist agents for complex tasks
 This module also provides lifecycle management for nested orchestrators,
 allowing complex missions to be decomposed into sub-missions with their own
 scoped tools and agents."""
+from __future__ import annotations
+
 import asyncio
 """Orchestration Template
 ==========================
@@ -31,8 +33,6 @@ systems (such as the ``MetaAgent``) can delegate to when constructing
 mission‑specific workflows.
 """
 
-from __future__ import annotations
-
 import logging
 import warnings
 from dataclasses import dataclass
@@ -52,6 +52,140 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
 from langgraph.graph import END, StateGraph
 
 logger = logging.getLogger(__name__)
+
+
+class RequestClassifier:
+    """Classify user requests and suggest coordination strategy."""
+
+    def __init__(self) -> None:
+        self.complexity_indicators = {
+            "high": [
+                "architecture",
+                "design",
+                "system",
+                "migrate",
+                "refactor",
+                "enterprise",
+                "scale",
+                "production",
+                "deploy",
+                "infrastructure",
+                "security audit",
+                "comprehensive",
+                "full review",
+            ],
+            "medium": [
+                "review",
+                "improve",
+                "optimize",
+                "analyze",
+                "test",
+                "security",
+                "performance",
+                "best practices",
+                "refactor",
+                "debug",
+            ],
+            "low": [
+                "fix",
+                "simple",
+                "quick",
+                "basic",
+                "help",
+                "explain",
+                "what is",
+            ],
+        }
+
+        self.specialist_triggers = {
+            "code_review": [
+                "review",
+                "code",
+                "check",
+                "improve",
+                "quality",
+                "bugs",
+                "optimize",
+                "refactor",
+                "clean",
+            ],
+            "security": [
+                "security",
+                "secure",
+                "vulnerability",
+                "auth",
+                "permission",
+                "encrypt",
+                "protect",
+                "compliance",
+                "audit",
+                "threat",
+            ],
+            "architecture": [
+                "architecture",
+                "design",
+                "system",
+                "structure",
+                "pattern",
+                "scalability",
+                "integration",
+                "microservice",
+            ],
+            "testing": [
+                "test",
+                "testing",
+                "quality",
+                "qa",
+                "coverage",
+                "unit",
+                "integration",
+                "e2e",
+            ],
+            "devops": [
+                "deploy",
+                "deployment",
+                "infrastructure",
+                "ci/cd",
+                "pipeline",
+                "container",
+                "kubernetes",
+                "docker",
+            ],
+        }
+
+    def classify(self, request: str, code: str | None = None) -> Dict[str, Any]:
+        request_lower = request.lower()
+
+        complexity = "low"
+        for level, indicators in self.complexity_indicators.items():
+            if any(indicator in request_lower for indicator in indicators):
+                complexity = level
+                break
+
+        specialists_needed: List[str] = []
+        for name, triggers in self.specialist_triggers.items():
+            if any(trigger in request_lower for trigger in triggers):
+                specialists_needed.append(name)
+
+        coordination_type = self._determine_coordination_strategy(
+            complexity, specialists_needed
+        )
+
+        return {
+            "complexity": complexity,
+            "specialists_needed": specialists_needed,
+            "coordination_type": coordination_type,
+        }
+
+    def _determine_coordination_strategy(
+        self, complexity: str, specialists: List[str]
+    ) -> str:
+        if len(specialists) <= 1:
+            return "single"
+        if complexity == "high" or len(specialists) > 3:
+            return "sequential"
+        return "parallel"
+
 
 class MultiAgentOrchestrator:
     """Coordinates multiple specialist agents for complex analysis"""
@@ -79,6 +213,9 @@ class MultiAgentOrchestrator:
             "testing": TestingAgent(mcp_client),
             "devops": DevOpsAgent(mcp_client),
         }
+
+        # Request classifier used to determine coordination strategy
+        self.request_classifier = RequestClassifier()
 
         self.task_history = []
         self.active_collaborations = {}
@@ -152,94 +289,8 @@ class MultiAgentOrchestrator:
         return list(self.child_orchestrators.keys())
     
     async def analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
-        """
-        Analyze request to determine complexity and required specialists
-        
-        Args:
-            request: User request description
-            code: Optional code to analyze
-            
-        Returns:
-            Analysis of complexity and required specialists
-        """
-        request_lower = request.lower()
-        
-        # Complexity indicators
-        complexity_indicators = {
-            "high": [
-                "architecture", "design", "system", "migrate", "refactor", 
-                "enterprise", "scale", "production", "deploy", "infrastructure",
-                "security audit", "comprehensive", "full review"
-            ],
-            "medium": [
-                "review", "improve", "optimize", "analyze", "test", "security",
-                "performance", "best practices", "refactor", "debug"
-            ],
-            "low": [
-                "fix", "simple", "quick", "basic", "help", "explain", "what is"
-            ]
-        }
-        
-        # Determine complexity
-        complexity = "low"
-        for level, indicators in complexity_indicators.items():
-            if any(indicator in request_lower for indicator in indicators):
-                complexity = level
-                break
-        
-        # Identify needed specialists
-        specialist_triggers = {
-            "code_review": [
-                "review", "code", "check", "improve", "quality", "best practices",
-                "bugs", "optimize", "refactor", "clean"
-            ],
-            "security": [
-                "security", "secure", "vulnerability", "auth", "permission",
-                "encrypt", "protect", "compliance", "audit", "threat"
-            ],
-            "architecture": [
-                "architecture", "design", "system", "pattern", "structure",
-                "scalable", "microservices", "api", "database", "integration"
-            ],
-            "testing": [
-                "test", "testing", "coverage", "quality", "qa", "validation",
-                "unit test", "integration", "e2e", "automated"
-            ],
-            "devops": [
-                "deploy", "deployment", "ci/cd", "pipeline", "infrastructure",
-                "docker", "kubernetes", "cloud", "monitoring", "automation"
-            ]
-        }
-        
-        needed_specialists = []
-        specialist_scores = {}
-        
-        for specialist, triggers in specialist_triggers.items():
-            score = sum(1 for trigger in triggers if trigger in request_lower)
-            specialist_scores[specialist] = score
-            
-            if score > 0:
-                needed_specialists.append(specialist)
-        
-        # Always include code_review if code is provided
-        if code and "code_review" not in needed_specialists:
-            needed_specialists.append("code_review")
-            specialist_scores["code_review"] = 1
-        
-        # Sort specialists by relevance score
-        needed_specialists.sort(key=lambda x: specialist_scores.get(x, 0), reverse=True)
-        
-        # Determine coordination strategy
-        coordination_type = self._determine_coordination_type(needed_specialists, complexity)
-        
-        return {
-            "complexity": complexity,
-            "specialists_needed": needed_specialists,
-            "specialist_scores": specialist_scores,
-            "estimated_time": self._estimate_processing_time(complexity, len(needed_specialists)),
-            "coordination_type": coordination_type,
-            "collaboration_depth": self._determine_collaboration_depth(needed_specialists)
-        }
+        """Analyze a request using the :class:`RequestClassifier`."""
+        return self.request_classifier.classify(request, code)
     
     def _determine_coordination_type(self, specialists: List[str], complexity: str) -> str:
         """Determine how specialists should be coordinated"""
@@ -725,18 +776,9 @@ class DynamicOrchestrator:
         return result
 
 
-# For backward compatibility some parts of the codebase still import
-# ``MultiAgentOrchestrator``.  Exporting the new class under this name keeps the
-# surface area stable while the internals have been simplified.
-class MultiAgentOrchestrator(DynamicOrchestrator):
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "MultiAgentOrchestrator is deprecated and will be removed in a future release. "
-            "Please use DynamicOrchestrator instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)
+# The specialist based ``MultiAgentOrchestrator`` defined earlier remains the
+# primary export.  ``DynamicOrchestrator`` is provided for building simple
+# workflow graphs but no longer replaces the specialist orchestrator.
 
 __all__ = ["AgentSpec", "DynamicOrchestrator", "MultiAgentOrchestrator", "END"]
 
