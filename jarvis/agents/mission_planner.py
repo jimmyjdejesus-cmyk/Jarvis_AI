@@ -55,7 +55,7 @@ class MissionPlanner:
         logger.debug("Planned tasks: %s", tasks)
         return tasks
 
-    def to_graph(self, tasks: List[str]) -> Dict[str, Dict[str, str]]:
+    def to_graph(self, tasks: List[str]) -> Dict[str, Union[Dict[str, Dict[str, str]], List[Tuple[str, str]]]]:
         """Create a simple sequential LangGraph definition from tasks."""
         nodes = {
             f"task_{i+1}": {"description": task}
