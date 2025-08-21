@@ -1,6 +1,5 @@
 # Jarvis AI
 [![CI](https://github.com/jimmyjdejesus-cmyk/Jarvis_AI/actions/workflows/ci.yml/badge.svg)](https://github.com/jimmyjdejesus-cmyk/Jarvis_AI/actions/workflows/ci.yml)
-
 A privacy-first modular AI development assistant with comprehensive deployment and distribution capabilities.
 
 > **Deprecated:** The legacy Streamlit application in `legacy/` has reached feature parity with V2 and is no longer maintained.
