@@ -14,8 +14,8 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
-from agent.core.agent import JarvisAgentV2
-from config.config import DEFAULT_CONFIG
+from v2.agent.core.agent import JarvisAgentV2
+from v2.config.config import DEFAULT_CONFIG
 
 
 app = FastAPI(title="Jarvis V2 API")
