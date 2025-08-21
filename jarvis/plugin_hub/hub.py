@@ -125,7 +125,18 @@ def _dependency_installed(package: str) -> bool:
 
     return importlib.util.find_spec(package) is not None
 
-
+    """
+    Check if a package is installed via pip (i.e., present in the list of installed distributions).
+    """
+    try:
+        # importlib.metadata returns a PackageNotFoundError if not installed via pip
+        importlib.metadata.version(package)
+        return True
+    except importlib.metadata.PackageNotFoundError:
+        return False
+    except Exception:
+        # Fallback: not installed
+        return False
 def _pip_install(package: str):
     try:
         subprocess.run(["pip", "install"] + package.split(), check=True)
