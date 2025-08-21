@@ -171,7 +171,7 @@ def manage_config(args):
 def run_indexer(args):
     """Rebuild repository index."""
     try:
-        from jarvis.tools.repository_indexer import RepositoryIndexer
+        from tools.repository_indexer import RepositoryIndexer
         indexer = RepositoryIndexer()
         indexer.build_index(force_rebuild=args.force)
         print("✅ Repository index built")
