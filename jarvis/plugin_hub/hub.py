@@ -74,7 +74,7 @@ async def uninstall_plugin(name: str = Form(...), user=Depends(require_role("adm
 async def update_plugin(name: str = Form(...), user=Depends(require_role("admin"))):
     if name not in _installed_plugins:
         raise HTTPException(status_code=404, detail="Plugin not installed")
-    _pip_install(f"--upgrade {name}")
+    _pip_install(f"{name} --upgrade")
     return {"status": "updated"}
 
 
