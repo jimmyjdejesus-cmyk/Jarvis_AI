@@ -72,7 +72,9 @@ class BlueTeamCritic:
             #   - Apply NLP techniques to analyze message content for risk indicators.
             #   - Integrate with system logging or monitoring for richer context.
             message = str(payload)
-            if "error" in message.lower():
+            # Check for presence of an "error" key in the payload.
+            error_value = payload.get("error")
+            if error_value:
                 risk_score = 0.7
                 ethical_flags.append("Unhandled error present")
 
