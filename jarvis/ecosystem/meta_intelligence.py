@@ -126,7 +126,7 @@ class MetaAgent(AIAgent):
         ])
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
-        self.mission_planner = MissionPlanner()
+        self.mission_planner = mission_planner if mission_planner is not None else MissionPlanner()
         self.session_manager = SessionManager()
 
     def plan_mission(self, goal: str, session_id: Optional[str] = None) -> Dict[str, Any]:
