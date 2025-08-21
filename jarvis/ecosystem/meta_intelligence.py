@@ -19,6 +19,10 @@ from jarvis.tools.repository_indexer import RepositoryIndexer
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.memory import MemoryManager, ProjectMemory
 
+from jarvis.agents.critics import BlueTeamCritic
+from jarvis.agents.mission_planner import MissionPlanner
+from jarvis.persistence.session import SessionManager
+
 logger = logging.getLogger(__name__)
 
 from ..orchestration import MultiAgentOrchestrator, SubOrchestrator
@@ -194,9 +198,15 @@ class AIAgent(ABC):
 class MetaAgent(AIAgent):
     """Meta-agent that manages other AI agents.
 
-    The meta-agent can spawn scoped sub-orchestrators when a mission step
-    requires specialized teams. This enables nested orchestration where each
-    sub-mission operates with its own set of tools and agents.
+    Parameters
+    ----------
+    agent_id: str
+        Identifier for this meta agent.
+    enable_blue_team: bool, optional
+        Whether to enable Blue Team critiques of final outputs. Defaults to
+        ``True``.
+    blue_team_sensitivity: float, optional
+        Threshold for the Blue Team critic escalation. Defaults to ``0.5``.
     """
 
     def __init__(
@@ -204,24 +214,16 @@ class MetaAgent(AIAgent):
         agent_id: str,
         mcp_client=None,
         orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
+        memory_manager: Optional[MemoryManager] = None,
+        mission_planner: Optional['MissionPlanner'] = None,
+        enable_blue_team: bool = True,
+        blue_team_sensitivity: float = 0.5,
     ):
-        super().__init__(
-            agent_id,
-            [
-                AgentCapability.REASONING,
-                AgentCapability.PLANNING,
-                AgentCapability.MONITORING,
-                AgentCapability.LEARNING,
-            ],
-        )
-    """Meta-agent that manages other AI agents"""
-
-    def __init__(self, agent_id: str, memory_manager: Optional[MemoryManager] = None, mission_planner: Optional['MissionPlanner'] = None):
         super().__init__(agent_id, [
             AgentCapability.REASONING,
             AgentCapability.PLANNING,
             AgentCapability.MONITORING,
-            AgentCapability.LEARNING
+            AgentCapability.LEARNING,
         ])
         self.memory: MemoryManager = memory_manager or ProjectMemory()
         self.managed_agents: Dict[str, AIAgent] = {}
@@ -229,34 +231,20 @@ class MetaAgent(AIAgent):
         self.mcp_client = mcp_client
         self.orchestrator_cls = orchestrator_cls
         self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
-
-    # ------------------------------------------------------------------
-    # Sub-orchestrator management
-    # ------------------------------------------------------------------
-
-    def create_sub_orchestrator(
-        self, name: str, spec: Dict[str, Any]
-    ) -> MultiAgentOrchestrator:
-        """Create and register a sub-orchestrator for a mission step."""
-        orchestrator = self.orchestrator_cls(self.mcp_client, **spec)
-        self.sub_orchestrators[name] = orchestrator
-        return orchestrator
-
-    def remove_sub_orchestrator(self, name: str) -> bool:
-        """Remove a sub-orchestrator if it exists."""
-        return self.sub_orchestrators.pop(name, None) is not None
-        # Each mission can register its own orchestrator built from agent specs
-        # allowing the meta agent to delegate execution dynamically.
         self.mission_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
         try:
             self.repo_indexer = RepositoryIndexer(Path.cwd())
         except Exception as exc:  # pragma: no cover - optional dependency
             logger.warning("Repository indexer unavailable: %s", exc)
             self.repo_indexer = None
-
-        # Mission planner and session manager logic
         self.mission_planner = mission_planner if mission_planner is not None else MissionPlanner()
         self.session_manager = SessionManager()
+        self.enable_blue_team = enable_blue_team
+        self.blue_team = (
+            BlueTeamCritic(sensitivity=blue_team_sensitivity)
+            if enable_blue_team
+            else None
+        )
 
     def plan_mission(self, goal: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """Create a LangGraph definition from a high-level goal."""
@@ -264,34 +252,36 @@ class MetaAgent(AIAgent):
             cached = self.session_manager.load_mission_plan(session_id)
             if cached and cached.get("goal") == goal:
                 return cached["graph"]
-
         tasks = self.mission_planner.plan(goal)
         graph = self.mission_planner.to_graph(tasks)
         if session_id:
             plan = {"goal": goal, "tasks": tasks, "graph": graph}
             self.session_manager.save_mission_plan(session_id, plan)
         return graph
-    
+
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute meta-level coordination tasks"""
+        """Execute meta-level coordination tasks with optional risk critique."""
         task_type = task.get("type", "unknown")
         if task_type == "analyze_system":
-            return await self._analyze_system_performance()
+            result = await self._analyze_system_performance()
         elif task_type == "optimize_agents":
-            return await self._optimize_agent_performance()
+            result = await self._optimize_agent_performance()
         elif task_type == "evolve_system":
-            return await self._evolve_system_capabilities()
+            result = await self._evolve_system_capabilities()
         elif task_type == "create_agent":
-            return await self._create_new_agent(task)
+            result = await self._create_new_agent(task)
         elif task_type == "mission_step":
-            return await self._handle_mission_step(task)
+            result = await self._handle_mission_step(task)
         elif task_type == "search_repository":
             query = task.get("query", "")
             k = task.get("k", 5)
-            return {"success": True, "results": self.search_repository(query, k)}
+            result = {"success": True, "results": self.search_repository(query, k)}
         else:
-            return {"success": False, "error": f"Unknown meta-task: {task_type}"}
-
+            result = {"success": False, "error": f"Unknown meta-task: {task_type}"}
+        if self.blue_team:
+            result["blue_team_evaluation"] = self.blue_team.evaluate(result)
+        return result
+    
     async def learn_from_feedback(self, feedback: Dict[str, Any]) -> bool:
         """Learn from system-wide feedback"""
         # Meta-learning: analyze patterns across all agents
@@ -518,9 +508,18 @@ class SpecialistAIAgent(AIAgent):
 
 class MetaIntelligenceCore:
     """Core meta-intelligence system that manages the AI ecosystem"""
-    
-    def __init__(self):
-        self.meta_agent = MetaAgent("meta_core")
+
+    def __init__(
+        self,
+        *,
+        enable_blue_team: bool = True,
+        blue_team_sensitivity: float = 0.5,
+    ):
+        self.meta_agent = MetaAgent(
+            "meta_core",
+            enable_blue_team=enable_blue_team,
+            blue_team_sensitivity=blue_team_sensitivity,
+        )
         self.system_metrics: Dict[str, Any] = {}
         self.evolution_history: List[Dict[str, Any]] = []
         self.system_health = SystemHealth.OPTIMAL
