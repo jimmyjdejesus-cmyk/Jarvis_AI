@@ -53,7 +53,7 @@ class BlueTeamCritic:
         ethical_flags: List[str] = []
         external_impacts: List[str] = []
 
-        if not payload.get("success", True):
+        if not payload.get("success", False):
             risk_score = 1.0
             external_impacts.append("Potential system instability detected")
         else:
