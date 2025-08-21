@@ -15,6 +15,9 @@ from enum import Enum
 from abc import ABC, abstractmethod
 import logging
 
+from jarvis.agents.mission_planner import MissionPlanner
+from jarvis.persistence.session import SessionManager
+
 logger = logging.getLogger(__name__)
 
 class AgentCapability(Enum):
@@ -123,7 +126,23 @@ class MetaAgent(AIAgent):
         ])
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
-    
+        self.mission_planner = MissionPlanner()
+        self.session_manager = SessionManager()
+
+    def plan_mission(self, goal: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """Create a LangGraph definition from a high-level goal."""
+        if session_id:
+            cached = self.session_manager.load_mission_plan(session_id)
+            if cached and cached.get("goal") == goal:
+                return cached["graph"]
+
+        tasks = self.mission_planner.plan(goal)
+        graph = self.mission_planner.to_graph(tasks)
+        if session_id:
+            plan = {"goal": goal, "tasks": tasks, "graph": graph}
+            self.session_manager.save_mission_plan(session_id, plan)
+        return graph
+
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Execute meta-level coordination tasks"""
         task_type = task.get("type", "unknown")

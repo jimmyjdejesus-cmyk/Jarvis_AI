@@ -60,3 +60,20 @@ class SessionManager:
             return []
         lines = log.read_text(encoding="utf-8").splitlines()
         return [json.loads(x) for x in lines if x.strip()]
+
+    def save_mission_plan(self, session_id: str, plan: Dict[str, Any]) -> None:
+        """Persist a mission plan for later rehydration."""
+        sess = self.base / session_id
+        sess.mkdir(parents=True, exist_ok=True)
+        path = sess / "mission.json"
+        path.write_text(json.dumps(plan, indent=2))
+
+    def load_mission_plan(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Load a previously saved mission plan if it exists."""
+        path = self.base / session_id / "mission.json"
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text())
+        except Exception:
+            return None
