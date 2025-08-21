@@ -161,7 +161,7 @@ async def _ws_handler(websocket: websockets.WebSocketServerProtocol):
         try:
             data = json.loads(message)
         except json.JSONDecodeError:
-            await websocket.send(json.dumps({"success": False, "error": "invalid json"}))
+            await websocket.send(json.dumps({"success": False, "error": "Invalid JSON format in request"}))
             continue
 
         command = data.get("command")
