@@ -126,7 +126,6 @@ class MetaAgent(AIAgent):
         ])
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
-        try:
         # Determine repository root path
         if repo_path is None:
             # Default: two levels up from this file (assuming jarvis/ecosystem/meta_intelligence.py)
