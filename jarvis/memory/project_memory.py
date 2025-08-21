@@ -65,7 +65,7 @@ class ProjectMemory(MemoryManager):
     def _key(self, project: str, session: str) -> str:
         return f"{project}_{session}"
 
-    def _get_collection(self, project: str, session: str):
+    def _get_collection(self, project: str, session: str) -> Any:
         key = self._key(project, session)
         if key not in self._collections:
             self._collections[key] = self._client.get_or_create_collection(
