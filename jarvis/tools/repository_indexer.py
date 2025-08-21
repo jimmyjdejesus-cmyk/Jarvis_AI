@@ -1,7 +1,8 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+import zlib
 
 import numpy as np
 
@@ -23,9 +24,10 @@ class RepositoryIndexer:
         self.index_file = self.index_dir / f"index_{self.version}.faiss"
         self.embeddings_file = self.index_dir / f"index_{self.version}.npy"
         self.meta_file = self.index_dir / f"index_{self.version}.json"
-        self.index: Optional[faiss.Index] = None if faiss else None
+        self.index: Optional[Any] = None
         self.embeddings: Optional[np.ndarray] = None
         self.files: List[str] = []
+        self.snippets: List[str] = []
         self._load_index()
 
     def _get_repo_version(self) -> str:
@@ -36,10 +38,11 @@ class RepositoryIndexer:
             return "unknown"
 
     def _load_index(self) -> None:
-        """Load existing index if available."""
+        """Load existing index and cached snippets if available."""
         if self.meta_file.exists():
             meta = json.loads(self.meta_file.read_text())
             self.files = meta.get("files", [])
+            self.snippets = meta.get("snippets", [])
 
         if faiss and self.index_file.exists():
             self.index = faiss.read_index(str(self.index_file))
@@ -50,10 +53,10 @@ class RepositoryIndexer:
                 self.embeddings = None
 
     def _embed(self, text: str) -> np.ndarray:
-        """Create a simple hashed embedding for text."""
+        """Create a simple deterministic hashed embedding for text."""
         vec = np.zeros(self.dim, dtype="float32")
         for token in text.split():
-            idx = hash(token) % self.dim
+            idx = zlib.crc32(token.encode()) % self.dim
             vec[idx] += 1.0
         norm = np.linalg.norm(vec)
         if norm > 0:
@@ -66,7 +69,7 @@ class RepositoryIndexer:
         return [p for p in self.repo_path.rglob("*") if p.is_file() and p.suffix in exts]
 
     def build_index(self, force_rebuild: bool = False) -> None:
-        """Build or rebuild the repository index."""
+        """Build or rebuild the repository index and cache file snippets."""
         if (self.index is not None or self.embeddings is not None) and not force_rebuild:
             return
 
@@ -76,6 +79,7 @@ class RepositoryIndexer:
 
         embeddings = []
         self.files = []
+        self.snippets = []
         for p in files:
             try:
                 text = p.read_text(encoding="utf-8", errors="ignore")
@@ -83,6 +87,8 @@ class RepositoryIndexer:
                 continue
             embeddings.append(self._embed(text))
             self.files.append(str(p.relative_to(self.repo_path)))
+            snippet = text[:200].replace("\n", " ")
+            self.snippets.append(snippet)
 
         vectors = np.vstack(embeddings)
         if faiss:
@@ -93,10 +99,14 @@ class RepositoryIndexer:
             self.embeddings = vectors
             np.save(self.embeddings_file, vectors)
 
-        self.meta_file.write_text(json.dumps({"files": self.files, "version": self.version}, indent=2))
+        self.meta_file.write_text(json.dumps({
+            "files": self.files,
+            "snippets": self.snippets,
+            "version": self.version
+        }, indent=2))
 
     def search(self, query: str, k: int = 5) -> List[Dict[str, str]]:
-        """Search the repository for relevant files."""
+        """Search the repository for relevant files using cached snippets."""
         if self.index is None and self.embeddings is None:
             self.build_index()
         if faiss and self.index is not None:
@@ -112,25 +122,11 @@ class RepositoryIndexer:
             return []
 
         results = []
-            top_scores = scores[indices]
-        else:
-            return []
-
-        results = []
-        # Use top_scores for NumPy fallback, scores for FAISS
-        if faiss and self.index is not None:
-            score_iter = scores
-        else:
-            score_iter = top_scores
+        top_scores = scores[indices] if not (faiss and self.index is not None) else scores
+        score_iter = scores if (faiss and self.index is not None) else top_scores
         for idx, score in zip(indices, score_iter):
             if idx < 0 or idx >= len(self.files):
                 continue
-            path = self.repo_path / self.files[int(idx)]
-            try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                snippet = ""
-            else:
-                snippet = text[:200].replace("\n", " ")
+            snippet = self.snippets[int(idx)] if hasattr(self, "snippets") and int(idx) < len(self.snippets) else ""
             results.append({"path": self.files[int(idx)], "score": float(score), "snippet": snippet})
         return results
