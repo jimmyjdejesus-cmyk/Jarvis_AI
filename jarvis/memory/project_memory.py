@@ -44,7 +44,15 @@ class HashEmbeddingFunction(embedding_functions.EmbeddingFunction):
             h = hashlib.sha256(text.encode("utf-8")).digest()
             # Split into DIM chunks and convert each to a float
             return [
-                float(int.from_bytes(h[i*4:(i+1)*4], "big") % 1024)
+    HASH_EMBEDDING_MODULO = 1024  # Modulo for hash-to-float conversion
+
+    def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
+        import hashlib
+        DIM = 8  # Number of dimensions for the embedding
+        def hash_to_vec(text: str) -> List[float]:
+            # Use sha256 to get a deterministic 32-byte hash
+            return [
+                float(int.from_bytes(h[i*4:(i+1)*4], "big") % self.HASH_EMBEDDING_MODULO)
     DIM = 8  # Number of dimensions for the embedding
 
     def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
