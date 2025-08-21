@@ -3,6 +3,9 @@
 
 A privacy-first modular AI development assistant with comprehensive deployment and distribution capabilities.
 
+> **Deprecated:** The legacy Streamlit application in `legacy/` has reached feature parity with V2 and is no longer maintained.
+> See `docs/migration_checklist.md` for mapping of legacy components.
+
 ## 🚀 Quick Start
 
 ### Install from PyPI
