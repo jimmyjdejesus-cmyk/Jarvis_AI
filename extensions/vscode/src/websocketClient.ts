@@ -40,7 +40,32 @@ export class JarvisClient {
     return promise;
   }
 
+      this.socket?.once('close', () => reject(new Error('WebSocket closed before connection established')));
+    });
+  }
+
+  sendRequest(payload: any): Promise<any> {
+    const id = Date.now().toString() + Math.random().toString();
+    payload.id = id;
+    const TIMEOUT_MS = 10000;
+    const promise = new Promise<any>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error('Request timed out'));
+      }, TIMEOUT_MS);
+      this.pending.set(id, {resolve, reject, timeout});
+    });
+    this.socket?.send(JSON.stringify(payload));
+    return promise;
+  }
+
   dispose() {
+    // Reject all pending promises on dispose
+    for (const [id, pendingObj] of this.pending.entries()) {
+      clearTimeout(pendingObj.timeout);
+      pendingObj.reject(new Error('Client disposed'));
+    }
+    this.pending.clear();
     this.socket?.close();
   }
 }
