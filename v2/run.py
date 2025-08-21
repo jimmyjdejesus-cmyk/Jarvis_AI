@@ -9,8 +9,8 @@ import sys
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent.core.agent import JarvisAgentV2
-from config.config import DEFAULT_CONFIG
+from v2.agent.core.agent import JarvisAgentV2
+from v2.config.config import DEFAULT_CONFIG
 
 def main():
     """Initialize and run the Jarvis AI V2 system."""
