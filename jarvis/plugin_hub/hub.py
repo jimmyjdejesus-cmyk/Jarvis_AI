@@ -85,7 +85,12 @@ async def check_updates(user=Depends(require_role("admin"))):
 
 
 @app.post("/api/plugins/submit")
-async def submit(name: str = Form(...), description: str = Form(""), author: str = Form("")):
+async def submit(
+    name: str = Form(...),
+    description: str = Form(""),
+    author: str = Form(""),
+    user=Depends(get_current_user),
+):
     submission_id = submit_plugin({"name": name, "description": description, "author": author})
     return {"submission_id": submission_id}
 
