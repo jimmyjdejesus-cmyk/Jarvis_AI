@@ -15,6 +15,8 @@ from enum import Enum
 from abc import ABC, abstractmethod
 import logging
 
+from jarvis.agents.critics import BlueTeamCritic
+
 logger = logging.getLogger(__name__)
 
 class AgentCapability(Enum):
@@ -112,32 +114,61 @@ class AIAgent(ABC):
         self.metrics.last_updated = datetime.now()
 
 class MetaAgent(AIAgent):
-    """Meta-agent that manages other AI agents"""
-    
-    def __init__(self, agent_id: str):
+    """Meta-agent that manages other AI agents.
+
+    Parameters
+    ----------
+    agent_id: str
+        Identifier for this meta agent.
+    enable_blue_team: bool, optional
+        Whether to enable Blue Team critiques of final outputs. Defaults to
+        ``True``.
+    blue_team_sensitivity: float, optional
+        Threshold for the Blue Team critic escalation. Defaults to ``0.5``.
+    """
+
+    def __init__(
+        self,
+        agent_id: str,
+        *,
+        enable_blue_team: bool = True,
+        blue_team_sensitivity: float = 0.5,
+    ):
         super().__init__(agent_id, [
             AgentCapability.REASONING,
             AgentCapability.PLANNING,
             AgentCapability.MONITORING,
-            AgentCapability.LEARNING
+            AgentCapability.LEARNING,
         ])
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
-    
+
+        self.enable_blue_team = enable_blue_team
+        self.blue_team = (
+            BlueTeamCritic(sensitivity=blue_team_sensitivity)
+            if enable_blue_team
+            else None
+        )
+
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute meta-level coordination tasks"""
+        """Execute meta-level coordination tasks with optional risk critique."""
         task_type = task.get("type", "unknown")
-        
+
         if task_type == "analyze_system":
-            return await self._analyze_system_performance()
+            result = await self._analyze_system_performance()
         elif task_type == "optimize_agents":
-            return await self._optimize_agent_performance()
+            result = await self._optimize_agent_performance()
         elif task_type == "evolve_system":
-            return await self._evolve_system_capabilities()
+            result = await self._evolve_system_capabilities()
         elif task_type == "create_agent":
-            return await self._create_new_agent(task)
+            result = await self._create_new_agent(task)
         else:
-            return {"success": False, "error": f"Unknown meta-task: {task_type}"}
+            result = {"success": False, "error": f"Unknown meta-task: {task_type}"}
+
+        if self.blue_team:
+            result["blue_team"] = self.blue_team.evaluate(result)
+
+        return result
     
     async def learn_from_feedback(self, feedback: Dict[str, Any]) -> bool:
         """Learn from system-wide feedback"""
@@ -342,9 +373,18 @@ class SpecialistAIAgent(AIAgent):
 
 class MetaIntelligenceCore:
     """Core meta-intelligence system that manages the AI ecosystem"""
-    
-    def __init__(self):
-        self.meta_agent = MetaAgent("meta_core")
+
+    def __init__(
+        self,
+        *,
+        enable_blue_team: bool = True,
+        blue_team_sensitivity: float = 0.5,
+    ):
+        self.meta_agent = MetaAgent(
+            "meta_core",
+            enable_blue_team=enable_blue_team,
+            blue_team_sensitivity=blue_team_sensitivity,
+        )
         self.system_metrics: Dict[str, Any] = {}
         self.evolution_history: List[Dict[str, Any]] = []
         self.system_health = SystemHealth.OPTIMAL
