@@ -8,9 +8,13 @@ to an external HTTP endpoint.
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
+import queue
+import threading
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 import structlog
@@ -19,6 +23,7 @@ import structlog
 def configure(
     log_file: str = "logs/jarvis.log",
     remote_url: Optional[str] = None,
+    remote_auth_token: Optional[str] = None,
 ) -> None:
     """Configure global logging behaviour.
 
@@ -30,6 +35,8 @@ def configure(
     remote_url:
         Optional HTTP endpoint that will receive log events as JSON payloads.
         Errors while sending remote logs are silently ignored.
+    remote_auth_token:
+        Optional authentication token for the remote logging endpoint.
     """
 
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
@@ -39,10 +46,7 @@ def configure(
         level=logging.INFO,
         format="%(message)s",
         handlers=handlers,
-<<<<<<< HEAD
-=======
         force=True,
->>>>>>> codex/add-github-actions-ci-workflow-v9sfjg
     )
 
     processors = [
@@ -53,44 +57,24 @@ def configure(
     ]
 
     if remote_url:
-
-        def _remote(_, __, event_dict):
-            try:
-<<<<<<< HEAD
-        # Validate remote_url: must be HTTPS and optionally match a whitelist
-        from urllib.parse import urlparse
+        # Validate remote_url: must be HTTPS
         parsed_url = urlparse(remote_url)
-        allowed_schemes = {"https"}
-        if parsed_url.scheme not in allowed_schemes or not parsed_url.netloc:
+        if parsed_url.scheme != "https" or not parsed_url.netloc:
             raise ValueError("remote_url must be a valid HTTPS URL")
 
-        def _remote(_, __, event_dict):
-            try:
-                headers = {}
-                if remote_auth_token is not None:
-                    headers["Authorization"] = f"Bearer {remote_auth_token}"
-                requests.post(remote_url, json=event_dict, headers=headers, timeout=0.5)
-=======
-                requests.post(remote_url, json=event_dict, timeout=0.5)
->>>>>>> codex/add-github-actions-ci-workflow-v9sfjg
-            except Exception:
-                pass
-            return event_dict
-
-        processors.append(_remote)
-<<<<<<< HEAD
-
-=======
         # Set up a background queue and worker thread for async remote logging
-        remote_log_queue = queue.Queue()
+        remote_log_queue: queue.Queue = queue.Queue()
 
         def _remote_worker():
             while True:
                 item = remote_log_queue.get()
-                if item is None:
-                    break  # Sentinel for shutdown
+                if item is None:  # Sentinel for shutdown
+                    break
                 try:
-                    requests.post(remote_url, json=item, timeout=0.5)
+                    headers = {}
+                    if remote_auth_token:
+                        headers["Authorization"] = f"Bearer {remote_auth_token}"
+                    requests.post(remote_url, json=item, headers=headers, timeout=0.5)
                 except Exception:
                     pass
                 finally:
@@ -107,7 +91,7 @@ def configure(
             return event_dict
 
         processors.append(_remote)
->>>>>>> codex/add-github-actions-ci-workflow-v9sfjg
+
     processors.append(structlog.processors.JSONRenderer())
 
     structlog.configure(
@@ -117,11 +101,6 @@ def configure(
     )
 
 
-def get_logger(name: str = __name__):
-    """Return a configured structlog logger."""
-<<<<<<< HEAD
-
-=======
 def get_logger(name: str = None):
     """Return a configured structlog logger."""
     if name is None:
@@ -129,5 +108,4 @@ def get_logger(name: str = None):
         frame = inspect.currentframe()
         caller_frame = frame.f_back if frame else None
         name = caller_frame.f_globals["__name__"] if caller_frame and "__name__" in caller_frame.f_globals else __name__
->>>>>>> codex/add-github-actions-ci-workflow-v9sfjg
     return structlog.get_logger(name)

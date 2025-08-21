@@ -29,7 +29,7 @@ def test_configure_creates_json_log(tmp_path):
 
 def test_remote_sink_is_optional(tmp_path):
     log_file = tmp_path / "jarvis.log"
-    configure(log_file=str(log_file), remote_url="http://localhost:1")
+    configure(log_file=str(log_file), remote_url="https://localhost:1")
     logger = get_logger("test")
     logger.info("remote test")
     assert log_file.exists()
