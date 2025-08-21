@@ -127,7 +127,12 @@ class MetaAgent(AIAgent):
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
         try:
-            self.repo_indexer = RepositoryIndexer(Path.cwd())
+        # Determine repository root path
+        if repo_path is None:
+            # Default: two levels up from this file (assuming jarvis/ecosystem/meta_intelligence.py)
+            repo_path = Path(__file__).parent.parent
+        try:
+            self.repo_indexer = RepositoryIndexer(repo_path)
         except Exception as exc:  # pragma: no cover - optional dependency
             logger.warning("Repository indexer unavailable: %s", exc)
             self.repo_indexer = None
