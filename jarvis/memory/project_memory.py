@@ -27,7 +27,10 @@ class MemoryManager:
         raise NotImplementedError
 
 
-class HashEmbeddingFunction(embedding_functions.EmbeddingFunction if embedding_functions else object):
+if embedding_functions is None:
+    raise ImportError("chromadb.utils.embedding_functions is required for HashEmbeddingFunction")
+
+class HashEmbeddingFunction(embedding_functions.EmbeddingFunction):
     """Simple deterministic embedding function.
 
     This avoids heavy model downloads by hashing text into a single float value.
@@ -41,8 +44,26 @@ class HashEmbeddingFunction(embedding_functions.EmbeddingFunction if embedding_f
             h = hashlib.sha256(text.encode("utf-8")).digest()
             # Split into DIM chunks and convert each to a float
             return [
+    HASH_EMBEDDING_MODULO = 1024  # Modulo for hash-to-float conversion
+
+    def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
+        import hashlib
+        DIM = 8  # Number of dimensions for the embedding
+        def hash_to_vec(text: str) -> List[float]:
+            # Use sha256 to get a deterministic 32-byte hash
+            return [
+                float(int.from_bytes(h[i*4:(i+1)*4], "big") % self.HASH_EMBEDDING_MODULO)
+    DIM = 8  # Number of dimensions for the embedding
+
+    def __call__(self, texts: List[str]) -> List[List[float]]:  # type: ignore[override]
+        import hashlib
+        def hash_to_vec(text: str) -> List[float]:
+            # Use sha256 to get a deterministic 32-byte hash
+            h = hashlib.sha256(text.encode("utf-8")).digest()
+            # Split into DIM chunks and convert each to a float
+            return [
                 float(int.from_bytes(h[i*4:(i+1)*4], "big") % 1024)
-                for i in range(DIM)
+                for i in range(self.DIM)
             ]
         return [hash_to_vec(t) for t in texts]
 
@@ -65,7 +86,7 @@ class ProjectMemory(MemoryManager):
     def _key(self, project: str, session: str) -> str:
         return f"{project}_{session}"
 
-    def _get_collection(self, project: str, session: str):
+    def _get_collection(self, project: str, session: str) -> Any:
         key = self._key(project, session)
         if key not in self._collections:
             self._collections[key] = self._client.get_or_create_collection(
