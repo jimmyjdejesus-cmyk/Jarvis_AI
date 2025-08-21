@@ -10,8 +10,8 @@ except Exception:  # pragma: no cover
 
     def get_coding_agent(*args, **kwargs):  # type: ignore
         raise ImportError("CodingAgent not available")
-from .coding_agent import CodingAgent, get_coding_agent
 from .mission_planner import MissionPlanner
+from .base_specialist import BaseSpecialist
 
 # New specialist agents
 try:
@@ -30,6 +30,7 @@ try:
         'CodingAgent',
         'get_coding_agent',
         'MissionPlanner',
+        'BaseSpecialist',
         'SpecialistAgent',
         'CodeReviewAgent',
         'SecurityAgent',
