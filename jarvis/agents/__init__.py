@@ -10,11 +10,12 @@ try:
     from .specialist import SpecialistAgent
     from .specialists import (
         CodeReviewAgent,
-        SecurityAgent, 
+        SecurityAgent,
         ArchitectureAgent,
         TestingAgent,
         DevOpsAgent
     )
+    from .critics import RedTeamCritic
     
     # Add specialist agents to exports
     __all__ = [
@@ -25,7 +26,8 @@ try:
         'SecurityAgent',
         'ArchitectureAgent', 
         'TestingAgent',
-        'DevOpsAgent'
+        'DevOpsAgent',
+        'RedTeamCritic'
     ]
     
 except ImportError:
