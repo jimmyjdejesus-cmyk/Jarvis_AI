@@ -141,7 +141,23 @@ class MetaAgent(AIAgent):
 
         from ..orchestration import AgentSpec, MultiAgentOrchestrator
 
-        specs = [AgentSpec(**spec) if not isinstance(spec, AgentSpec) else spec for spec in agent_specs]
+            List of agent specifications, each either an AgentSpec instance or a dict of keyword arguments for AgentSpec.
+        Raises
+        ------
+        TypeError
+            If any element in agent_specs is not an AgentSpec or dict.
+        """
+
+        from ..orchestration import AgentSpec, MultiAgentOrchestrator
+
+        specs = []
+        for spec in agent_specs:
+            if isinstance(spec, AgentSpec):
+                specs.append(spec)
+            elif isinstance(spec, dict):
+                specs.append(AgentSpec(**spec))
+            else:
+                raise TypeError(f"Each agent_spec must be an AgentSpec or dict, got {type(spec).__name__}: {spec!r}")
         orchestrator = MultiAgentOrchestrator(specs)
         self.mission_orchestrators[mission_id] = orchestrator
         return orchestrator.workflow
