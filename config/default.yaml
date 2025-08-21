@@ -1,0 +1,4 @@
+# Default configuration toggles for Jarvis AI
+# Set ENABLE_RED_TEAM to true to enable the red team critic that reviews
+# specialist outputs for logical errors and conflicting assumptions.
+ENABLE_RED_TEAM: false

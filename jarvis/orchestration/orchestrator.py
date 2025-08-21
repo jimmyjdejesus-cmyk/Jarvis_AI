@@ -1,35 +1,41 @@
 """
 Multi-Agent Orchestrator
-Coordinates multiple specialist agents for complex tasks
+Coordinates multiple specialist agents for complex tasks with an optional
+red-team critic that verifies each specialist's output for logical errors
+and conflicting assumptions.
 """
 import asyncio
 import logging
+import os
+from pathlib import Path
 from typing import Dict, List, Any, Optional, Set
 from datetime import datetime
 import json
+import yaml
 
 from ..agents.specialists import (
-    CodeReviewAgent, 
-    SecurityAgent, 
-    ArchitectureAgent, 
-    TestingAgent, 
+    CodeReviewAgent,
+    SecurityAgent,
+    ArchitectureAgent,
+    TestingAgent,
     DevOpsAgent
 )
+from ..agents.critics import RedTeamCritic
 
 logger = logging.getLogger(__name__)
 
 class MultiAgentOrchestrator:
-    """Coordinates multiple specialist agents for complex analysis"""
+    """Coordinates multiple specialist agents and optional red-team critique."""
     
     def __init__(self, mcp_client):
         """
         Initialize multi-agent orchestrator
-        
+
         Args:
             mcp_client: MCP client for agent communication
         """
         self.mcp_client = mcp_client
-        
+
         # Initialize specialist agents
         self.specialists = {
             "code_review": CodeReviewAgent(mcp_client),
@@ -38,7 +44,23 @@ class MultiAgentOrchestrator:
             "testing": TestingAgent(mcp_client),
             "devops": DevOpsAgent(mcp_client)
         }
-        
+
+        # Optional red team critic
+        self.critic = None
+        config_path = Path(__file__).resolve().parents[2] / "config" / "default.yaml"
+        enable_red_team = False
+        if config_path.exists():
+            try:
+                config_data = yaml.safe_load(config_path.read_text()) or {}
+                enable_red_team = bool(config_data.get("ENABLE_RED_TEAM", False))
+            except Exception as e:
+                logger.warning(f"Failed to load red team config: {e}")
+        if os.getenv("ENABLE_RED_TEAM") is not None:
+            env_val = os.getenv("ENABLE_RED_TEAM", "false").lower()
+            enable_red_team = env_val in ("1", "true", "yes", "on")
+        if enable_red_team:
+            self.critic = RedTeamCritic(mcp_client)
+
         self.task_history = []
         self.active_collaborations = {}
         
@@ -216,10 +238,12 @@ class MultiAgentOrchestrator:
         
         # Create task with full context
         task = self._create_specialist_task(request, code, user_context)
-        
         try:
             result = await specialist.process_task(task, context=None, user_context=user_context)
-            
+            if self.critic:
+                critique = await self.critic.review(specialist_type, result.get("response", ""))
+                result["critic"] = critique
+
             return {
                 "type": "single_specialist",
                 "complexity": analysis["complexity"],
@@ -227,7 +251,7 @@ class MultiAgentOrchestrator:
                 "results": {specialist_type: result},
                 "synthesized_response": result["response"],
                 "confidence": result["confidence"],
-                "coordination_summary": f"Analysis completed by {specialist_type} specialist"
+                "coordination_summary": f"Analysis completed by {specialist_type} specialist",
             }
             
         except Exception as e:
@@ -263,6 +287,9 @@ class MultiAgentOrchestrator:
                 else:
                     specialist_results[specialist_type] = result
                     successful_results.append(result)
+                    if self.critic:
+                        critique = await self.critic.review(specialist_type, result.get("response", ""))
+                        result["critic"] = critique
             
             # Synthesize results
             synthesized_response = await self._synthesize_parallel_results(request, successful_results)
@@ -298,6 +325,9 @@ class MultiAgentOrchestrator:
                 
                 # Process with accumulated context
                 result = await specialist.process_task(task, context=shared_context, user_context=user_context)
+                if self.critic:
+                    critique = await self.critic.review(specialist_type, result.get("response", ""))
+                    result["critic"] = critique
                 specialist_results[specialist_type] = result
                 
                 # Add result to shared context for next specialists

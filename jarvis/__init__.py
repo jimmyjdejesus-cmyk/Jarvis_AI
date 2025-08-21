@@ -47,6 +47,55 @@ except ImportError:
 try:
     from jarvis.workflows.workflow_agent import WorkflowJarvisAgent, create_workflow_jarvis
 except ImportError:
+"""
+Jarvis AI - Enhanced Core Package
+Modern architecture with MCP, multi-agent, and advanced workflow capabilities
+"""
+
+__version__ = "4.0.0"
+__author__ = "Jimmy De Jesus"
+
+# Configuration
+DEFAULT_MCP_ENABLED = True
+DEFAULT_MULTI_AGENT_ENABLED = True
+DEFAULT_WORKFLOWS_ENABLED = True  # Phase 4: Advanced Workflows!
+
+# Import with error handling - only working components
+try:
+    from jarvis.core.simple_agent import JarvisAgent as SimpleJarvisAgent
+except ImportError:
+    SimpleJarvisAgent = None
+
+try:
+    from jarvis.core.enhanced_agent import EnhancedJarvisAgent
+except ImportError:
+    EnhancedJarvisAgent = None
+
+try:
+    from jarvis.core.mcp_agent import MCPJarvisAgent
+except ImportError:
+    MCPJarvisAgent = None
+
+try:
+    from jarvis.database.db_manager import DatabaseManager, get_database_manager
+except ImportError:
+    DatabaseManager = None
+    get_database_manager = None
+
+try:
+    from jarvis.auth.security_manager import SecurityManager, get_security_manager
+except ImportError:
+    SecurityManager = None
+    get_security_manager = None
+
+try:
+    from jarvis.agents.coding_agent import CodingAgent
+except ImportError:
+    CodingAgent = None
+
+try:
+    from jarvis.workflows.workflow_agent import WorkflowJarvisAgent, create_workflow_jarvis
+except ImportError:
     WorkflowJarvisAgent = None
     create_workflow_jarvis = None
 
