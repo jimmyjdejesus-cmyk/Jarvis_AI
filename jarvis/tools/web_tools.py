@@ -1,12 +1,16 @@
 import requests
 from typing import List, Dict
 
+from jarvis.security.decorators import rate_limit, timeout
+
 
 class WebSearchTool:
     """Simple web search tool using DuckDuckGo API."""
 
     api_url = "https://api.duckduckgo.com/"
 
+    @rate_limit(calls=5, period=60)
+    @timeout(10)
     def search(self, query: str, max_results: int = 5) -> List[Dict[str, str]]:
         params = {"q": query, "format": "json", "no_redirect": 1, "no_html": 1}
         response = requests.get(self.api_url, params=params, timeout=10)
@@ -32,6 +36,8 @@ class WebSearchTool:
 class WebReaderTool:
     """Fetch raw text content from a web page."""
 
+    @rate_limit(calls=5, period=60)
+    @timeout(10)
     def read(self, url: str) -> str:
         response = requests.get(url, timeout=10)
         response.raise_for_status()

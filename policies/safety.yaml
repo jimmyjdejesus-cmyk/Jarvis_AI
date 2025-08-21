@@ -1,0 +1,3 @@
+blocked_phrases:
+  - "DROP TABLE"
+  - "ignore all previous instructions"

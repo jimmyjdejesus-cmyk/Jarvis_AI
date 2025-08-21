@@ -10,7 +10,7 @@ legacy_path = Path(__file__).parent.parent / "legacy"
 sys.path.insert(0, str(legacy_path))
 
 try:
-    from scripts.ollama_client import get_available_models, pull_model_subprocess
+    from legacy.scripts.ollama_client import get_available_models, pull_model_subprocess
 except ImportError:
     # Fallback implementations
     import requests
