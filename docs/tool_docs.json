@@ -1,0 +1,191 @@
+{
+  "create_issue": {
+    "description": "Create a GitHub issue using a Personal Access Token",
+    "capabilities": [
+      "github"
+    ],
+    "args_schema": {
+      "properties": {
+        "repo": {
+          "title": "Repo",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Token"
+        }
+      },
+      "required": [
+        "repo",
+        "title",
+        "body",
+        "token"
+      ],
+      "title": "create_issue_Args",
+      "type": "object"
+    }
+  },
+  "open_file": {
+    "description": "Read a file from the repository with safety checks",
+    "capabilities": [
+      "file-system"
+    ],
+    "args_schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "repo_root": {
+          "title": "Repo Root",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "allowlist",
+        "repo_root"
+      ],
+      "title": "open_file_Args",
+      "type": "object"
+    }
+  },
+  "save_file": {
+    "description": "Write a file within the repository respecting safety checks",
+    "capabilities": [
+      "file-system"
+    ],
+    "args_schema": {
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "repo_root": {
+          "title": "Repo Root",
+          "type": "string"
+        },
+        "dry_run": {
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "content",
+        "allowlist",
+        "repo_root",
+        "dry_run"
+      ],
+      "title": "save_file_Args",
+      "type": "object"
+    }
+  },
+  "add_note": {
+    "description": "Append a note to a file with safety checks",
+    "capabilities": [
+      "notes"
+    ],
+    "args_schema": {
+      "properties": {
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "notes_file": {
+          "title": "Notes File",
+          "type": "string"
+        },
+        "allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "repo_root": {
+          "title": "Repo Root",
+          "type": "string"
+        },
+        "dry_run": {
+          "title": "Dry Run",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "note",
+        "notes_file",
+        "allowlist",
+        "repo_root",
+        "dry_run"
+      ],
+      "title": "add_note_Args",
+      "type": "object"
+    }
+  },
+  "list_notes": {
+    "description": "List notes from a file with safety checks",
+    "capabilities": [
+      "notes"
+    ],
+    "args_schema": {
+      "properties": {
+        "notes_file": {
+          "title": "Notes File",
+          "type": "string"
+        },
+        "allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowlist",
+          "type": "array"
+        },
+        "repo_root": {
+          "title": "Repo Root",
+          "type": "string"
+        }
+      },
+      "required": [
+        "notes_file",
+        "allowlist",
+        "repo_root"
+      ],
+      "title": "list_notes_Args",
+      "type": "object"
+    }
+  }
+}
