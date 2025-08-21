@@ -9,7 +9,7 @@ import asyncio
 import json
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Callable, Type
+from typing import Dict, Any, List, Optional, Callable, Type, Awaitable
 from dataclasses import dataclass, field
 from enum import Enum
 from abc import ABC, abstractmethod
@@ -20,6 +20,80 @@ from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.memory import MemoryManager, ProjectMemory
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CriticFeedback:
+    """Feedback item produced by a critic agent."""
+
+    critic_id: str
+    message: str
+    severity: str = "medium"  # low, medium, high, critical
+    confidence: float = 1.0
+
+
+@dataclass
+class WeightedFeedback:
+    """Feedback item with calculated weight."""
+
+    feedback: CriticFeedback
+    weight: float
+
+
+class CriticInsightMerger:
+    """Merge critic feedback using weighting and argument synthesis."""
+
+    severity_weights = {"low": 0.5, "medium": 1.0, "high": 1.5, "critical": 2.0}
+
+    def weight_feedback(self, feedbacks: List[CriticFeedback]) -> List[WeightedFeedback]:
+        weighted: List[WeightedFeedback] = []
+        for fb in feedbacks:
+            sev_weight = self.severity_weights.get(fb.severity, 1.0)
+            weight = fb.confidence * sev_weight
+            weighted.append(WeightedFeedback(fb, weight))
+        return sorted(weighted, key=lambda x: x.weight, reverse=True)
+
+    def synthesize_arguments(self, weighted_feedback: List[WeightedFeedback]) -> Dict[str, Any]:
+        """Combine critic feedback into a single argument."""
+
+        combined_argument = " ".join(wf.feedback.message for wf in weighted_feedback)
+        max_severity = "low"
+        for wf in weighted_feedback:
+            if self.severity_weights.get(wf.feedback.severity, 0) > self.severity_weights.get(max_severity, 0):
+                max_severity = wf.feedback.severity
+        return {"combined_argument": combined_argument, "max_severity": max_severity}
+
+
+class PerformanceTracker:
+    """Track success rates and iteration counts for analytics."""
+
+    def __init__(self):
+        self.metrics: Dict[str, float] = {
+            "analysis_runs": 0,
+            "analysis_success": 0,
+            "evolution_runs": 0,
+            "evolution_success": 0,
+            "retry_attempts": 0,
+        }
+
+    def record_event(self, event: str, success: bool, iterations: int = 1):
+        runs_key = f"{event}_runs"
+        success_key = f"{event}_success"
+        iter_key = f"{event}_iterations"
+
+        self.metrics[runs_key] = self.metrics.get(runs_key, 0) + 1
+        if success:
+            self.metrics[success_key] = self.metrics.get(success_key, 0) + 1
+        self.metrics[iter_key] = self.metrics.get(iter_key, 0) + iterations
+
+        success_rate = self.metrics.get(success_key, 0) / self.metrics.get(runs_key, 1)
+        logger.info(
+            "%s success_rate=%.2f iterations=%s",
+            event,
+            success_rate,
+            self.metrics.get(iter_key, 0),
+        )
+
 
 class AgentCapability(Enum):
     """Types of AI agent capabilities"""
@@ -368,6 +442,8 @@ class MetaIntelligenceCore:
         self.system_metrics: Dict[str, Any] = {}
         self.evolution_history: List[Dict[str, Any]] = []
         self.system_health = SystemHealth.OPTIMAL
+        self.critic_merger = CriticInsightMerger()
+        self.performance_tracker = PerformanceTracker()
         
         # Initialize with basic agents
         self._initialize_base_agents()
@@ -389,6 +465,10 @@ class MetaIntelligenceCore:
         """Analyze the current state of the AI ecosystem"""
         analysis_task = {"type": "analyze_system"}
         analysis_result = await self.meta_agent.execute_task(analysis_task)
+        self.performance_tracker.record_event(
+            "analysis",
+            success=analysis_result.get("success", False),
+        )
         
         # Update system health based on analysis
         if analysis_result.get("success", False):
@@ -414,6 +494,10 @@ class MetaIntelligenceCore:
         """Trigger system evolution and improvement"""
         evolution_task = {"type": "evolve_system"}
         evolution_result = await self.meta_agent.execute_task(evolution_task)
+        self.performance_tracker.record_event(
+            "evolution",
+            success=evolution_result.get("success", False),
+        )
         
         if evolution_result.get("success", False):
             self.evolution_history.append({
@@ -456,19 +540,82 @@ class MetaIntelligenceCore:
             "total_agents": len(self.meta_agent.managed_agents),
             "agents": agent_statuses,
             "evolution_plans": len(self.meta_agent.evolution_plans),
-            "evolution_history": len(self.evolution_history)
+            "evolution_history": len(self.evolution_history),
+            "performance_metrics": self.performance_tracker.metrics,
         }
     
     async def learn_from_ecosystem_feedback(self, feedback: Dict[str, Any]) -> bool:
         """Learn from ecosystem-wide feedback"""
         # Meta-level learning
         await self.meta_agent.learn_from_feedback(feedback)
+
+        critics = feedback.get("critics")
+        if critics:
+            await self.integrate_critic_feedback(critics)
         
         # Distribute learning to individual agents
         for agent in self.meta_agent.managed_agents.values():
             await agent.learn_from_feedback(feedback)
         
         return True
+
+    async def integrate_critic_feedback(
+        self,
+        feedback_items: List[Dict[str, Any]],
+        retry_task: Optional[Callable[[], Awaitable[Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Merge critic feedback and optionally retry a task."""
+
+        feedback_objs = []
+        for idx, item in enumerate(feedback_items):
+            try:
+                feedback_obj = CriticFeedback(**item)
+                feedback_objs.append(feedback_obj)
+            except TypeError as e:
+                logger.error(
+                    "Failed to construct CriticFeedback from feedback_items[%d]: %s. Item: %s",
+                    idx, e, item
+                )
+                # Optionally, you could raise a more descriptive exception here
+                # raise ValueError(f"Invalid feedback item at index {idx}: {item}") from e
+                # Or skip invalid items (as done here)
+        if not feedback_objs:
+            logger.warning("No valid CriticFeedback objects could be constructed from feedback_items.")
+        weighted = self.critic_merger.weight_feedback(feedback_objs)
+        synthesis = self.critic_merger.synthesize_arguments(weighted)
+        logger.info("Critic synthesis: %s", synthesis["combined_argument"])
+
+        result: Dict[str, Any] = {"synthesis": synthesis}
+
+        if retry_task and synthesis["max_severity"] in ("high", "critical"):
+            try:
+                retry_result = await self._adaptive_retry(retry_task, synthesis["max_severity"])
+                result["retry_result"] = retry_result
+            except Exception as e:
+                result["retry_error"] = str(e)
+
+        return result
+
+    async def _adaptive_retry(
+        self, task: Callable[[], Awaitable[Any]], severity: str, base_delay: float = 0.1
+    ) -> Any:
+        """Retry a task with backoff based on severity."""
+
+        max_attempts = 3 if severity in ("high", "critical") else 1
+        attempt = 0
+        while attempt < max_attempts:
+            attempt += 1
+            try:
+                result = await task()
+                self.performance_tracker.record_event("retry", True, attempt)
+                return result
+            except Exception as e:
+                self.performance_tracker.metrics["retry_attempts"] += 1
+                logger.warning("Retry %s/%s failed: %s", attempt, max_attempts, e)
+                if attempt >= max_attempts:
+                    self.performance_tracker.record_event("retry", False, attempt)
+                    raise
+                await asyncio.sleep(base_delay * attempt)
 
 # Global meta-intelligence instance
 meta_intelligence = MetaIntelligenceCore()
