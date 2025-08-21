@@ -81,7 +81,7 @@ class RepositoryIndexer:
         self.files = []
         for p in files:
             try:
-                text = p.read_text(encoding="utf-8", errors="ignore")
+                text = p.read_text(encoding="utf-8", errors="replace")
             except Exception:
                 continue
             embeddings.append(self._embed(text))
