@@ -52,7 +52,18 @@ def configure(
 
         def _remote(_, __, event_dict):
             try:
-                requests.post(remote_url, json=event_dict, timeout=0.5)
+        # Validate remote_url: must be HTTPS and optionally match a whitelist
+        parsed_url = urlparse(remote_url)
+        allowed_schemes = {"https"}
+        if parsed_url.scheme not in allowed_schemes or not parsed_url.netloc:
+            raise ValueError("remote_url must be a valid HTTPS URL")
+
+        def _remote(_, __, event_dict):
+            try:
+                headers = {}
+                if remote_auth_token:
+                    headers["Authorization"] = f"Bearer {remote_auth_token}"
+                requests.post(remote_url, json=event_dict, headers=headers, timeout=0.5)
             except Exception:
                 pass
             return event_dict
