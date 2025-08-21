@@ -7,6 +7,7 @@ import json
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from jarvis.observability import load_events
 from fastapi.templating import Jinja2Templates
 
 from .auth import authenticate_user, get_current_user, require_role
@@ -116,6 +117,16 @@ async def moderation_reject(
     user=Depends(require_role("admin")),
 ):
     return reject_submission(submission_id)
+
+
+@app.get("/events/export", response_class=JSONResponse)
+async def export_events(session_id: str | None = None):
+    """Return logged events optionally filtered by ``session_id``.
+
+    The data is consumed by the WorkflowVisualizer to display execution traces.
+    """
+
+    return {"events": list(load_events(session_id))}
 
 
 # Utility functions
