@@ -18,6 +18,16 @@ jarvis run
 docker compose up -d
 ```
 
+The included `docker-compose.yml` launches four services:
+
+- `app-api` – main Jarvis API
+- `memory-service` – Redis instance for conversation memory
+- `vector-db` – Qdrant vector database
+- `ollama` – local model runtime
+
+Each service exposes a basic health check so `docker compose` can wait
+for dependencies before starting `app-api`.
+
 ### One-Click Installer
 
 ```bash
@@ -31,6 +41,33 @@ jarvis config --init
 jarvis config --validate
 jarvis config --show
 ```
+
+Configuration profiles live under `config/profiles`. Select a profile by
+setting the `CONFIG_PROFILE` environment variable (defaults to
+`development`). Any setting can be overridden by environment variables
+prefixed with `JARVIS_`.
+
+### Desktop App Packaging
+
+Use [PyInstaller](https://pyinstaller.org/) to create a standalone
+desktop build and configuration wizard:
+
+```bash
+pip install pyinstaller
+pyinstaller desktop_app.py --onefile --distpath dist
+pyinstaller setup_api_keys.py --onefile --distpath dist/config_wizard
+```
+
+Packaged binaries will be placed in the `dist/` directory.
+
+### Troubleshooting
+
+- **Docker services fail health checks** – ensure required ports are
+  free and rerun `docker compose up`.
+- **Missing configuration** – run the config wizard in `dist/config_wizard`
+  or create a `.env` file with required keys.
+- **PyInstaller build is large** – use the `--exclude-module` flag to
+  omit optional dependencies when packaging.
 
 ## 🗂️ Logging
 

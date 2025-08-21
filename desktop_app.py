@@ -10,6 +10,8 @@ import threading
 import os
 from pathlib import Path
 
+from config.config_loader import load_config
+
 # Load environment variables
 def load_env():
     env_file = Path('.env')
@@ -23,10 +25,18 @@ def load_env():
 
 load_env()
 
+# Load configuration profile and apply environment overrides
+CONFIG = load_config()
+os.environ.setdefault(
+    "OLLAMA_BASE_URL",
+    CONFIG.get("integrations", {}).get("ollama", {}).get("base_url", "http://localhost:11434"),
+)
+
 class JarvisDesktopApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Jarvis AI - Agentic Workflows")
+        app_name = CONFIG.get("app_name", "Jarvis AI")
+        self.root.title(f"{app_name} - Agentic Workflows")
         self.root.geometry("800x600")
         self.root.configure(bg='#2b2b2b')
         

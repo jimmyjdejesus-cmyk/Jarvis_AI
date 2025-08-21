@@ -23,7 +23,10 @@ ENV/
 .env.*
 
 # Distribution / packaging
-dist/
+dist/*
+!dist/README.md
+!dist/config_wizard/
+!dist/config_wizard/README.md
 build/
 *.egg-info/
 

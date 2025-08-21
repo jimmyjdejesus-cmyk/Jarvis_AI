@@ -1,0 +1,5 @@
+app_name: "Jarvis AI"
+debug: true
+integrations:
+  ollama:
+    base_url: "http://localhost:11434"
