@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from abc import ABC, abstractmethod
 import logging
+from jarvis.memory import MemoryManager, ProjectMemory
 
 logger = logging.getLogger(__name__)
 
@@ -113,14 +114,15 @@ class AIAgent(ABC):
 
 class MetaAgent(AIAgent):
     """Meta-agent that manages other AI agents"""
-    
-    def __init__(self, agent_id: str):
+
+    def __init__(self, agent_id: str, memory_manager: Optional[MemoryManager] = None):
         super().__init__(agent_id, [
             AgentCapability.REASONING,
             AgentCapability.PLANNING,
             AgentCapability.MONITORING,
             AgentCapability.LEARNING
         ])
+        self.memory: MemoryManager = memory_manager or ProjectMemory()
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
     
