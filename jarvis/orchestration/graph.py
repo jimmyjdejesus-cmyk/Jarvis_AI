@@ -74,24 +74,41 @@ class MultiTeamOrchestrator:
 
         return result
 
+    async def _run_team_async(self, team: TeamMemberAgent, state: TeamWorkflowState) -> Dict[str, Any]:
+        """Execute a team in a background thread for parallel coordination."""
+        # Respect runtime controls like pause and merge
+        while self.orchestrator.team_status.get(team.team) == "paused":
+            await asyncio.sleep(0.1)
+        if self.orchestrator.team_status.get(team.team) == "merged":
+            team.log("Team merged; skipping execution.")
+            return {"status": "merged"}
+        return await asyncio.to_thread(self._run_team, team, state)
+
     def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
         """Runs the Red and Blue teams in parallel."""
         red_agent, blue_agent = self.orchestrator.teams["adversary_pair"]
-        
-        # In a real implementation, this would use parallel execution (e.g., threading)
-        red_output = self._run_team(red_agent, state)
-        blue_output = self._run_team(blue_agent, state)
 
+        async def run_pair():
+            return await asyncio.gather(
+                self._run_team_async(red_agent, state),
+                self._run_team_async(blue_agent, state),
+            )
+
+        red_output, blue_output = asyncio.run(run_pair())
         state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
         return state
 
     def _run_competitive_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
         """Runs the Yellow and Green teams in parallel."""
         yellow_agent, green_agent = self.orchestrator.teams["competitive_pair"]
-        
-        yellow_output = self._run_team(yellow_agent, state)
-        green_output = self._run_team(green_agent, state)
 
+        async def run_pair():
+            return await asyncio.gather(
+                self._run_team_async(yellow_agent, state),
+                self._run_team_async(green_agent, state),
+            )
+
+        yellow_output, green_output = asyncio.run(run_pair())
         state["team_outputs"]["competitive_pair"] = [yellow_output, green_output]
         return state
 
