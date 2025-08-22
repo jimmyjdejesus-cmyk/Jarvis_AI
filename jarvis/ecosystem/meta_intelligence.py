@@ -20,6 +20,7 @@ from jarvis.tools.repository_indexer import RepositoryIndexer
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.memory import MemoryManager, ProjectMemory
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.homeostasis.monitor import SystemMonitor
 
 from jarvis.agents.critics import BlueTeamCritic
 from jarvis.agents.mission_planner import MissionPlanner
@@ -254,16 +255,18 @@ class MetaAgent(AIAgent):
             else None
         )
         self.knowledge_graph = KnowledgeGraph()
+        self.system_monitor = SystemMonitor()
+        if self.mcp_client:
+            self.mcp_client.monitor = self.system_monitor
         self._initialize_knowledge_graph()
 
     def _initialize_knowledge_graph(self) -> None:
         if not self.repo_indexer:
             return
         try:
+            # Build search index and populate the knowledge graph
             self.repo_indexer.build_index()
-            self.knowledge_graph.index_repository(
-                self.repo_indexer.repo_path, self.repo_indexer.files
-            )
+            self.repo_indexer.index_repository(self.knowledge_graph)
         except Exception as exc:  # pragma: no cover - best effort
             logger.warning("Knowledge graph population failed: %s", exc)
 
@@ -438,7 +441,9 @@ class MetaAgent(AIAgent):
         return {"success": False, "error": "No valid capabilities specified"}
 
     def create_sub_orchestrator(self, name: str, spec: Dict[str, Any]) -> MultiAgentOrchestrator:
-        orchestrator = self.orchestrator_cls(self.mcp_client, **spec)
+        orchestrator = self.orchestrator_cls(
+            self.mcp_client, monitor=self.system_monitor, **spec
+        )
         self.sub_orchestrators[name] = orchestrator
         return orchestrator
 

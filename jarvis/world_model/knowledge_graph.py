@@ -1,50 +1,64 @@
-"""Lightweight repository knowledge graph.
+"""Graph-based world model for code understanding."""
 
-Maps files to their defined functions for persistent world modeling."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, List
-import ast
+from typing import Any, Dict, Optional
+
+import networkx as nx
 
 
-@dataclass
 class KnowledgeGraph:
-    """Track basic structural relationships in a code repository."""
+    """Central repository of code entities and their relationships."""
 
-    files: Dict[str, Dict[str, List[str]]] = field(default_factory=dict)
+    def __init__(self) -> None:
+        self.graph: nx.DiGraph = nx.DiGraph()
 
-    def add_file(self, path: str) -> None:
-        """Ensure a file node exists."""
-        self.files.setdefault(path, {"functions": []})
+    # ------------------------------------------------------------------
+    def add_node(
+        self, node_id: str, node_type: str, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Add a node with a type and optional attributes."""
 
-    def add_function(self, path: str, name: str) -> None:
-        """Record a function defined within a file."""
-        self.add_file(path)
-        functions = self.files[path]["functions"]
-        if name not in functions:
-            functions.append(name)
+        attrs = {"type": node_type}
+        if attributes:
+            attrs.update(attributes)
+        self.graph.add_node(node_id, **attrs)
 
-    def get_files(self) -> List[str]:
-        """Return all tracked file paths."""
-        return list(self.files.keys())
+    # ------------------------------------------------------------------
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        relationship_type: str,
+        attributes: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Create a typed edge between two nodes."""
 
-    def get_functions(self, path: str) -> List[str]:
-        """Return functions known for a given file."""
-        return self.files.get(path, {}).get("functions", [])
+        attrs = {"type": relationship_type}
+        if attributes:
+            attrs.update(attributes)
+        self.graph.add_edge(source_id, target_id, **attrs)
 
-    def index_repository(self, repo_path: Path, files: List[str]) -> None:
-        """Populate the graph with files and function names."""
-        for rel in files:
-            full_path = Path(repo_path) / rel
-            self.add_file(str(full_path))
-            if full_path.suffix != ".py":
-                continue
-            try:
-                tree = ast.parse(full_path.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-            for node in ast.walk(tree):
-                if isinstance(node, ast.FunctionDef):
-                    self.add_function(str(full_path), node.name)
+    # ------------------------------------------------------------------
+    def query(self, query: str) -> Any:
+        """Execute a very small subset of Cypher-like queries.
+        The supported forms are:
+        - ``"nodes"`` – return all nodes with data
+        - ``"edges"`` – return all edges with data
+        - ``"node <id>"`` – return data for a specific node
+        """
+
+        if query == "nodes":
+            return list(self.graph.nodes(data=True))
+        if query == "edges":
+            return list(self.graph.edges(data=True))
+        if query.startswith("node "):
+            node_id = query.split(" ", 1)[1]
+            return self.graph.nodes.get(node_id)
+        raise ValueError("Unsupported query")
+
+    # ------------------------------------------------------------------
+    def get_files(self) -> list[str]:
+        """Return identifiers of all file nodes."""
+
+        return [n for n, data in self.graph.nodes(data=True) if data.get("type") == "file"]

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 
 from jarvis.security.decorators import rate_limit, timeout
+from jarvis.homeostasis.monitor import SystemMonitor
 
 logger = logging.getLogger(__name__)
 ws7_logger = logging.getLogger("ws7")
@@ -30,7 +31,9 @@ class MCPAPIError(MCPError):
 class MCPClient:
     """Model Context Protocol client for multi-model communication"""
 
-    def __init__(self, servers: Dict[str, str] | None = None) -> None:
+    def __init__(
+        self, servers: Dict[str, str] | None = None, monitor: SystemMonitor | None = None
+    ) -> None:
         """Initialize MCP client with server configurations."""
 
         self.servers = servers or {
@@ -40,6 +43,7 @@ class MCPClient:
         }
         self.active_connections: Dict[str, str] = {}
         self.session: Optional[aiohttp.ClientSession] = None
+        self.monitor = monitor
 
     async def __aenter__(self) -> "MCPClient":
         self.session = aiohttp.ClientSession()
@@ -209,6 +213,8 @@ class MCPClient:
             else:
                 raise MCPError(f"Unsupported server: {server}")
 
+            if self.monitor:
+                self.monitor.record_tokens(len(prompt) + len(result))
             self._emit_llm_call(server, model, True, time.perf_counter() - start)
             return result
         except MCPError as e:

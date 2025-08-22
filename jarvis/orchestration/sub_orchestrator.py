@@ -7,6 +7,7 @@ run with its own focused set of tools and agents.
 """
 from typing import Dict, List, Optional, Any
 
+from jarvis.homeostasis.monitor import SystemMonitor
 from .orchestrator import MultiAgentOrchestrator
 
 
@@ -19,6 +20,7 @@ class SubOrchestrator(MultiAgentOrchestrator):
         mission_name: Optional[str] = None,
         allowed_specialists: Optional[List[str]] = None,
         custom_specialists: Optional[Dict[str, Any]] = None,
+        monitor: SystemMonitor | None = None,
     ):
         """Create a new sub-orchestrator.
 
@@ -31,7 +33,7 @@ class SubOrchestrator(MultiAgentOrchestrator):
                 specialist instance. When provided, these replace the default
                 specialist set. This is primarily useful for testing.
         """
-        super().__init__(mcp_client)
+        super().__init__(mcp_client, monitor=monitor)
         self.mission_name = mission_name
 
         if custom_specialists is not None:

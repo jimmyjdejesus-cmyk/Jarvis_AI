@@ -1,3 +1,4 @@
+import ast
 import json
 import subprocess
 from pathlib import Path
@@ -5,6 +6,8 @@ from typing import List, Dict, Optional, Any
 import zlib
 
 import numpy as np
+
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
 
 try:
     import faiss  # type: ignore
@@ -130,3 +133,39 @@ class RepositoryIndexer:
             snippet = self.snippets[int(idx)] if hasattr(self, "snippets") and int(idx) < len(self.snippets) else ""
             results.append({"path": self.files[int(idx)], "score": float(score), "snippet": snippet})
         return results
+
+    # ------------------------------------------------------------------
+    def index_repository(self, graph: KnowledgeGraph) -> None:
+        """Populate a :class:`KnowledgeGraph` with code entities."""
+
+        for file_path in self.repo_path.rglob("*.py"):
+            rel = str(file_path.relative_to(self.repo_path))
+            graph.add_node(rel, "file", {"path": rel})
+            try:
+                tree = ast.parse(file_path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    func_id = f"{rel}::{node.name}"
+                    graph.add_node(func_id, "function", {"name": node.name, "file": rel})
+                    graph.add_edge(rel, func_id, "contains")
+                    for call in [n for n in ast.walk(node) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]:
+                        target = f"{rel}::{call.func.id}"
+                        graph.add_node(target, "function")
+                        graph.add_edge(func_id, target, "calls")
+                elif isinstance(node, ast.ClassDef):
+                    class_id = f"{rel}::{node.name}"
+                    graph.add_node(class_id, "class", {"name": node.name, "file": rel})
+                    graph.add_edge(rel, class_id, "contains")
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        module = alias.name
+                        graph.add_node(module, "module")
+                        graph.add_edge(rel, module, "imports")
+                elif isinstance(node, ast.ImportFrom):
+                    module = node.module or ""
+                    for alias in node.names:
+                        target = f"{module}.{alias.name}" if module else alias.name
+                        graph.add_node(target, "module")
+                        graph.add_edge(rel, target, "imports")
