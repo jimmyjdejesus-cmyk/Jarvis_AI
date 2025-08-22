@@ -40,6 +40,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from .recovery import load_state, save_state
 from .path_memory import PathMemory
+from jarvis.homeostasis.monitor import SystemMonitor
 
 from ..agents.specialists import (
     CodeReviewAgent,
@@ -197,6 +198,7 @@ class MultiAgentOrchestrator:
         self,
         mcp_client,
         child_specs: Optional[Dict[str, Dict[str, Any]]] = None,
+        monitor: SystemMonitor | None = None,
     ):
         """Initialize multi-agent orchestrator.
 
@@ -207,6 +209,7 @@ class MultiAgentOrchestrator:
                 :class:`SubOrchestrator`.
         """
         self.mcp_client = mcp_client
+        self.monitor = monitor
 
         # Initialize specialist agents
         self.specialists = {
@@ -331,6 +334,12 @@ class MultiAgentOrchestrator:
         """
         # Analyze request complexity
         analysis = await self.analyze_request_complexity(request, code)
+
+        # Adjust strategy based on system resources
+        if self.monitor:
+            snapshot = self.monitor.snapshot()
+            if snapshot.cpu > 80 or snapshot.memory > 80:
+                analysis["coordination_type"] = "sequential"
 
         # Initialize path memory and record planned specialists
         path_memory = PathMemory()
