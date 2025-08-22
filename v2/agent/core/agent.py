@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any, AsyncGenerator, Dict
 
+from v2.config.config import DEFAULT_CONFIG
+from jarvis.logging.logger import get_logger
+
 
 class JarvisAgentV2:
     """A tiny placeholder agent used in tests.
@@ -15,7 +18,14 @@ class JarvisAgentV2:
     """
 
     def __init__(self, config: Dict[str, Any] | None = None) -> None:
-        self.config = config or {}
+        """Initialize the agent with configuration and logging."""
+
+        self.config = DEFAULT_CONFIG.copy()
+        if config:
+            self.config.update(config)
+
+        self.logger = get_logger()
+        self.logger.info("JarvisAgentV2 initialized.")
 
     # ------------------------------------------------------------------
     def setup_workflow(self) -> None:  # pragma: no cover - placeholder
@@ -32,6 +42,15 @@ class JarvisAgentV2:
         """Yield a single fake event for streaming tests."""
 
         yield {"step": "start", "query": query}
+
+    # ------------------------------------------------------------------
+    async def handle_request(
+        self, request: str, code: str | None = None, user_context: str | None = None
+    ) -> Dict[str, Any]:
+        """Primary entrypoint for handling agent requests."""
+
+        self.logger.info(f"Handling request: {request}")
+        return {"request": request, "status": "ok"}
 
 
 __all__ = ["JarvisAgentV2"]
