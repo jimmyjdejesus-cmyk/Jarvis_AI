@@ -12,6 +12,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 
+from memory_service import PathRecord, PathSignature, record_path
 from .message_bus import MessageBus # Assuming MessageBus is in a .message_bus module
 
 
@@ -122,9 +123,13 @@ class PruningEvaluator:
         self._suggested.discard(team_id)
 
     async def merge_state(
-        self, from_team: str, into_team: str, artifacts: List[str]
+        self,
+        from_team: str,
+        into_team: str,
+        artifacts: List[str],
+        signature: PathSignature | None = None,
     ) -> None:
-        """Emit merge event consolidating team artifacts."""
+        """Emit merge event and optionally record negative path."""
         await self.bus.publish(
             "orchestrator.team_merged",
             {
@@ -134,13 +139,30 @@ class PruningEvaluator:
             },
             scope=self.scope,
         )
+        if signature is not None:
+            record_path(
+                PathRecord(
+                    actor="orchestrator",
+                    target="project",
+                    kind="negative",
+                    signature=signature,
+                )
+            )
 
-    async def mark_dead_end(self, team_id: str, signature: str) -> None:
-        """Publish dead-end marker for a team path."""
+    async def mark_dead_end(self, team_id: str, signature: PathSignature) -> None:
+        """Publish dead-end marker and record negative path."""
         await self.bus.publish(
             "orchestrator.path_dead_end",
-            {"team_id": team_id, "path_signature": signature},
+            {"team_id": team_id, "path_signature": signature.hash or ""},
             scope=self.scope,
+        )
+        record_path(
+            PathRecord(
+                actor="orchestrator",
+                target="project",
+                kind="negative",
+                signature=signature,
+            )
         )
 
 

@@ -124,3 +124,9 @@
 - Implemented team indicator badges and dead-end shelf in workflow visualizer.
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
+
+## 2025-08-22
+- Integrated negative path recording for merges/dead-ends.
+- Added novelty boost check before executing similar paths.
+- Updated tests for negative path and novelty behavior.
+

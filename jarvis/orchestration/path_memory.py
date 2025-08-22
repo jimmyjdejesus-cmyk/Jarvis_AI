@@ -43,12 +43,13 @@ class PathMemory:
         self.decisions.extend(decisions)
 
     # ------------------------------------------------------------------
-    def should_avoid(self, threshold: float = 0.8) -> bool:
-        """Check negative path memory to determine if execution should be avoided."""
+    def should_avoid(self, threshold: float = 0.8, override: bool = False) -> tuple[bool, float]:
+        """Check negative path memory and return avoidance decision and similarity."""
         signature = PathSignature(
             steps=self.steps,
             tools_used=self.tools,
             key_decisions=self.decisions,
+            embedding=[],
             metrics=Metrics(novelty=0.0, growth=0.0, cost=0.0),
             outcome=Outcome(result="fail"),
             scope=self.target,
@@ -58,7 +59,9 @@ class PathMemory:
                 actor=self.actor, target=self.target, signature=signature, threshold=threshold
             )
         )
-        return bool(result.get("avoid"))
+        similarity = result.get("results", [{}])[0].get("similarity", 0.0) if result.get("results") else 0.0
+        avoid = bool(result.get("avoid")) and not override
+        return avoid, similarity
 
     # ------------------------------------------------------------------
     def record(self, success: bool) -> None:
@@ -71,6 +74,7 @@ class PathMemory:
             steps=self.steps,
             tools_used=self.tools,
             key_decisions=self.decisions,
+            embedding=[],
             metrics=Metrics(novelty=novelty, growth=growth, cost=cost),
             outcome=Outcome(result="pass" if success else "fail"),
             scope=self.target,
