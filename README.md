@@ -11,25 +11,33 @@ A privacy-first modular AI development assistant with comprehensive deployment a
 ### Install from PyPI
 
 ```bash
-pip install jarvis-ai
+pip install "jarvis-ai[ui]"
 jarvis run
 ```
 
 ### Docker
 
 ```bash
-docker compose up -d
+docker compose --profile dev up -d
 ```
 
-The included `docker-compose.yml` launches four services:
+The included `docker-compose.yml` launches five services:
 
-- `app-api` – main Jarvis API
+- `api` – main Jarvis API
+- `orchestrator` – coordination service with crash recovery
 - `memory-service` – Redis instance for conversation memory
 - `vector-db` – Qdrant vector database
-- `ollama` – local model runtime
+- `ollama` – local model runtime (dev/local-prod profiles)
 
 Each service exposes a basic health check so `docker compose` can wait
-for dependencies before starting `app-api`.
+for dependencies before starting `api`.
+
+Services are grouped using Docker Compose profiles. Use `dev`, `local-prod`,
+or `hybrid` (cloud LLMs) depending on your environment:
+
+```bash
+docker compose --profile hybrid up -d
+```
 
 ### One-Click Installer
 
@@ -49,7 +57,11 @@ desktop build and configuration wizard:
 Configuration profiles live under `config/profiles`. Select a profile by
 setting the `CONFIG_PROFILE` environment variable (defaults to
 `development`). Any setting can be overridden by environment variables
-prefixed with `JARVIS_`.
+using double underscores for nesting. For example:
+
+```bash
+export JARVIS__ORCH__MIN_NOVELTY=0.25
+```
 
 ### Desktop App Packaging
 

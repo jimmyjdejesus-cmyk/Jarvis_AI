@@ -12,10 +12,15 @@ import json
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import (
+    StreamingResponse,
+    PlainTextResponse,
+    Response,
+)
 
 from v2.agent.core.agent import JarvisAgentV2
 from v2.config.config import DEFAULT_CONFIG
+from v2.agent.adapters.langgraph_ui import visualizer
 
 
 app = FastAPI(title="Jarvis V2 API")
@@ -44,6 +49,18 @@ async def stream(query: str) -> StreamingResponse:
     """Stream workflow execution using Server‑Sent Events."""
 
     return StreamingResponse(_event_stream(query), media_type="text/event-stream")
+
+
+@app.get("/graph/export")
+async def export_graph(format: str = "json"):
+    """Export the current workflow graph."""
+
+    data = visualizer.export(format)
+    if format == "png":
+        return Response(content=data, media_type="image/png")
+    if format == "dot":
+        return PlainTextResponse(data)
+    return data
 
 
 if __name__ == "__main__":

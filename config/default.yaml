@@ -3,6 +3,7 @@
 # specialist outputs for logical errors and conflicting assumptions.
 ENABLE_RED_TEAM: false
 
+
 orch:
   min_novelty: 0.25
   min_growth: 0.0
@@ -10,3 +11,4 @@ orch:
   prune_check_interval: 2
   min_active_teams: 2
   policy: balanced
+

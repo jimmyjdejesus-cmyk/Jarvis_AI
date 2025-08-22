@@ -47,13 +47,15 @@ class MemoryClient:
         self._check_scope(scope)
         url = f"{self.base_url}/{self.principal}/{scope}"
         payload = {"key": key, "value": value}
-        response = self.http.post(url, json=payload, timeout=5)
+        headers = {"X-Principal": self.principal}
+        response = self.http.post(url, json=payload, headers=headers, timeout=5)
         response.raise_for_status()
 
     def read(self, scope: str, key: str) -> str:
         self._check_scope(scope)
         url = f"{self.base_url}/{self.principal}/{scope}/{key}"
-        response = self.http.get(url, timeout=5)
+        headers = {"X-Principal": self.principal}
+        response = self.http.get(url, headers=headers, timeout=5)
         response.raise_for_status()
         data = response.json()
         return data["value"]
@@ -61,7 +63,8 @@ class MemoryClient:
     def scope_hash(self, scope: str) -> str:
         self._check_scope(scope)
         url = f"{self.base_url}/{self.principal}/{scope}/hash"
-        response = self.http.get(url, timeout=5)
+        headers = {"X-Principal": self.principal}
+        response = self.http.get(url, headers=headers, timeout=5)
         response.raise_for_status()
         data = response.json()
         return data["hash"]
