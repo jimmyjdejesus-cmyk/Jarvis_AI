@@ -125,6 +125,12 @@
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
 
+## WS1-WS4 Validation Tests
+- Added golden pruning/merge test and log schema sample.
+- Implemented orchestration soak, path memory guard, and MCP routing matrix tests.
+- Documented validation summary and P95 latency target.
+=======
+
 # Agent Log
 
 - Integrated MultiAgentOrchestrator into JarvisAgentV2 with MCP client.
@@ -141,5 +147,6 @@
 - Added configuration handling with default config import and logger setup.
 - Implemented async `handle_request` entrypoint.
 - Ran `pytest v2`.
+
 
 
