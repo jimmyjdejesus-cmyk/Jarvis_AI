@@ -124,6 +124,14 @@
 - Implemented team indicator badges and dead-end shelf in workflow visualizer.
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
+
+# Agent Log
+## EPIC C Scoped Logs & HITL Safety
+- Initialized repository for scoped logging and HITL safeguards.
+- Implemented ScopedLogWriter, HITL policy, and console modal modules.
+- Documented HITL workflow in `docs/ops/HITL.md`.
+- Executed pytest to validate project integrity.
+=======
 ## EPIC B UI Enhancements
 - Added workflow DAG panel and export helpers.
 - Added dead-end shelf with override logging and sidebar rendering.
@@ -153,6 +161,3 @@
 - Added configuration handling with default config import and logger setup.
 - Implemented async `handle_request` entrypoint.
 - Ran `pytest v2`.
-
-
-
