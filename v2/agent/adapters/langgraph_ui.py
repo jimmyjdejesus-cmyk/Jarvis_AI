@@ -17,6 +17,24 @@ from graphviz import Digraph
 
 
 # ---------------------------------------------------------------------------
+# Display helpers
+
+
+TEAM_ICONS = {
+    "code_review": "🧑\u200d💻",
+    "security": "🔐",
+    "research": "🔍",
+    "planning": "🗂️",
+}
+
+
+def _team_icon(name: str) -> str:
+    """Map a team name to a visual icon."""
+
+    return TEAM_ICONS.get(name.lower(), "🤖")
+
+
+# ---------------------------------------------------------------------------
 # Data structures
 
 
@@ -127,6 +145,39 @@ class WorkflowVisualizer:
 
         for event in events:
             self.add_event(event)
+
+    # ------------------------------------------------------------------
+    def get_team_indicators(self) -> List[Dict[str, str]]:
+        """Return info for teams that participated in the workflow.
+
+        Each indicator contains a human label, icon and optional colour so
+        that UI layers can render badges or legends for team contributions.
+        """
+
+        indicators: List[Dict[str, str]] = []
+        for node in self.nodes.values():
+            if node.type.lower() != "team":
+                continue
+            name = node.label or node.id
+            indicators.append(
+                {
+                    "id": node.id,
+                    "label": name,
+                    "icon": _team_icon(name),
+                    "color": node.color or "",
+                }
+            )
+        return indicators
+
+    # ------------------------------------------------------------------
+    def get_dead_ends(self) -> List[str]:
+        """List steps that were pruned from execution."""
+
+        return [
+            node.label or node.id
+            for node in self.nodes.values()
+            if node.badges.get("status") == "pruned"
+        ]
 
     # ------------------------------------------------------------------
     def _build_graph(self) -> Digraph:

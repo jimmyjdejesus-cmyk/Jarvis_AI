@@ -119,3 +119,8 @@
 ## WS3 Path Memory System
 - Integrated path memory into orchestrator with automatic recording and negative-path avoidance.
 - Added PathMemory helper, orchestrator hooks, and integration tests.
+
+## WS5 UI Visualization Features
+- Implemented team indicator badges and dead-end shelf in workflow visualizer.
+- Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
+- Added tests verifying team indicator icons and pruned path detection.
