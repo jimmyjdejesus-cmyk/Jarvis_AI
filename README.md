@@ -11,7 +11,7 @@ A privacy-first modular AI development assistant with comprehensive deployment a
 ### Install from PyPI
 
 ```bash
-pip install jarvis-ai
+pip install "jarvis-ai[ui]"
 jarvis run
 ```
 
@@ -49,7 +49,11 @@ desktop build and configuration wizard:
 Configuration profiles live under `config/profiles`. Select a profile by
 setting the `CONFIG_PROFILE` environment variable (defaults to
 `development`). Any setting can be overridden by environment variables
-prefixed with `JARVIS_`.
+using double underscores for nesting. For example:
+
+```bash
+export JARVIS__ORCH__MIN_NOVELTY=0.25
+```
 
 ### Desktop App Packaging
 
