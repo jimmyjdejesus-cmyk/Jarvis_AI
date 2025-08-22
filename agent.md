@@ -116,3 +116,6 @@
 - Updated `MultiTeamOrchestrator` to skip teams marked for pruning.
 - Added integration test validating pruned teams are not re-executed.
 - Ran pruning-related test suite.
+## WS3 Path Memory System
+- Integrated path memory into orchestrator with automatic recording and negative-path avoidance.
+- Added PathMemory helper, orchestrator hooks, and integration tests.

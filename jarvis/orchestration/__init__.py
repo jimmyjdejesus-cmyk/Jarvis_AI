@@ -16,6 +16,7 @@ from ``AgentSpec`` definitions.
 from .orchestrator import AgentSpec, DynamicOrchestrator, MultiAgentOrchestrator, END
 from .sub_orchestrator import SubOrchestrator
 from .pruning import PruningManager
+from .path_memory import PathMemory
 
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "MultiAgentOrchestrator",
     "SubOrchestrator",
     "PruningManager",
+    "PathMemory",
     "END",
 ]
 

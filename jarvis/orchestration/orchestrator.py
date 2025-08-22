@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from .recovery import load_state, save_state
+from .path_memory import PathMemory
 
 from ..agents.specialists import (
     CodeReviewAgent,
@@ -330,6 +331,15 @@ class MultiAgentOrchestrator:
         """
         # Analyze request complexity
         analysis = await self.analyze_request_complexity(request, code)
+
+        # Initialize path memory and record planned specialists
+        path_memory = PathMemory()
+        for spec in analysis["specialists_needed"]:
+            path_memory.add_step(spec)
+
+        # Avoid previously failed paths
+        if analysis["specialists_needed"] and path_memory.should_avoid():
+            return self._create_error_response("Previously failed path detected", request)
         
         if not analysis["specialists_needed"]:
             return self._create_simple_response(request)
@@ -338,13 +348,17 @@ class MultiAgentOrchestrator:
         
         # Execute coordination strategy
         if analysis["coordination_type"] == "single":
-            return await self._single_specialist_analysis(request, analysis, code, user_context)
+            result = await self._single_specialist_analysis(request, analysis, path_memory, code, user_context)
         elif analysis["coordination_type"] == "parallel":
-            return await self._parallel_specialist_analysis(request, analysis, code, user_context)
+            result = await self._parallel_specialist_analysis(request, analysis, path_memory, code, user_context)
         else:  # sequential
-            return await self._sequential_specialist_analysis(request, analysis, code, user_context)
+            result = await self._sequential_specialist_analysis(request, analysis, path_memory, code, user_context)
+
+        # Record outcome in path memory
+        path_memory.record(result.get("type") != "error")
+        return result
     
-    async def _single_specialist_analysis(self, request: str, analysis: Dict, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def _single_specialist_analysis(self, request: str, analysis: Dict, path_memory: PathMemory, code: str = None, user_context: str = None) -> Dict[str, Any]:
         """Handle analysis with single specialist"""
         specialist_type = analysis["specialists_needed"][0]
         specialist = self.specialists[specialist_type]
@@ -354,6 +368,7 @@ class MultiAgentOrchestrator:
         
         try:
             result = await specialist.process_task(task, context=None, user_context=user_context)
+            path_memory.add_decisions(result.get("suggestions", [])[:3])
             
             return {
                 "type": "single_specialist",
@@ -369,7 +384,7 @@ class MultiAgentOrchestrator:
             logger.error(f"Single specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
     
-    async def _parallel_specialist_analysis(self, request: str, analysis: Dict, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def _parallel_specialist_analysis(self, request: str, analysis: Dict, path_memory: PathMemory, code: str = None, user_context: str = None) -> Dict[str, Any]:
         """Handle analysis with parallel specialist coordination"""
         specialists_needed = analysis["specialists_needed"]
         
@@ -398,6 +413,7 @@ class MultiAgentOrchestrator:
                 else:
                     specialist_results[specialist_type] = result
                     successful_results.append(result)
+                    path_memory.add_decisions(result.get("suggestions", [])[:3])
             
             # Synthesize results
             synthesized_response = await self._synthesize_parallel_results(request, successful_results)
@@ -417,7 +433,7 @@ class MultiAgentOrchestrator:
             logger.error(f"Parallel specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
     
-    async def _sequential_specialist_analysis(self, request: str, analysis: Dict, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def _sequential_specialist_analysis(self, request: str, analysis: Dict, path_memory: PathMemory, code: str = None, user_context: str = None) -> Dict[str, Any]:
         """Handle analysis with sequential specialist coordination"""
         specialists_needed = analysis["specialists_needed"]
         
@@ -434,14 +450,16 @@ class MultiAgentOrchestrator:
                 # Process with accumulated context
                 result = await specialist.process_task(task, context=shared_context, user_context=user_context)
                 specialist_results[specialist_type] = result
-                
+
                 # Add result to shared context for next specialists
+                decisions = result.get("suggestions", [])[:3]
                 shared_context.append({
                     "specialist": specialist_type,
-                    "key_points": result.get("suggestions", [])[:3],  # Top 3 suggestions
+                    "key_points": decisions,
                     "confidence": result.get("confidence", 0.7),
                     "priority_issues": result.get("priority_issues", [])[:2]  # Top 2 issues
                 })
+                path_memory.add_decisions(decisions)
                 
                 logger.info(f"Completed {specialist_type} analysis, passing context to next specialist")
             
