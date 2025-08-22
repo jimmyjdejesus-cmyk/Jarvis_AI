@@ -88,6 +88,7 @@ class PathSignature(BaseModel):
     steps: List[str]
     tools_used: List[str]
     key_decisions: List[str]
+    embedding: List[float] = []
     metrics: Metrics
     outcome: Outcome
     scope: str

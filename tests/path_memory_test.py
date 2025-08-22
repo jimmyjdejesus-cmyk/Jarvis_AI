@@ -12,6 +12,7 @@ def _sample_signature(ts: float | None = None) -> dict:
         "steps": ["step1", "step2"],
         "tools_used": ["tool"],
         "key_decisions": ["dec"],
+        "embedding": [],
         "metrics": {"novelty": 0.1, "growth": 0.2, "cost": 0.3},
         "outcome": {"result": "fail"},
         "scope": "demo",

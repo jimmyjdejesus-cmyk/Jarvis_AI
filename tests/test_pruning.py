@@ -8,6 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
+from memory_service import _paths, Metrics, Outcome, PathSignature
 
 
 @pytest.mark.asyncio
@@ -43,9 +44,21 @@ async def test_merge_and_dead_end_events():
     bus.subscribe("orchestrator.team_merged", lambda e: merge_events.append(e))
     bus.subscribe("orchestrator.path_dead_end", lambda e: dead_events.append(e))
 
-    await evaluator.merge_state("t1", "t2", ["a.txt"])
-    await evaluator.mark_dead_end("t1", "sig")
+    _paths.clear()
+
+    sig = PathSignature(
+        steps=["s"],
+        tools_used=["s"],
+        key_decisions=[],
+        embedding=[],
+        metrics=Metrics(novelty=0.0, growth=0.0, cost=0.0),
+        outcome=Outcome(result="fail"),
+        scope="project",
+    )
+    await evaluator.merge_state("t1", "t2", ["a.txt"], signature=sig)
+    await evaluator.mark_dead_end("t1", sig)
 
     assert merge_events and dead_events
     assert merge_events[0]["payload"]["from_team"] == "t1"
     assert dead_events[0]["payload"]["team_id"] == "t1"
+    assert _paths["project"]["negative"]

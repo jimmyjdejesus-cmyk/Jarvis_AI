@@ -133,4 +133,48 @@
 - Added FastAPI polling and SSE event endpoints.
 - Updated visualizer to read normalized events and added tests.
 - Ran message bus, visualizer, endpoint, and pruning tests.
+=======
+## 2025-08-22
+- Integrated negative path recording for merges/dead-ends.
+- Added novelty boost check before executing similar paths.
+- Updated tests for negative path and novelty behavior.
+
+=======
+# Agent Log
+## EPIC C Scoped Logs & HITL Safety
+- Initialized repository for scoped logging and HITL safeguards.
+- Implemented ScopedLogWriter, HITL policy, and console modal modules.
+- Documented HITL workflow in `docs/ops/HITL.md`.
+- Executed pytest to validate project integrity.
+=======
+## EPIC B UI Enhancements
+- Added workflow DAG panel and export helpers.
+- Added dead-end shelf with override logging and sidebar rendering.
+- Introduced theme stylesheet for mode toggle and progress bars.
+- Added placeholder screenshots and updated README.
+- Ran pytest suite.
+
+## WS1-WS4 Validation Tests
+- Added golden pruning/merge test and log schema sample.
+- Implemented orchestration soak, path memory guard, and MCP routing matrix tests.
+- Documented validation summary and P95 latency target.
+=======
+
+# Agent Log
+
+- Integrated MultiAgentOrchestrator into JarvisAgentV2 with MCP client.
+- Added interactive runner script and end-to-end integration test.
+=======
+
+
+- Initialized work on v2 agent configuration loading.
+- Added `v2_agent` section to development profile and Pydantic config models.
+- Updated `JarvisAgentV2` to expose `agent_config` for easy access.
+- Ran pytest to ensure configuration loads without errors.
+=======
+- Initialized JarvisAgentV2 enhancements.
+- Added configuration handling with default config import and logger setup.
+- Implemented async `handle_request` entrypoint.
+- Ran `pytest v2`.
+
 
