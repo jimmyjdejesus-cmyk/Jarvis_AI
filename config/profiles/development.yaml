@@ -3,3 +3,7 @@ debug: true
 integrations:
   ollama:
     base_url: "http://localhost:11434"
+v2_agent:
+  default_model: "llama3.2"
+  enable_critics: true
+  # Add other v2-specific settings here
