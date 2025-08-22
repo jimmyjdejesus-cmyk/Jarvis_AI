@@ -6,7 +6,10 @@ including web research capabilities.
 
 from .repository_indexer import RepositoryIndexer
 from .environment_tools import read_file, write_file, run_shell_command, run_tests
-from .web_tools import WebSearchTool, WebReaderTool
+try:  # Optional dependency
+    from .web_tools import WebSearchTool, WebReaderTool
+except Exception:  # pragma: no cover - optional feature
+    WebSearchTool = WebReaderTool = None  # type: ignore
 
 from .legacy_wrappers import (
     safe_read_file,
@@ -18,6 +21,7 @@ from .ide import open_file, save_file
 from .notes import add_note, list_notes
 from .github import create_issue
 from .fs_safety import ensure_path_is_allowed, safe_read, safe_write
+from .git_sandbox import run_git_command, sanitize_git_args
 
 __all__ = [
     "RepositoryIndexer",
@@ -39,4 +43,6 @@ __all__ = [
     "ensure_path_is_allowed",
     "safe_read",
     "safe_write",
+    "run_git_command",
+    "sanitize_git_args",
 ]

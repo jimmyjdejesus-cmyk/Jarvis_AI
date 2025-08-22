@@ -2,6 +2,7 @@
 
 import logging
 import subprocess
+import shlex
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +19,12 @@ def _confirm(message: str) -> bool:
     except Exception:
         response = input(f"{message} (y/N): ").strip().lower()
         return response in {"y", "yes"}
+
+
+def _sanitize_command(command: str) -> str:
+    """Strip potentially dangerous characters from a shell command."""
+    unsafe = {";", "&", "|", "\n"}
+    return "".join(ch for ch in command if ch not in unsafe)
 
 
 def read_file(path: str, username: str,
@@ -90,6 +97,7 @@ def run_shell_command(command: str, username: str,
                       security_manager: Optional[SecurityManager] = None) -> Optional[str]:
     """Execute a shell command with permission checks and logging."""
     sm = security_manager or get_security_manager()
+    command = _sanitize_command(command)
     if not sm.has_command_access(username, command):
         logger.warning("Unauthorized command attempt by %s: %s", username, command)
         if sm.db_manager:

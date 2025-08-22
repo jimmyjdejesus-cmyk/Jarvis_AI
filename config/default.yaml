@@ -2,3 +2,7 @@
 # Set ENABLE_RED_TEAM to true to enable the red team critic that reviews
 # specialist outputs for logical errors and conflicting assumptions.
 ENABLE_RED_TEAM: false
+
+# Orchestrator defaults
+orch:
+  min_novelty: 0.5
