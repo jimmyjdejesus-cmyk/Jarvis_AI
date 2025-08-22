@@ -24,6 +24,7 @@ class JarvisAgentV2:
         # Initialize MCP client and meta-intelligence core
         self.mcp_client = MCPClient()
         self.meta_core = MetaIntelligenceCore()
+        # share the MCP client with the meta-agent
         self.meta_core.meta_agent.mcp_client = self.mcp_client
 
     # ------------------------------------------------------------------

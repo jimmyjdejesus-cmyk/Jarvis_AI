@@ -239,6 +239,12 @@ class MetaAgent(AIAgent):
         except Exception as exc:  # pragma: no cover - optional dependency
             logger.warning("Repository indexer unavailable: %s", exc)
             self.repo_indexer = None
+        self.knowledge_graph = KnowledgeGraph()
+        if self.repo_indexer:
+            try:
+                self.knowledge_graph.populate_from_indexer(self.repo_indexer)
+            except Exception as exc:  # pragma: no cover - best effort
+                logger.warning("Knowledge graph population failed: %s", exc)
         self.mission_planner = mission_planner if mission_planner is not None else MissionPlanner()
         self.session_manager = SessionManager()
         self.enable_blue_team = enable_blue_team
@@ -260,6 +266,12 @@ class MetaAgent(AIAgent):
             )
         except Exception as exc:  # pragma: no cover - best effort
             logger.warning("Knowledge graph population failed: %s", exc)
+
+    def create_sub_orchestrator(self, name: str, spec: Dict[str, Any]) -> MultiAgentOrchestrator:
+        """Instantiate and cache a sub-orchestrator."""
+        orchestrator = self.orchestrator_cls(self.mcp_client, **spec)
+        self.sub_orchestrators[name] = orchestrator
+        return orchestrator
 
     def plan_mission(self, goal: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """Create a LangGraph definition from a high-level goal."""
@@ -439,6 +451,14 @@ class MetaAgent(AIAgent):
         orchestrator = self.sub_orchestrators.get(step_id)
         if not orchestrator:
             spec = {"allowed_specialists": specialists or None, "mission_name": step_id}
+            orchestrator = self.create_sub_orchestrator(step_id, spec)
+
+        result = await orchestrator.coordinate_specialists(
+            request,
+            step.get("code"),
+            step.get("user_context"),
+        )
+        return {"success": True, "result": result, "step_id": step_id}
             orchestrator = self.create_sub_orchestrator(step_id, spec)
 
         result = await orchestrator.coordinate_specialists(
