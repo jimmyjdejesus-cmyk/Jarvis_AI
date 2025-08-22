@@ -1,4 +1,11 @@
 
+- Initialized agent session and created agent.md for logging actions.
+- Implemented WorkflowVisualizer v2 with node/edge handling and export capabilities.
+- Added /graph/export endpoint to FastAPI app and corresponding tests.
+- Added minimal JarvisAgentV2 stub to satisfy imports.
+- Installed graphviz dependency and executed tests.
+
+
 # Agent Log
 
 
