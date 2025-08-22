@@ -18,18 +18,26 @@ jarvis run
 ### Docker
 
 ```bash
-docker compose up -d
+docker compose --profile dev up -d
 ```
 
-The included `docker-compose.yml` launches four services:
+The included `docker-compose.yml` launches five services:
 
-- `app-api` – main Jarvis API
+- `api` – main Jarvis API
+- `orchestrator` – coordination service with crash recovery
 - `memory-service` – Redis instance for conversation memory
 - `vector-db` – Qdrant vector database
-- `ollama` – local model runtime
+- `ollama` – local model runtime (dev/local-prod profiles)
 
 Each service exposes a basic health check so `docker compose` can wait
-for dependencies before starting `app-api`.
+for dependencies before starting `api`.
+
+Services are grouped using Docker Compose profiles. Use `dev`, `local-prod`,
+or `hybrid` (cloud LLMs) depending on your environment:
+
+```bash
+docker compose --profile hybrid up -d
+```
 
 ### One-Click Installer
 

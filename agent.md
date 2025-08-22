@@ -1,6 +1,15 @@
 
 # Agent Log
 
+- Initialized repository inspection.
+- Planned updates: docker-compose profiles, optional telemetry, crash recovery module, and tests.
+- Added crash recovery utilities and integrated with orchestrator run method.
+- Introduced FastAPI orchestrator server and docker-compose profiles with optional telemetry.
+- Documented new docker-compose services and profiles in README.
+=======
+
+# Agent Log
+
 - Initialized repository analysis.
 - Implemented memory ACL with header verification and secret masking.
 - Added git sandbox, tool sanitization, and tests for security.
@@ -59,6 +68,7 @@
 - Added PruningEvaluator module and exports.
 - Created pruning tests.
 - Ran pruning tests.
+
 
 
 

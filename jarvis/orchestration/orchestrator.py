@@ -38,6 +38,8 @@ import warnings
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+from .recovery import load_state, save_state
+
 from ..agents.specialists import (
     CodeReviewAgent,
     SecurityAgent,
@@ -760,20 +762,36 @@ class DynamicOrchestrator:
         self.workflow = graph.compile()
 
     # ------------------------------------------------------------------
-    async def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    async def run(self, state: Dict[str, Any], resume: bool = True) -> Dict[str, Any]:
         """Execute the compiled workflow.
 
         Parameters
         ----------
         state:
-            Initial state passed to the workflow.  The state is mutated by
-            nodes in the graph.  The final state after execution is returned.
+            Initial state passed to the workflow. The state is mutated by
+            nodes in the graph. The final state after execution is returned.
+        resume:
+            When ``True`` the orchestrator will attempt to load any previously
+            saved state before executing the workflow. The state is persisted
+            before and after execution to enable crash recovery.
         """
 
+        if resume:
+            saved = load_state()
+            if saved is not None:
+                state = saved
+
         logger.debug("Starting workflow with state: %s", state)
-        result = await self.workflow.ainvoke(state)
-        logger.debug("Workflow completed with state: %s", result)
-        return result
+        # Persist starting state so we can recover mid-execution if needed
+        save_state(state)
+        result: Dict[str, Any] = {}
+        try:
+            result = await self.workflow.ainvoke(state)
+            logger.debug("Workflow completed with state: %s", result)
+            return result
+        finally:
+            if result:
+                save_state(result)
 
 
 # The specialist based ``MultiAgentOrchestrator`` defined earlier remains the
