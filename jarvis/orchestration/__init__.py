@@ -17,6 +17,7 @@ from .orchestrator import AgentSpec, DynamicOrchestrator, MultiAgentOrchestrator
 from .sub_orchestrator import SubOrchestrator
 from .pruning import PruningManager
 from .path_memory import PathMemory
+from .message_bus import MessageBus, HierarchicalMessageBus, Event
 
 
 __all__ = [
@@ -26,6 +27,9 @@ __all__ = [
     "SubOrchestrator",
     "PruningManager",
     "PathMemory",
+    "MessageBus",
+    "HierarchicalMessageBus",
+    "Event",
     "END",
 ]
 
