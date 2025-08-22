@@ -125,6 +125,15 @@
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
 
+# Agent Log
+
+## Scoped Logs, HITL Risk, and Policy Routing
+- Added transcript indexer with positive/negative citation retrieval.
+- Introduced RiskAnnotator with ActionRequestApproval exception.
+- Extended ModelRouter with policy-aware selection and justification storage.
+- Created docs and tests, executed targeted pytest suite.
+=======
+
 ## 2025-08-23
 - Started implementing event bus normalized events with run_id, step_id, parent_id.
 - Adding SSE and polling endpoints and visualizer support.
@@ -176,5 +185,6 @@
 - Added configuration handling with default config import and logger setup.
 - Implemented async `handle_request` entrypoint.
 - Ran `pytest v2`.
+
 
 

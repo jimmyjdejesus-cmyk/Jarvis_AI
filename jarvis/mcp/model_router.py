@@ -32,6 +32,25 @@ class ModelRouter:
         }
         # Local fallback (Ollama) used when all remote models fail
         self.local_fallback: Tuple[str, str] = ("ollama", "llama3.2")
+        # Justification for last routing decision (shown in UI tooltip)
+        self.last_justification: str = ""
+
+    def _select_model(
+        self, task_type: str, complexity: str, budget: str
+    ) -> Tuple[Tuple[str, str], str]:
+        """Pick a model based on task, complexity and budget policy."""
+
+        if budget == "aggressive" or complexity == "high":
+            pair = ("openai", "gpt-4")
+            reason = "aggressive budget/high complexity → GPT-4"
+        elif budget == "balanced":
+            pair = ("openai", "gpt-3.5-turbo")
+            reason = "balanced budget → GPT-3.5"
+        else:
+            pair = self.local_fallback
+            reason = "conservative budget/low complexity → local model"
+
+        return pair, reason
 
     async def route(self, intent: str, prompt: str) -> str:
         """Route ``prompt`` according to ``intent``.
@@ -66,6 +85,7 @@ class ModelRouter:
         # All remote models failed – attempt local fallback
         if await self.mcp_client.check_server_health(self.local_fallback[0]):
             server, model = self.local_fallback
+            self.last_justification = "fallback to local model"
             return await self.mcp_client.generate_response(server, model, prompt)
 
         raise MCPError(
@@ -76,4 +96,28 @@ class ModelRouter:
         """Update or add a routing sequence for an intent."""
 
         self.intent_map[intent] = sequence
+
+    async def route_to_best_model(
+        self,
+        message: str,
+        force_local: bool = False,
+        task_type: str = "general",
+        complexity: str = "medium",
+        budget: str = "balanced",
+    ) -> str:
+        """Route ``message`` using policy inputs.
+
+        The selection justification is stored in ``last_justification`` for UI
+        tooltip display.
+        """
+
+        if force_local:
+            server, model = self.local_fallback
+            reason = "forced local execution"
+        else:
+            (server, model), reason = self._select_model(task_type, complexity, budget)
+
+        self.last_justification = reason
+        logger.info("Model selection: %s/%s (%s)", server, model, reason)
+        return await self.mcp_client.generate_response(server, model, message)
 
