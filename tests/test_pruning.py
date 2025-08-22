@@ -1,0 +1,51 @@
+import sys
+from pathlib import Path
+
+import pytest
+
+# Ensure repository root is on path for direct module imports
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from jarvis.orchestration.message_bus import MessageBus
+from jarvis.orchestration.pruning import PruningEvaluator
+
+
+@pytest.mark.asyncio
+async def test_prune_suggestion_emitted():
+    bus = MessageBus()
+    evaluator = PruningEvaluator(bus)
+    events = []
+
+    async def handler(event):
+        events.append(event)
+
+    bus.subscribe("orchestrator.prune_suggested", handler)
+
+    # First output establishes history
+    await evaluator.evaluate("team1", {"text": "hello world", "quality": 0.5, "cost": 1})
+    # Second output is identical -> low novelty and zero growth triggers prune
+    await evaluator.evaluate("team1", {"text": "hello world", "quality": 0.5, "cost": 1})
+
+    assert events, "prune event should be emitted when thresholds not met"
+    payload = events[0]["payload"]
+    assert payload["team_id"] == "team1"
+    scores = payload["scores"]
+    assert scores["novelty"] == 0
+
+
+@pytest.mark.asyncio
+async def test_merge_and_dead_end_events():
+    bus = MessageBus()
+    evaluator = PruningEvaluator(bus)
+    merge_events = []
+    dead_events = []
+
+    bus.subscribe("orchestrator.team_merged", lambda e: merge_events.append(e))
+    bus.subscribe("orchestrator.path_dead_end", lambda e: dead_events.append(e))
+
+    await evaluator.merge_state("t1", "t2", ["a.txt"])
+    await evaluator.mark_dead_end("t1", "sig")
+
+    assert merge_events and dead_events
+    assert merge_events[0]["payload"]["from_team"] == "t1"
+    assert dead_events[0]["payload"]["team_id"] == "t1"
