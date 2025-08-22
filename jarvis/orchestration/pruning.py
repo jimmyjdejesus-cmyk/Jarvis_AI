@@ -59,6 +59,10 @@ class PruningEvaluator:
 
         # Store simple per-team history for delta calculations
         self._history: Dict[str, List[Dict[str, Any]]] = {}
+        # Track teams that have been suggested for pruning so orchestrators can
+        # skip them on subsequent runs. This provides a lightweight form of
+        # dead-end detection without requiring a separate pruning service.
+        self._suggested: set[str] = set()
 
     async def score(self, team_id: str, output: Dict[str, Any]) -> Scores:
         """Calculate pruning scores for a team's latest output."""
@@ -88,7 +92,7 @@ class PruningEvaluator:
         return Scores(novelty=novelty, growth=growth, cost=cost_per_gain)
 
     async def evaluate(self, team_id: str, output: Dict[str, Any]) -> Scores:
-        """Score and publish prune suggestions when thresholds are violated."""
+        """Score output and record if pruning is suggested."""
         scores = await self.score(team_id, output)
         cfg = self.config
         if (
@@ -96,6 +100,8 @@ class PruningEvaluator:
             or scores.growth < cfg["min_growth"]
             or scores.cost > cfg["max_cost_per_gain"]
         ):
+            # Mark team for pruning and emit an event for observers.
+            self._suggested.add(team_id)
             await self.bus.publish(
                 "orchestrator.prune_suggested",
                 {
@@ -106,6 +112,14 @@ class PruningEvaluator:
                 scope=self.scope,
             )
         return scores
+
+    def should_prune(self, team_id: str) -> bool:
+        """Return ``True`` if ``team_id`` has been suggested for pruning."""
+        return team_id in self._suggested
+
+    def clear_suggestion(self, team_id: str) -> None:
+        """Remove ``team_id`` from the suggested set after actioning."""
+        self._suggested.discard(team_id)
 
     async def merge_state(
         self, from_team: str, into_team: str, artifacts: List[str]
