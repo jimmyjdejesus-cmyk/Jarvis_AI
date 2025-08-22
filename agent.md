@@ -83,3 +83,11 @@
 - Added PruningEvaluator module and exports.
 - Created pruning tests.
 - Ran pruning tests.
+# Agent Log
+
+## WS3 Path Memory Enhancements
+- Implemented automatic hashing and timestamping for path signatures.
+- Added negative path avoidance and TTL-based pruning endpoints.
+- Logged project path hashes to `agent_project.md` and enabled vector store cleanup.
+- Created tests covering hashing, negative lookup, and pruning.
+- Executed targeted memory service test suite.

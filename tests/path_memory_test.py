@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import time
+
 from fastapi.testclient import TestClient
 
-from memory_service import app
+from memory_service import PathSignature, app, generate_hash
 
 
-def _sample_signature(hash_val: str) -> dict:
-    return {
-        "hash": hash_val,
+def _sample_signature(ts: float | None = None) -> dict:
+    sig = {
         "steps": ["step1", "step2"],
         "tools_used": ["tool"],
         "key_decisions": ["dec"],
@@ -16,12 +17,15 @@ def _sample_signature(hash_val: str) -> dict:
         "scope": "demo",
         "citations": [],
     }
+    if ts is not None:
+        sig["timestamp"] = ts
+    return sig
 
 
 def test_path_acl_and_query() -> None:
     client = TestClient(app)
 
-    sig1 = _sample_signature("1")
+    sig1 = _sample_signature()
     # orchestrator writes to project positive
     resp = client.post(
         "/paths/record",
@@ -34,8 +38,10 @@ def test_path_acl_and_query() -> None:
     )
     assert resp.status_code == 200
 
+    expected_hash = generate_hash(PathSignature(**sig1))
+
     # team cannot write project negative
-    sig2 = _sample_signature("2")
+    sig2 = _sample_signature()
     resp = client.post(
         "/paths/record",
         json={
@@ -60,7 +66,7 @@ def test_path_acl_and_query() -> None:
     assert resp.status_code == 200
 
     # orchestrator records project negative
-    sig3 = _sample_signature("3")
+    sig3 = _sample_signature()
     resp = client.post(
         "/paths/record",
         json={
@@ -85,7 +91,7 @@ def test_path_acl_and_query() -> None:
     )
     assert resp.status_code == 200
     results = resp.json()["results"]
-    assert results and results[0]["signature"]["hash"] == "3"
+    assert results and results[0]["signature"]["hash"] == generate_hash(PathSignature(**sig3))
 
     # team cannot query project positive
     resp = client.post(
@@ -98,3 +104,66 @@ def test_path_acl_and_query() -> None:
         },
     )
     assert resp.status_code == 403
+
+    # orchestrator queries project positive and gets hash
+    resp = client.post(
+        "/paths/query",
+        json={
+            "actor": "orchestrator",
+            "target": "project",
+            "kind": "positive",
+            "signature": sig1,
+            "threshold": 0.0,
+        },
+    )
+    assert resp.status_code == 200
+    results = resp.json()["results"]
+    assert results and results[0]["signature"]["hash"] == expected_hash
+
+
+def test_negative_lookup_and_prune() -> None:
+    client = TestClient(app)
+
+    sig = _sample_signature()
+    client.post(
+        "/paths/record",
+        json={
+            "actor": "orchestrator",
+            "target": "project",
+            "kind": "negative",
+            "signature": sig,
+        },
+    )
+
+    # team checks for negative paths before branching
+    resp = client.post(
+        "/paths/avoid",
+        json={
+            "actor": "team/red",
+            "target": "project",
+            "signature": sig,
+            "threshold": 0.0,
+        },
+    )
+    data = resp.json()
+    assert resp.status_code == 200 and data["avoid"] is True
+
+    # record an old path and prune it
+    old_ts = time.time() - 100
+    old_sig = _sample_signature(ts=old_ts)
+    client.post(
+        "/paths/record",
+        json={
+            "actor": "orchestrator",
+            "target": "project",
+            "kind": "positive",
+            "signature": old_sig,
+        },
+    )
+
+    resp = client.post(
+        "/paths/prune",
+        json={"actor": "orchestrator", "target": "project", "ttl_seconds": 50},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["removed"] >= 1

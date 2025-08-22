@@ -25,6 +25,10 @@ if chromadb:
     def query_text(query: str, n_results: int = 5) -> Dict[str, Any]:
         """Query similar text from the store."""
         return _collection.query(query_texts=[query], n_results=n_results)
+
+    def delete_text(principal: str, scope: str, key: str) -> None:
+        """Remove a document from the vector store."""
+        _collection.delete(ids=[f"{principal}:{scope}:{key}"])
 else:  # Fallback minimal implementations for environments without chromadb
     _store: Dict[str, str] = {}
 
@@ -37,3 +41,6 @@ else:  # Fallback minimal implementations for environments without chromadb
             text for text in _store.values() if query.lower() in text.lower()
         ][:n_results]
         return {"documents": [matches]}
+
+    def delete_text(principal: str, scope: str, key: str) -> None:
+        _store.pop(f"{principal}:{scope}:{key}", None)

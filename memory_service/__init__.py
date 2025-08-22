@@ -8,12 +8,14 @@ with principal verification and data masking.
 from __future__ import annotations
 
 import hashlib
+import time
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from .vector_store import add_text
+from .vector_store import add_text, delete_text
 
 app = FastAPI(title="SharedMemoryService")
 
@@ -82,7 +84,7 @@ class Outcome(BaseModel):
 class PathSignature(BaseModel):
     """Signature capturing important aspects of a path."""
 
-    hash: str
+    hash: Optional[str] = None
     steps: List[str]
     tools_used: List[str]
     key_decisions: List[str]
@@ -90,10 +92,29 @@ class PathSignature(BaseModel):
     outcome: Outcome
     scope: str
     citations: List[str] = []
+    timestamp: float = Field(default_factory=lambda: time.time())
 
 
 # Principal -> collection -> List[PathSignature]
 _paths: Dict[str, Dict[str, List[PathSignature]]] = {}
+
+# File to track project-wide path signatures
+_PROJECT_LOG = Path(__file__).resolve().parent.parent / "agent_project.md"
+
+
+def generate_hash(signature: PathSignature) -> str:
+    """Generate a deterministic hash for a path signature."""
+    hasher = hashlib.sha256()
+    for part in signature.steps + signature.tools_used + signature.key_decisions:
+        hasher.update(part.encode("utf-8"))
+    return hasher.hexdigest()
+
+
+def _log_project(signature: PathSignature) -> None:
+    """Append the path hash and outcome to ``agent_project.md``."""
+    line = f"- {signature.hash} {signature.outcome.result}\n"
+    with _PROJECT_LOG.open("a", encoding="utf-8") as fh:
+        fh.write(line)
 
 
 def _check_acl(actor: str, target: str, kind: str, op: str) -> None:
@@ -124,15 +145,16 @@ class PathRecord(BaseModel):
 def record_path(req: PathRecord) -> Dict[str, str]:
     """Record a path signature in the shared service."""
     _check_acl(req.actor, req.target, req.kind, "write")
+    sig = req.signature
+    if not sig.hash:
+        sig.hash = generate_hash(sig)
     store = _paths.setdefault(req.target, {}).setdefault(req.kind, [])
-    store.append(req.signature)
-    text = " ".join(
-        req.signature.steps
-        + req.signature.tools_used
-        + req.signature.key_decisions
-    )
-    add_text(req.target, req.kind, req.signature.hash, text)
-    _emit("path_record", req.actor, f"{req.target}:{req.kind}", req.signature.hash)
+    store.append(sig)
+    text = " ".join(sig.steps + sig.tools_used + sig.key_decisions)
+    add_text(req.target, req.kind, sig.hash, text)
+    if req.target == "project":
+        _log_project(sig)
+    _emit("path_record", req.actor, f"{req.target}:{req.kind}", sig.hash)
     return {"status": "ok"}
 
 
@@ -165,6 +187,54 @@ def query_paths(req: PathQuery) -> Dict[str, List[Dict[str, object]]]:
         {"similarity": score, "signature": sig.dict()} for score, sig in matches
     ]
     return {"results": results}
+
+
+class NegativeCheck(BaseModel):
+    actor: str
+    target: str
+    signature: PathSignature
+    threshold: float = 0.5
+
+
+@app.post("/paths/avoid")
+def avoid_negative(req: NegativeCheck) -> Dict[str, object]:
+    """Check project negative paths before branching."""
+    _check_acl(req.actor, req.target, "negative", "read")
+    results = query_paths(
+        PathQuery(
+            actor=req.actor,
+            target=req.target,
+            kind="negative",
+            signature=req.signature,
+            threshold=req.threshold,
+        )
+    )["results"]
+    return {"avoid": bool(results), "results": results}
+
+
+class PruneRequest(BaseModel):
+    actor: str
+    target: str
+    ttl_seconds: int
+
+
+@app.post("/paths/prune")
+def prune_paths(req: PruneRequest) -> Dict[str, int]:
+    """Prune stored paths older than ``ttl_seconds``."""
+    _check_acl(req.actor, req.target, "positive", "write")
+    cutoff = time.time() - req.ttl_seconds
+    removed = 0
+    store = _paths.get(req.target, {})
+    for kind, sigs in list(store.items()):
+        new_sigs: List[PathSignature] = []
+        for sig in sigs:
+            if sig.timestamp < cutoff:
+                delete_text(req.target, kind, sig.hash)
+                removed += 1
+            else:
+                new_sigs.append(sig)
+        store[kind] = new_sigs
+    return {"removed": removed}
 
 
 # ---------------------------------------------------------------------------
