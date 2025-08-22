@@ -16,12 +16,14 @@ from ``AgentSpec`` definitions.
 from .orchestrator import MultiAgentOrchestrator
 from .sub_orchestrator import SubOrchestrator
 from .orchestrator import AgentSpec, DynamicOrchestrator, END
+from .pruning import PruningEvaluator
 
 __all__ = [
     "AgentSpec",
     "DynamicOrchestrator",
     "MultiAgentOrchestrator",
     "SubOrchestrator",
+    "PruningEvaluator",
     "END"
 ]
 
