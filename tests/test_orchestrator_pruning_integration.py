@@ -45,3 +45,16 @@ def test_pruning_event_emitted():
     mto._run_team(orch.teams["security_quality"], state)
     mto._run_team(orch.teams["security_quality"], state)
     assert events, "Prune event should be emitted on repeated outputs"
+
+
+def test_pruned_team_skipped():
+    bus = MessageBus()
+    evaluator = PruningEvaluator(bus)
+    orch = DummyOrchestrator()
+    mto = MultiTeamOrchestrator(orch, evaluator=evaluator)
+    state = {"objective": "obj", "context": {}, "team_outputs": {}}
+    team = orch.teams["security_quality"]
+    mto._run_team(team, state)
+    mto._run_team(team, state)  # second run triggers prune suggestion
+    result = mto._run_team(team, state)
+    assert result == {"status": "pruned"}

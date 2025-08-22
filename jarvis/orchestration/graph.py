@@ -55,14 +55,19 @@ class MultiTeamOrchestrator:
 
     def _run_team(self, team: TeamMemberAgent, state: TeamWorkflowState) -> Dict[str, Any]:
         """Helper function to run a single team member."""
+        logger = getattr(team, "log", lambda *a, **k: None)
+        if self.evaluator and self.evaluator.should_prune(team.team):
+            logger("Team pruned; skipping execution.")
+            return {"status": "pruned"}
+
         try:
             result = team.run(state["objective"], state["context"])
         except NotImplementedError:
-            team.log(f"Starting simulated task for objective: {state['objective']}")
+            logger(f"Starting simulated task for objective: {state['objective']}")
             result = {
                 f"{team.team.lower()}_output": f"Completed simulated task for {team.team} team."
             }
-            team.log("Simulated task finished.", data=result)
+            logger("Simulated task finished.", data=result)
 
         if self.evaluator:
             output = {
@@ -76,6 +81,11 @@ class MultiTeamOrchestrator:
 
     async def _run_team_async(self, team: TeamMemberAgent, state: TeamWorkflowState) -> Dict[str, Any]:
         """Execute a team in a background thread for parallel coordination."""
+        if self.evaluator and self.evaluator.should_prune(team.team):
+            logger = getattr(team, "log", lambda *a, **k: None)
+            logger("Team pruned; skipping execution.")
+            return {"status": "pruned"}
+
         # Respect runtime controls like pause and merge
         while self.orchestrator.team_status.get(team.team) == "paused":
             await asyncio.sleep(0.1)

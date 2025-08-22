@@ -111,3 +111,8 @@
 - Added CLI for operator intervention and recorded updates.
 - Executed orchestrator-related tests.
 
+## WS1 Pruning Logic in Reasoning Paths
+- Implemented prune suggestion tracking with `should_prune` and `clear_suggestion` helpers.
+- Updated `MultiTeamOrchestrator` to skip teams marked for pruning.
+- Added integration test validating pruned teams are not re-executed.
+- Ran pruning-related test suite.
