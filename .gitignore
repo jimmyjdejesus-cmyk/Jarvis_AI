@@ -32,7 +32,8 @@ build/
 
 # Logs
 *.log
-logs/
+logs/*
+!logs/events.ndjson
 
 # Repository search indices
 data/repo_index/
