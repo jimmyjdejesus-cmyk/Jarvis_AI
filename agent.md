@@ -124,3 +124,7 @@
 - Implemented team indicator badges and dead-end shelf in workflow visualizer.
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
+## WS1-WS4 Validation Tests
+- Added golden pruning/merge test and log schema sample.
+- Implemented orchestration soak, path memory guard, and MCP routing matrix tests.
+- Documented validation summary and P95 latency target.
