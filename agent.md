@@ -124,3 +124,7 @@
 - Implemented team indicator badges and dead-end shelf in workflow visualizer.
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
+
+# Agent Log
+- Integrated MultiAgentOrchestrator into JarvisAgentV2 with MCP client.
+- Added interactive runner script and end-to-end integration test.
