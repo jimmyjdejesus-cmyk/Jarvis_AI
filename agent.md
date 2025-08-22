@@ -124,6 +124,12 @@
 - Implemented team indicator badges and dead-end shelf in workflow visualizer.
 - Integrated workflow graph, team badges, and dead-end shelf into modern Streamlit chat.
 - Added tests verifying team indicator icons and pruned path detection.
+## EPIC B UI Enhancements
+- Added workflow DAG panel and export helpers.
+- Added dead-end shelf with override logging and sidebar rendering.
+- Introduced theme stylesheet for mode toggle and progress bars.
+- Added placeholder screenshots and updated README.
+- Ran pytest suite.
 
 ## WS1-WS4 Validation Tests
 - Added golden pruning/merge test and log schema sample.

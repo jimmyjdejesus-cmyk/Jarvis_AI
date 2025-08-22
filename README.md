@@ -85,6 +85,16 @@ Packaged binaries will be placed in the `dist/` directory.
 - **PyInstaller build is large** – use the `--exclude-module` flag to
   omit optional dependencies when packaging.
 
+
+## 🧭 Workflow Visualizer and Dead-End Shelf
+
+Jarvis now exposes its internal reasoning through a Streamlit DAG panel and a
+dead-end shelf for pruned branches. The DAG view supports DOT/JSON/PNG export
+while the shelf allows operators to override pruned paths when necessary.
+
+![Workflow DAG](docs/images/dag_panel.png)
+![Dead-End Shelf](docs/images/dead_end_shelf.png)
+
 ## 📈 Graphviz
 
 Some features use the [`graphviz`](https://pypi.org/project/graphviz/) package to render diagrams.
