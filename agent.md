@@ -91,3 +91,11 @@
 - Logged project path hashes to `agent_project.md` and enabled vector store cleanup.
 - Created tests covering hashing, negative lookup, and pruning.
 - Executed targeted memory service test suite.
+
+# Agent Log
+
+## WS6 Shared Memory & Logging
+- Initialized repository analysis for scoped logging and guardrails.
+- Implemented log manager with team/project logs and query support.
+- Added HITL guardrails for file writes and git commits.
+- Created tests for log scoping, querying, and guardrail confirmations.
