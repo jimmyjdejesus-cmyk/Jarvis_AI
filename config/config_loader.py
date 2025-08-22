@@ -17,17 +17,31 @@ def load_profile(name: str) -> dict:
     return {}
 
 
+def _convert(value: str):
+    """Best-effort conversion of strings to native Python types."""
+    lower = value.lower()
+    if lower in {"true", "false"}:
+        return lower == "true"
+    try:
+        return int(value)
+    except ValueError:
+        try:
+            return float(value)
+        except ValueError:
+            return value
+
+
 def apply_env_overrides(config: dict) -> dict:
-    """Apply environment variable overrides with JARVIS_ prefix."""
-    prefix = "JARVIS_"
+    """Apply environment variable overrides with JARVIS__ prefix using double underscores for nesting."""
+    prefix = "JARVIS__"
     for key, value in os.environ.items():
         if key.startswith(prefix):
-            # convert JARVIS_FOO_BAR to foo.bar
-            path = key[len(prefix):].lower().split("_")
+            # convert JARVIS__FOO__BAR to config["foo"]["bar"]
+            path = key[len(prefix):].lower().split("__")
             current = config
             for part in path[:-1]:
                 current = current.setdefault(part, {})
-            current[path[-1]] = value
+            current[path[-1]] = _convert(value)
     return config
 
 
