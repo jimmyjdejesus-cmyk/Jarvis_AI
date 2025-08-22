@@ -188,3 +188,10 @@
 
 
 
+
+# Agent Log
+
+- Initialized repository for hierarchical message bus feature.
+- Implemented `Event` schema and `HierarchicalMessageBus` with prefix routing.
+- Added unit test verifying hierarchical event delivery.
+- Ran targeted pytest for message bus hierarchy.
