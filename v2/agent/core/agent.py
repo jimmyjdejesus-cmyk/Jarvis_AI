@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Union
+
+from v2.config.config import Config, load_config
 
 from v2.config.config import DEFAULT_CONFIG
 from jarvis.logging.logger import get_logger
@@ -17,15 +19,15 @@ class JarvisAgentV2:
     dependency stack.
     """
 
-    def __init__(self, config: Dict[str, Any] | None = None) -> None:
-        """Initialize the agent with configuration and logging."""
 
-        self.config = DEFAULT_CONFIG.copy()
-        if config:
-            self.config.update(config)
-
-        self.logger = get_logger()
-        self.logger.info("JarvisAgentV2 initialized.")
+    def __init__(self, config: Union[Config, Dict[str, Any], None] = None) -> None:
+        if config is None:
+            self.config = load_config()
+        elif isinstance(config, Config):
+            self.config = config
+        else:
+            self.config = Config(**config)
+        self.agent_config = self.config.v2_agent
 
     # ------------------------------------------------------------------
     def setup_workflow(self) -> None:  # pragma: no cover - placeholder
