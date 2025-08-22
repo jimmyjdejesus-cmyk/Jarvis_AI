@@ -9,6 +9,8 @@ import logging
 from datetime import datetime
 import os
 
+from v2.agent.adapters.langgraph_ui import visualizer
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -147,15 +149,35 @@ def render_modern_chat(agent, db_manager):
                 try:
                     response = agent.chat(prompt)
                     st.write(response)
-                    
+
+                    # Visualisation features
+                    indicators = visualizer.get_team_indicators()
+                    if indicators:
+                        st.markdown("**Team Indicators**")
+                        cols = st.columns(len(indicators))
+                        for col, info in zip(cols, indicators):
+                            col.markdown(f"{info['icon']} {info['label']}")
+
+                    dead_ends = visualizer.get_dead_ends()
+                    if dead_ends:
+                        with st.expander("🛑 Dead-End Shelf"):
+                            st.write("\n".join(dead_ends))
+
+                    try:
+                        png = visualizer.export("png")
+                        if png:
+                            st.image(png)
+                    except Exception:
+                        pass
+
                     # Save to session history
                     st.session_state.chat_history.append((prompt, response))
-                    
+
                     # Save to database if user is authenticated
                     if st.session_state.get('authenticated') and st.session_state.get('username'):
                         db_manager.save_chat_message(
-                            st.session_state.username, 
-                            prompt, 
+                            st.session_state.username,
+                            prompt,
                             response,
                             agent.model_name
                         )
