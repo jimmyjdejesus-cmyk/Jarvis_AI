@@ -93,9 +93,21 @@
 - Executed targeted memory service test suite.
 
 # Agent Log
-
 ## WS6 Shared Memory & Logging
 - Initialized repository analysis for scoped logging and guardrails.
 - Implemented log manager with team/project logs and query support.
 - Added HITL guardrails for file writes and git commits.
 - Created tests for log scoping, querying, and guardrail confirmations.
+=======
+## WS4 MCP & Dynamic Model Routing
+- Implemented asynchronous API calls for OpenAI and Anthropic in MCPClient.
+- Consolidated duplicate `generate_response` with rate limiting and timeout.
+- Ran `pytest test_mcp_foundation.py` to validate MCP client.
+=======
+## WS2 Multi-Agent Orchestration
+- Added per-team memory isolation with local buses and shared docs channel.
+- Implemented runtime controls (pause, restart, merge) with lineage logging.
+- Enabled parallel team execution for adversary and competitive pairs.
+- Added CLI for operator intervention and recorded updates.
+- Executed orchestrator-related tests.
+

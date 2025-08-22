@@ -4,9 +4,9 @@ Defines the hierarchical agent structure for the Jarvis V2 Orchestration System.
 
 import uuid
 import os
+import asyncio
 from typing import List, Dict, Any, Callable
 from jarvis.memory.memory_bus import MemoryBus
-# from jarvis.orchestration.graph import MultiTeamOrchestrator # Moved to fix circular import
 from jarvis.tools.web_tools import search_web
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
@@ -18,10 +18,17 @@ class TeamMemberAgent:
         self.orchestrator = orchestrator
         self.team = team_name
         self.tools: Dict[str, Callable] = {}
+        # Each team has an isolated memory bus and access to shared docs
+        self.local_bus = orchestrator.team_buses[team_name]
+        self.docs_bus = orchestrator.shared_docs_bus
 
     def log(self, message: str, data: Dict[str, Any] = None):
-        """Logs a message to the orchestrator's memory bus."""
-        self.orchestrator.memory_bus.log_interaction(self.agent_id, self.team, message, data)
+        """Logs a message to the team's local memory bus."""
+        self.local_bus.log_interaction(self.agent_id, self.team, message, data)
+
+    def share_doc(self, message: str, data: Dict[str, Any] = None):
+        """Share a document or finding with other teams via the shared channel."""
+        self.docs_bus.log_interaction(self.agent_id, f"SharedDocs|{self.team}", message, data)
 
     def run(self, objective: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """The main execution logic for the agent. To be implemented by subclasses."""
@@ -70,6 +77,13 @@ class OrchestratorAgent:
         self.objective = objective
         self.memory_bus = MemoryBus(directory) # Local bus for this project
         self.shared_bus = shared_bus # Shared bus for inter-orchestrator communication
+        # Shared docs channel for team collaboration
+        self.shared_docs_bus = MemoryBus(os.path.join(directory, "shared_docs"))
+        # Per-team isolated memory buses
+        team_names = ["Red", "Blue", "Yellow", "Green", "White", "Black"]
+        self.team_buses = {name: MemoryBus(os.path.join(directory, name.lower())) for name in team_names}
+        self.team_status = {name: "running" for name in team_names}
+        self.lineage_log: List[Dict[str, Any]] = []
         # Event bus for coordination and pruning suggestions
         self.event_bus = MessageBus()
         self.pruning_evaluator = PruningEvaluator(self.event_bus)
@@ -81,6 +95,11 @@ class OrchestratorAgent:
             "security_quality": WhiteSecurityAgent(self),
             "innovators_disruptors": BlackInnovatorAgent(self),
         }
+        # Record initial team lineage
+        for name in team_names:
+            event = {"action": "spawn", "team": name, "parent": self.agent_id}
+            self.lineage_log.append(event)
+            self.log("Lineage update", data=event)
         
         # Initialize the LangGraph orchestrator
         from jarvis.orchestration.graph import MultiTeamOrchestrator # Local import to break cycle
@@ -96,6 +115,34 @@ class OrchestratorAgent:
         """Broadcasts a significant finding to the shared memory bus for other orchestrators."""
         if self.shared_bus:
             self.shared_bus.log_interaction(self.agent_id, f"Broadcast | {self.objective[:30]}...", message, data)
+
+    # ---- Runtime control methods ----
+    def pause_team(self, team_name: str):
+        """Pause a team during live orchestration."""
+        if team_name in self.team_status:
+            self.team_status[team_name] = "paused"
+            self.log(f"Team {team_name} paused by operator.")
+            asyncio.run(self.event_bus.publish("team.paused", {"team": team_name}))
+
+    def restart_team(self, team_name: str):
+        """Restart a previously paused team."""
+        if team_name in self.team_status:
+            self.team_status[team_name] = "running"
+            self.log(f"Team {team_name} restarted by operator.")
+            asyncio.run(self.event_bus.publish("team.restarted", {"team": team_name}))
+
+    def merge_teams(self, source_team: str, target_team: str):
+        """Merge one team into another and record lineage."""
+        if source_team in self.team_status and target_team in self.team_status:
+            self.team_status[source_team] = "merged"
+            event = {"action": "merge", "from": source_team, "into": target_team}
+            self.lineage_log.append(event)
+            self.log(f"Merging team {source_team} into {target_team}", data=event)
+            asyncio.run(self.event_bus.publish("team.merged", event))
+
+    def get_lineage(self) -> List[Dict[str, Any]]:
+        """Return the recorded orchestration lineage."""
+        return list(self.lineage_log)
 
     def run(self):
         """Executes the multi-team workflow to achieve the objective."""

@@ -168,12 +168,6 @@ class MCPClient:
 
         return []
 
-    @rate_limit(calls=5, period=60)
-    @timeout(30)
-    async def generate_response(self, server: str, model: str, prompt: str) -> str:
-        """Generate response using specific model via MCP."""
-        # ...existing code...
-
     def _emit_llm_call(
         self,
         server: str,
@@ -194,6 +188,9 @@ class MCPClient:
                 "error": error,
             },
         )
+
+    @rate_limit(calls=5, period=60)
+    @timeout(30)
     async def generate_response(self, server: str, model: str, prompt: str) -> str:
         """Generate response using specific model via MCP."""
 
