@@ -9,8 +9,10 @@ from tkinter import ttk, scrolledtext, messagebox
 import threading
 import os
 from pathlib import Path
+import asyncio
 
 from config.config_loader import load_config
+from v2.agent.core.agent import JarvisAgentV2
 
 # Load environment variables
 def load_env():
@@ -39,6 +41,10 @@ class JarvisDesktopApp:
         self.root.title(f"{app_name} - Agentic Workflows")
         self.root.geometry("800x600")
         self.root.configure(bg='#2b2b2b')
+        
+        # Initialize the agent
+        self.agent = JarvisAgentV2()
+        self.models = []
         
         # Configure style
         self.setup_styles()
@@ -78,9 +84,17 @@ class JarvisDesktopApp:
                                 font=('Arial', 16, 'bold'))
         header_label.grid(row=0, column=0, columnspan=2, pady=(0, 20))
         
+        # Model selection
+        model_frame = ttk.Frame(main_frame)
+        model_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        ttk.Label(model_frame, text="Model:").grid(row=0, column=0, sticky=tk.W)
+        self.model_selector = ttk.Combobox(model_frame, state="readonly")
+        self.model_selector.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0))
+        model_frame.columnconfigure(1, weight=1)
+
         # Status frame
         status_frame = ttk.Frame(main_frame)
-        status_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        status_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         status_frame.columnconfigure(1, weight=1)
         
         ttk.Label(status_frame, text="Status:").grid(row=0, column=0, sticky=tk.W)
@@ -89,7 +103,7 @@ class JarvisDesktopApp:
         
         # Input frame
         input_frame = ttk.Frame(main_frame)
-        input_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        input_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         input_frame.columnconfigure(0, weight=1)
         input_frame.rowconfigure(1, weight=1)
         
@@ -107,7 +121,7 @@ class JarvisDesktopApp:
         
         # Button frame
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, columnspan=2, pady=(0, 10))
+        button_frame.grid(row=4, column=0, columnspan=2, pady=(0, 10))
         
         self.run_button = ttk.Button(button_frame, text="🚀 Run Agentic Workflow", 
                                     command=self.run_workflow)
@@ -121,7 +135,7 @@ class JarvisDesktopApp:
         
         # Output frame
         output_frame = ttk.Frame(main_frame)
-        output_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        output_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
         output_frame.columnconfigure(0, weight=1)
         output_frame.rowconfigure(1, weight=1)
         
@@ -136,10 +150,10 @@ class JarvisDesktopApp:
         
         # Progress bar
         self.progress = ttk.Progressbar(main_frame, mode='indeterminate')
-        self.progress.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.progress.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
         
         # Configure additional row weights
-        main_frame.rowconfigure(4, weight=1)
+        main_frame.rowconfigure(5, weight=1)
     
     def check_connections(self):
         """Check LangSmith and Ollama connections."""
@@ -182,8 +196,9 @@ class JarvisDesktopApp:
             ollama_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
             response = requests.get(f"{ollama_url}/api/tags", timeout=5)
             if response.status_code == 200:
-                models = response.json().get('models', [])
-                self.log_output(f"✅ Ollama: Connected ({len(models)} models)\n")
+                self.models = [m['name'] for m in response.json().get('models', [])]
+                self.log_output(f"✅ Ollama: Connected ({len(self.models)} models)\n")
+                self.root.after(0, self.update_model_selector)
                 return True
             else:
                 self.log_output("❌ Ollama: Not responding\n")
@@ -197,6 +212,15 @@ class JarvisDesktopApp:
         self.output_text.insert(tk.END, text)
         self.output_text.see(tk.END)
         self.root.update_idletasks()
+
+    def update_model_selector(self):
+        """Update the model selector combobox with available models."""
+        if self.models:
+            self.model_selector['values'] = self.models
+            self.model_selector.set(self.models[0])
+        else:
+            self.model_selector['values'] = []
+            self.model_selector.set("No models found")
     
     def clear_output(self):
         """Clear the output area."""
@@ -210,154 +234,74 @@ class JarvisDesktopApp:
     def run_workflow(self):
         """Run the agentic workflow."""
         query = self.query_text.get('1.0', tk.END).strip()
+        model = self.model_selector.get()
+
         if not query:
             messagebox.showwarning("Warning", "Please enter a query!")
             return
         
+        if not model or model == "No models found":
+            messagebox.showwarning("Warning", "Please select a model!")
+            return
+
         # Disable button and start progress
         self.run_button.config(state='disabled')
         self.progress.start()
         
         def workflow_thread():
-            try:
-                self.clear_output()
-                self.log_output("🚀 Starting Agentic Workflow...\n")
-                self.log_output("=" * 50 + "\n")
-                self.log_output(f"🎯 Query: {query}\n\n")
-                
-                # Setup environment
-                if os.getenv('LANGSMITH_API_KEY'):
-                    os.environ['LANGCHAIN_TRACING_V2'] = 'true'
-                    os.environ['LANGCHAIN_PROJECT'] = 'jarvis-ai-desktop'
-                    self.log_output("📡 LangSmith tracing enabled\n")
-                
-                # Run workflow steps
-                result = self.execute_agentic_workflow(query)
-                
-                self.log_output("\n" + "=" * 50 + "\n")
-                self.log_output("✅ Workflow completed successfully!\n")
-                self.log_output("\n📊 Check LangSmith dashboard for traces:\n")
-                self.log_output("   https://smith.langchain.com/\n")
-                
-            except Exception as e:
-                self.log_output(f"\n❌ Workflow failed: {str(e)}\n")
-            
-            finally:
-                # Re-enable button and stop progress
-                self.root.after(0, lambda: [
-                    self.run_button.config(state='normal'),
-                    self.progress.stop()
-                ])
-        
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.execute_agentic_workflow(query, model))
+            loop.close()
+
         threading.Thread(target=workflow_thread, daemon=True).start()
     
-    def execute_agentic_workflow(self, query):
-        """Execute the multi-step agentic workflow."""
-        
-        # Step 1: Planning
-        self.log_output("📋 Step 1: Planning\n")
-        plan = self.planning_agent(query)
-        self.log_output("   Plan:\n")
-        for i, step in enumerate(plan, 1):
-            self.log_output(f"      {i}. {step}\n")
-        
-        # Step 2: Research
-        self.log_output("\n🔍 Step 2: Research & Analysis\n")
-        research = self.research_agent(plan)
-        self.log_output("   Research completed:\n")
-        for category, findings in research.items():
-            self.log_output(f"      {category.title()}: {len(findings)} findings\n")
-        
-        # Step 3: Analysis
-        self.log_output("\n🧠 Step 3: Analysis\n")
-        analysis = self.analysis_agent(research)
-        self.log_output("   Key insights:\n")
-        for insight in analysis[:3]:  # Show top 3 insights
-            self.log_output(f"      • {insight}\n")
-        
-        # Step 4: Synthesis
-        self.log_output("\n📝 Step 4: Synthesis\n")
-        result = self.synthesis_agent(query, plan, research, analysis)
-        self.log_output("   Final result generated\n")
-        
-        # Display result in a new window
-        self.show_result_window(result)
-        
-        return result
-    
-    def planning_agent(self, query):
-        """Planning agent implementation."""
-        if "production" in query.lower() and "ai" in query.lower():
-            return [
-                "Identify core infrastructure requirements",
-                "Research monitoring and observability tools", 
-                "Analyze scalability considerations",
-                "Evaluate security and compliance needs",
-                "Compile deployment best practices"
-            ]
-        else:
-            return [
-                "Understand the core question",
-                "Break down into sub-components",
-                "Research relevant technologies",
-                "Synthesize findings into actionable insights"
-            ]
-    
-    def research_agent(self, plan):
-        """Research agent implementation."""
-        return {
-            "infrastructure": ["Vector databases", "Model serving", "API gateways", "Containers"],
-            "monitoring": ["LangSmith", "APM tools", "Error tracking", "Analytics"],
-            "scalability": ["Auto-scaling", "Caching", "Load balancing", "Queue systems"],
-            "security": ["Authentication", "Encryption", "Privacy", "Compliance"],
-            "deployment": ["CI/CD", "Infrastructure as Code", "Multi-environment", "DR"]
-        }
-    
-    def analysis_agent(self, research_data):
-        """Analysis agent implementation."""
-        return [
-            "Vector databases are essential for semantic search applications",
-            "LangSmith provides comprehensive observability for LLM workflows",
-            "Container orchestration enables reliable scaling and deployment",
-            "Multi-layered security approach is critical for production systems",
-            "Automated CI/CD reduces deployment risks and improves reliability"
-        ]
-    
-    def synthesis_agent(self, query, plan, research, analysis):
-        """Synthesis agent implementation."""
-        return """🚀 PRODUCTION-READY AI APPLICATION COMPONENTS
+    async def execute_agentic_workflow(self, query: str, model: str):
+        """Execute the agentic workflow using JarvisAgentV2 and stream results to the UI."""
+        try:
+            # Pass the selected model to the agent
+            self.agent.llm.model = model
 
-🏗️ Infrastructure Foundation
-• Vector Databases: Pinecone, Weaviate, Chroma for semantic search
-• Model Serving: Hugging Face, Replicate for model hosting  
-• API Gateway: Load balancing and rate limiting
-• Containerization: Docker + Kubernetes for deployment
+            self.clear_output()
+            self.log_output("🚀 Starting Agentic Workflow...\n")
+            self.log_output("=" * 50 + "\n")
+            self.log_output(f"🎯 Query: {query}\n\n")
 
-📊 Monitoring & Observability
-• LangSmith: End-to-end tracing for LLM applications
-• APM Tools: Application performance monitoring
-• Analytics: Usage metrics and cost tracking
-• Error Handling: Comprehensive logging and recovery
+            # Setup environment for LangSmith tracing
+            if os.getenv('LANGSMITH_API_KEY'):
+                os.environ['LANGCHAIN_TRACING_V2'] = 'true'
+                os.environ['LANGCHAIN_PROJECT'] = 'jarvis-ai-desktop'
+                self.log_output("📡 LangSmith tracing enabled\n")
 
-⚡ Scalability Architecture
-• Auto-scaling: Dynamic resource allocation
-• Caching: Redis/Memcached for performance
-• Load Balancing: Traffic distribution
-• Queue Systems: Asynchronous processing
+            final_result = ""
+            async for event in self.agent.stream_workflow(query):
+                event_type = event.get("type")
+                content = event.get("content")
 
-🔒 Security & Compliance
-• Authentication: API keys, OAuth, RBAC
-• Encryption: Data protection at rest and in transit
-• Privacy: Sensitive information handling
-• Compliance: GDPR, HIPAA requirements
+                if event_type == "step":
+                    self.log_output(f"🔄 [{content.upper()}]\n")
+                elif event_type == "token":
+                    final_result += content + " "
+                    self.log_output(content + " ")
+                elif event_type == "hitl":
+                    # For now, we'll just log this. A real implementation would pause for user input.
+                    self.log_output(f"\n\n[USER CONFIRMATION REQUIRED]\n{content}\n\n")
+                elif event_type == "done":
+                    self.log_output("\n\n" + "=" * 50 + "\n")
+                    self.log_output("✅ Workflow completed successfully!\n")
+                    self.log_output("\n📊 Check LangSmith dashboard for traces:\n")
+                    self.log_output("   https://smith.langchain.com/\n")
+                    # self.show_result_window(final_result.strip()) # Optionally show final result in new window
 
-🚀 Deployment & Operations
-• CI/CD Pipelines: Automated workflows
-• Infrastructure as Code: Reproducible deployments
-• Environment Management: Dev, staging, production
-• Disaster Recovery: Backup and rollback strategies
-
-This architecture provides a solid foundation for enterprise-grade AI applications."""
+        except Exception as e:
+            self.log_output(f"\n❌ Workflow failed: {str(e)}\n")
+        
+        finally:
+            # Re-enable button and stop progress in the main thread
+            self.root.after(0, lambda: [
+                self.run_button.config(state='normal'),
+                self.progress.stop()
+            ])
     
     def show_result_window(self, result):
         """Show the final result in a new window."""

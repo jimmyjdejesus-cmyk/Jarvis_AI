@@ -13,8 +13,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, Optional, AsyncGenerator
 
 from langgraph.graph import END, StateGraph
-import asyncio
-from typing import AsyncGenerator, Dict, Any
+import ollama
 
 
 class JarvisAgentV2:
@@ -68,6 +67,9 @@ class JarvisAgentV2:
         self.workflow = None
         self.visualizer = None
 
+        # Simple Ollama client
+        self.llm = ollama.Client()
+
 
     # ------------------------------------------------------------------
     def _emit_ws_event(self, node: str, data: Dict[str, Any]) -> None:
@@ -120,19 +122,31 @@ class JarvisAgentV2:
 
         # ------------------------------------------------------------------
         def planner(state: Dict[str, Any]) -> Dict[str, Any]:
-            plan = {"plan": f"Plan for: {state.get('query')}"}
+            query = state.get("query")
+            model = self.llm.model
+            prompt = f"Create a step-by-step plan to answer the following query: {query}"
+            response = self.llm.generate(model=model, prompt=prompt)
+            plan = {"plan": response.get("response")}
             self._emit_ws_event("planner", plan)
             state.update(plan)
             return state
 
         def executor(state: Dict[str, Any]) -> Dict[str, Any]:
-            result = {"execution": f"Executed plan: {state.get('plan')}"}
+            plan = state.get("plan")
+            model = self.llm.model
+            prompt = f"Execute the following plan: {plan}"
+            response = self.llm.generate(model=model, prompt=prompt)
+            result = {"execution": response.get("response")}
             self._emit_ws_event("executor", result)
             state.update(result)
             return state
 
         def critic(state: Dict[str, Any]) -> Dict[str, Any]:
-            feedback = {"feedback": f"Reviewed: {state.get('execution')}"}
+            execution = state.get("execution")
+            model = self.llm.model
+            prompt = f"Critique the following execution and provide feedback for improvement: {execution}"
+            response = self.llm.generate(model=model, prompt=prompt)
+            feedback = {"feedback": response.get("response")}
             self._emit_ws_event("critic", feedback)
             state.update(feedback)
             return state
@@ -189,4 +203,3 @@ class JarvisAgentV2:
                     return final_state
 
         return final_state
-
