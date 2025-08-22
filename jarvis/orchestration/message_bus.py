@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections import defaultdict
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 
 EventHandler = Callable[[Dict[str, Any]], Awaitable[None] | None]
@@ -29,7 +29,17 @@ class MessageBus:
         """Register a handler for a specific event type."""
         self._subscribers[event].append(handler)
 
-    async def publish(self, event: str, payload: Any, scope: str = "global") -> str:
+    async def publish(
+        self,
+        event: str,
+        payload: Any,
+        *,
+        scope: str = "global",
+        run_id: Optional[str] = None,
+        step_id: Optional[str] = None,
+        parent_id: Optional[str] = None,
+        log: Optional[str] = None,
+    ) -> str:
         """Publish an event to all subscribers.
 
         Parameters
@@ -40,6 +50,14 @@ class MessageBus:
             Arbitrary JSON‑serialisable payload.
         scope:
             Optional scope identifier used for routing and event history.
+        run_id:
+            Identifier for the overall run this event belongs to.
+        step_id:
+            Identifier for the specific step generating the event.
+        parent_id:
+            Identifier for the parent step that spawned this action.
+        log:
+            Optional log excerpt associated with the event.
 
         Returns
         -------
@@ -47,7 +65,16 @@ class MessageBus:
             The unique ID assigned to the published event.
         """
         event_id = str(uuid.uuid4())
-        message = {"id": event_id, "type": event, "payload": payload, "scope": scope}
+        message = {
+            "id": event_id,
+            "type": event,
+            "payload": payload,
+            "scope": scope,
+            "run_id": run_id or scope,
+            "step_id": step_id,
+            "parent_id": parent_id,
+            "log": log,
+        }
         self._memory[scope].append(message)
 
         for handler in list(self._subscribers.get(event, [])):

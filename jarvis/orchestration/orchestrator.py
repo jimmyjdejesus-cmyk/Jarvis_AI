@@ -317,7 +317,7 @@ class MultiAgentOrchestrator:
         else:
             return "deep"
     
-    async def coordinate_specialists(self, request: str, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def coordinate_specialists(self, request: str, code: str = None, user_context: str = None, novelty_boost: float = 0.0) -> Dict[str, Any]:
         """
         Coordinate multiple specialists to handle complex request
         
@@ -338,8 +338,11 @@ class MultiAgentOrchestrator:
             path_memory.add_step(spec)
 
         # Avoid previously failed paths
-        if analysis["specialists_needed"] and path_memory.should_avoid():
-            return self._create_error_response("Previously failed path detected", request)
+        avoid, similarity = (False, 0.0)
+        if analysis["specialists_needed"]:
+            avoid, similarity = path_memory.should_avoid()
+            if avoid and novelty_boost <= 0.0:
+                return self._create_error_response("Previously failed path detected - novelty boost required", request)
         
         if not analysis["specialists_needed"]:
             return self._create_simple_response(request)

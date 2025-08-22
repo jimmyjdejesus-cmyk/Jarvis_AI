@@ -51,6 +51,7 @@ async def test_path_memory_record_and_avoid() -> None:
         steps=["code_review"],
         tools_used=["code_review"],
         key_decisions=[],
+        embedding=[],
         metrics=Metrics(novelty=0.0, growth=0.0, cost=0.0),
         outcome=Outcome(result="fail"),
         scope="project",
@@ -61,3 +62,9 @@ async def test_path_memory_record_and_avoid() -> None:
     result2 = await orchestrator.coordinate_specialists("please review this code")
     assert result2["type"] == "error"
     assert "Previously failed" in result2["coordination_summary"]
+
+    # Providing a novelty boost should override the block
+    result3 = await orchestrator.coordinate_specialists(
+        "please review this code", novelty_boost=1.0
+    )
+    assert result3["type"] == "single_specialist"

@@ -122,14 +122,30 @@ class OrchestratorAgent:
         if team_name in self.team_status:
             self.team_status[team_name] = "paused"
             self.log(f"Team {team_name} paused by operator.")
-            asyncio.run(self.event_bus.publish("team.paused", {"team": team_name}))
+            asyncio.run(
+                self.event_bus.publish(
+                    "team.paused",
+                    {"team": team_name},
+                    scope=self.agent_id,
+                    run_id=self.agent_id,
+                    step_id=f"pause.{team_name}",
+                )
+            )
 
     def restart_team(self, team_name: str):
         """Restart a previously paused team."""
         if team_name in self.team_status:
             self.team_status[team_name] = "running"
             self.log(f"Team {team_name} restarted by operator.")
-            asyncio.run(self.event_bus.publish("team.restarted", {"team": team_name}))
+            asyncio.run(
+                self.event_bus.publish(
+                    "team.restarted",
+                    {"team": team_name},
+                    scope=self.agent_id,
+                    run_id=self.agent_id,
+                    step_id=f"restart.{team_name}",
+                )
+            )
 
     def merge_teams(self, source_team: str, target_team: str):
         """Merge one team into another and record lineage."""
@@ -138,7 +154,16 @@ class OrchestratorAgent:
             event = {"action": "merge", "from": source_team, "into": target_team}
             self.lineage_log.append(event)
             self.log(f"Merging team {source_team} into {target_team}", data=event)
-            asyncio.run(self.event_bus.publish("team.merged", event))
+            asyncio.run(
+                self.event_bus.publish(
+                    "team.merged",
+                    event,
+                    scope=self.agent_id,
+                    run_id=self.agent_id,
+                    step_id=f"merge.{source_team}.{target_team}",
+                    parent_id=source_team,
+                )
+            )
 
     def get_lineage(self) -> List[Dict[str, Any]]:
         """Return the recorded orchestration lineage."""

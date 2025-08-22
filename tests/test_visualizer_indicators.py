@@ -10,9 +10,15 @@ def test_visualizer_indicators():
     WorkflowVisualizer = viz_mod.WorkflowVisualizer
 
     events = [
-        {"step": "A", "status": "active"},
-        {"step": "B", "status": "pruned"},
-        {"step": "C", "status": "active", "merged_from": ["B"], "depends": ["A"]},
+        {"run_id": "r1", "step_id": "A", "status": "active"},
+        {"run_id": "r1", "step_id": "B", "status": "pruned", "parent_id": "A"},
+        {
+            "run_id": "r1",
+            "step_id": "C",
+            "status": "active",
+            "merged_from": ["B"],
+            "parent_id": "A",
+        },
     ]
     viz = WorkflowVisualizer(events)
     graph = viz._build_graph()

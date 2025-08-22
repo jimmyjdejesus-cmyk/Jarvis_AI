@@ -26,7 +26,7 @@ class WorkflowVisualizer:
         graph = Digraph(comment="Workflow")
 
         for event in self.events:
-            step = str(event.get("step"))
+            step = str(event.get("step") or event.get("step_id"))
             if not step:
                 continue
 
@@ -34,6 +34,9 @@ class WorkflowVisualizer:
             color = "red" if status == "pruned" else "green"
             graph.node(step, step, color=color, style="filled")
 
+            parent = event.get("parent_id")
+            if parent:
+                graph.edge(str(parent), step)
             for dep in event.get("depends", []):
                 graph.edge(str(dep), step)
             for src in event.get("merged_from", []):
