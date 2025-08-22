@@ -1,6 +1,14 @@
 
 # Agent Log
 
+## 2025-08-22
+- Added pruning module with `PruningEvaluator` and `path_signature` helper.
+- Introduced default pruning configuration flags.
+- Created tests for pruning utilities.
+=======
+
+# Agent Log
+
 - Initialized repository inspection.
 - Planned updates: docker-compose profiles, optional telemetry, crash recovery module, and tests.
 - Added crash recovery utilities and integrated with orchestrator run method.
@@ -68,7 +76,3 @@
 - Added PruningEvaluator module and exports.
 - Created pruning tests.
 - Ran pruning tests.
-
-
-
-
