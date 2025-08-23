@@ -1,4 +1,10 @@
+# Agent Log
 
+## 2025-08-26
+- Added proactive hypergraph navigation to ExecutiveAgent's mission steps.
+- Introduced minimal `HierarchicalHypergraph` and strategy override for dead-end queries.
+- Ran `pytest tests/test_constitutional_critic.py`.
+======
 # Agent Log
 
 ## 2025-08-24
@@ -270,7 +276,20 @@
 
 
 
+
 ## 2025-08-23
 - Added Napoleon Waterloo dataset for world model.
 - Ran knowledge graph tests.
+=======
+
+# Agent Log
+
+## 2025-02-14
+- Added `data/rex_rag_benchmarks/dead_end_qa.json` with a demo QA pair.
+- Ran `pytest test_basic.py -q and pytest tests/simple_test.py -q`.
+=======
+## 2025-08-23
+- Added `BenchmarkRewardAgent` for exact-match REX-RAG scoring and token tracking.
+- Exported the agent via `jarvis.agents` package.
+- Ran `pytest test_basic.py` to confirm no test regressions.
 

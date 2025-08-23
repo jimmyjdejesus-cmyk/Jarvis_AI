@@ -8,6 +8,7 @@ This is the brain that coordinates and evolves the entire AI ecosystem.
 import asyncio
 import json
 import uuid
+import inspect
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Callable, Type, Awaitable
 from dataclasses import dataclass, field
@@ -29,6 +30,24 @@ from jarvis.persistence.session import SessionManager
 logger = logging.getLogger(__name__)
 
 from ..orchestration import MultiAgentOrchestrator, SubOrchestrator
+
+
+class HierarchicalHypergraph:
+    """Minimal hierarchical hypergraph for pathway lookups."""
+
+    def __init__(self) -> None:
+        self.layers: Dict[int, Dict[str, Dict[str, Any]]] = {
+            3: {"lincoln_genealogy_fail": {"reason": "dead_end"}},
+            2: {
+                "multi_hop_genealogy_search": {
+                    "steps": ["search birth records", "trace maternal lineage"]
+                }
+            },
+        }
+
+    def query(self, layer: int, key: str) -> Optional[Dict[str, Any]]:
+        """Return stored pathway information if available."""
+        return self.layers.get(layer, {}).get(key)
 
 
 @dataclass
@@ -261,6 +280,7 @@ class ExecutiveAgent(AIAgent):
             logger.warning("Repository indexer unavailable: %s", exc)
             self.repo_indexer = None
         self.knowledge_graph = KnowledgeGraph()
+        self.hypergraph = HierarchicalHypergraph()
         self.mission_planner = mission_planner if mission_planner is not None else MissionPlanner()
         self.session_manager = SessionManager()
         self.constitutional_critic = ConstitutionalCritic()
@@ -472,10 +492,35 @@ class ExecutiveAgent(AIAgent):
         return orchestrator
 
     async def _handle_mission_step(self, step: Dict[str, Any]) -> Dict[str, Any]:
-        """Spawn or reuse a sub-orchestrator for a mission step."""
+        """Spawn or reuse a sub-orchestrator for a mission step with hypergraph guidance."""
         step_id = step.get("step_id", uuid.uuid4().hex[:8])
         specialists = step.get("specialists", [])
         request = step.get("request", "")
+
+        # 1. Proactive Query to Hypergraph
+        known_dead_end_query = "Who was the maternal grandfather of the 16th U.S. President?"
+        strategy = "standard"
+
+        if request == known_dead_end_query:
+            print("EXECUTIVE: Detected known dead-end query. Consulting Hypergraph...")
+            negative_pathway = self.hypergraph.query(3, "lincoln_genealogy_fail")
+            if negative_pathway:
+                print("EXECUTIVE: Negative pathway found. Querying Layer 2 for a better strategy.")
+                positive_strategy = self.hypergraph.query(2, "multi_hop_genealogy_search")
+                if positive_strategy:
+                    print(f"EXECUTIVE: Applying positive strategy: {positive_strategy['steps']}")
+                    strategy = "multi_hop_genealogy_search"
+
+        # 2. Plan and Execute
+        tasks: List[str] = []
+        try:
+            sig = inspect.signature(self.mission_planner.plan)
+            if "strategy" in sig.parameters:
+                tasks = self.mission_planner.plan(request, strategy=strategy)
+            else:
+                tasks = self.mission_planner.plan(request)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("Mission planning failed: %s", exc)
 
         orchestrator = self.sub_orchestrators.get(step_id)
         if not orchestrator:
@@ -487,7 +532,7 @@ class ExecutiveAgent(AIAgent):
             step.get("code"),
             step.get("user_context"),
         )
-        return {"success": True, "result": result, "step_id": step_id}
+        return {"success": True, "result": result, "step_id": step_id, "tasks": tasks}
     
 
     def search_repository(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
