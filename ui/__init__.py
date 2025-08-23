@@ -1,20 +1,19 @@
-"""
-UI components for Jarvis AI
-"""
+"""UI components for Jarvis AI."""
+
+from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-# Add legacy path for imports
+# Allow falling back to legacy UI components if the modern ones are missing
 legacy_path = Path(__file__).parent.parent / "legacy"
 sys.path.insert(0, str(legacy_path))
 
-try:
-    from ui.sidebar import sidebar
-    from ui.analytics import render_analytics_dashboard
-    from ui.cerebro import create_cerebro_app, CerebroDashboard
-except ImportError:
-    # Fallback implementations
+try:  # Prefer modern UI implementations
+    from .sidebar import sidebar
+    from .analytics import render_analytics_dashboard
+    from .cerebro import create_cerebro_app, CerebroDashboard
+except Exception:  # pragma: no cover - fallback to legacy
     import streamlit as st
     
     def sidebar():
@@ -24,7 +23,7 @@ except ImportError:
         return None
     
     def render_analytics_dashboard():
-        """Fallback analytics dashboard"""
+        """Fallback analytics dashboard."""
         st.subheader("📊 Analytics Dashboard")
         st.info("Analytics features not available - check legacy implementation")
 

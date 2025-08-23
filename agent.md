@@ -1,5 +1,10 @@
 # Agent Log
 
+## 2025-08-23
+- Expanded analytics dashboard to display real agent activity and collaboration graph.
+- Added event parsing utilities and tests.
+- Ran `pytest tests/test_ui_analytics_events.py -q`.
+
 ## 2025-08-31
 - Added GitHub issue monitor `LiveTestAgent` with directive dispatch and learning loop.
 - Introduced `PolicyOptimizer` and Neo4j-backed `HierarchicalHypergraph` with fallback.
