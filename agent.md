@@ -277,6 +277,11 @@
 
 
 
+## 2025-08-23
+- Added Napoleon Waterloo dataset for world model.
+- Ran knowledge graph tests.
+=======
+
 # Agent Log
 
 ## 2025-02-14
