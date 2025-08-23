@@ -79,6 +79,7 @@ class Outcome(BaseModel):
     """Outcome of a path execution."""
 
     result: str  # "pass" or "fail"
+    oracle_score: float
 
 
 class PathSignature(BaseModel):
@@ -138,24 +139,25 @@ def _check_acl(actor: str, target: str, kind: str, op: str) -> None:
 class PathRecord(BaseModel):
     actor: str
     target: str
-    kind: str  # positive | negative | local
     signature: PathSignature
 
 
 @app.post("/paths/record")
 def record_path(req: PathRecord) -> Dict[str, str]:
     """Record a path signature in the shared service."""
-    _check_acl(req.actor, req.target, req.kind, "write")
+    score = req.signature.outcome.oracle_score
+    kind = "positive" if score >= 0.5 else "negative"
+    _check_acl(req.actor, req.target, kind, "write")
     sig = req.signature
     if not sig.hash:
         sig.hash = generate_hash(sig)
-    store = _paths.setdefault(req.target, {}).setdefault(req.kind, [])
+    store = _paths.setdefault(req.target, {}).setdefault(kind, [])
     store.append(sig)
     text = " ".join(sig.steps + sig.tools_used + sig.key_decisions)
-    add_text(req.target, req.kind, sig.hash, text)
+    add_text(req.target, kind, sig.hash, text)
     if req.target == "project":
         _log_project(sig)
-    _emit("path_record", req.actor, f"{req.target}:{req.kind}", sig.hash)
+    _emit("path_record", req.actor, f"{req.target}:{kind}", sig.hash)
     return {"status": "ok"}
 
 

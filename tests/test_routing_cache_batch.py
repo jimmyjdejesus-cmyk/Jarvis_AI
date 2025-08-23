@@ -6,6 +6,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import types
 sys.modules.setdefault("networkx", types.SimpleNamespace())
+dummy_neo4j = types.SimpleNamespace(GraphDatabase=object, Driver=object)
+sys.modules.setdefault("neo4j", dummy_neo4j)
 
 from jarvis.mcp.client import MCPClient
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator

@@ -391,7 +391,8 @@ class MultiAgentOrchestrator:
             result = await self._sequential_specialist_analysis(request, analysis, path_memory, code, user_context)
 
         # Record outcome in path memory
-        path_memory.record(result.get("type") != "error")
+        score = result.get("oracle_score", 1.0 if result.get("type") != "error" else 0.0)
+        path_memory.record(score)
         return result
 
     # ------------------------------------------------------------------
@@ -415,21 +416,24 @@ class MultiAgentOrchestrator:
         return await specialist.process_task(
             task, context=context, user_context=user_context
         )
-    
-        # In async def _single_specialist_analysis(...):
+
+    async def _single_specialist_analysis(
+        self,
+        request: str,
+        analysis: Dict,
+        path_memory: PathMemory,
+        code: str = None,
+        user_context: str = None,
+    ) -> Dict[str, Any]:
         specialist_type = analysis["specialists_needed"][0]
-        specialist = self.specialists[specialist_type]  # Make sure this line exists before the changes
-        # Create task with full context
+        specialist = self.specialists[specialist_type]
         task = self._create_specialist_task(request, code, user_context)
-
         models = self._route_model_preferences(specialist, analysis["complexity"])
-
         try:
             result = await specialist.process_task(
                 task, context=None, user_context=user_context, models=models
             )
             path_memory.add_decisions(result.get("suggestions", [])[:3])
-
             return {
                 "type": "single_specialist",
                 "complexity": analysis["complexity"],
@@ -437,12 +441,12 @@ class MultiAgentOrchestrator:
                 "results": {specialist_type: result},
                 "synthesized_response": result["response"],
                 "confidence": result["confidence"],
-                "coordination_summary": f"Analysis completed by {specialist_type} specialist"
+                "coordination_summary": f"Analysis completed by {specialist_type} specialist",
             }
-            
         except Exception as e:
             logger.error(f"Single specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
+    
     
     async def _parallel_specialist_analysis(
         self,
@@ -467,13 +471,6 @@ class MultiAgentOrchestrator:
             server = specialist._get_server_for_model(primary_model)
             grouped[(server, primary_model)].append(
                 (specialist_type, specialist, prompt, models)
-    )
-            )
-
-            tasks.append(
-                self.dispatch_specialist(
-                    specialist_type, task, user_context=user_context
-                )
             )
         
 

@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import sys
 import asyncio
+import types
 
+sys.modules.setdefault("networkx", types.SimpleNamespace())
+dummy_neo4j = types.SimpleNamespace(GraphDatabase=object, Driver=object)
+sys.modules.setdefault("neo4j", dummy_neo4j)
 sys.path.append('.')
 
 import pytest
@@ -20,8 +24,12 @@ class DummySpecialist:
     def __init__(self, name: str) -> None:
         self.name = name
         self.task_history = []
+        self.preferred_models = ["dummy"]
 
-    async def process_task(self, task, context=None, user_context=None):  # pragma: no cover - simple stub
+    def _get_server_for_model(self, model: str) -> str:  # pragma: no cover
+        return "ollama"
+
+    async def process_task(self, task, context=None, user_context=None, models=None):  # pragma: no cover - simple stub
         self.task_history.append(task)
         return {
             "specialist": self.name,
@@ -53,10 +61,10 @@ async def test_path_memory_record_and_avoid() -> None:
         key_decisions=[],
         embedding=[],
         metrics=Metrics(novelty=0.0, growth=0.0, cost=0.0),
-        outcome=Outcome(result="fail"),
+        outcome=Outcome(result="fail", oracle_score=0.0),
         scope="project",
     )
-    record_path(PathRecord(actor="orchestrator", target="project", kind="negative", signature=sig))
+    record_path(PathRecord(actor="orchestrator", target="project", signature=sig))
 
     # Second run should be avoided due to negative memory
     result2 = await orchestrator.coordinate_specialists("please review this code")
