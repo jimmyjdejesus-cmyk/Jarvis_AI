@@ -269,3 +269,8 @@
 - Created tests for enhanced DAG panel and executed pytest.
 
 
+
+## 2025-08-23
+- Added Napoleon Waterloo dataset for world model.
+- Ran knowledge graph tests.
+
