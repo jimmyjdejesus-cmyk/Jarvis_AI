@@ -243,3 +243,8 @@
 - Imported analytics module and ran `pytest test_basic.py` (no tests collected).
 =======
 - Documented decision trace transparency roadmap in docs/feature-3-todo.md.
+
+## 2025-08-23
+- Added workflow graph panel logging tool calls and agent contributions.
+- Integrated LangSmith tracing and reasoning toggle in DAG panel.
+- Created tests for enhanced DAG panel and executed pytest.

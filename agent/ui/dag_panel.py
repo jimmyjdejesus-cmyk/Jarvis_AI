@@ -1,9 +1,12 @@
 """Workflow visualizer for Streamlit DAG panel."""
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Optional
 import json
+import time
+
+from jarvis.observability.tracing import trace
 
 try:
     from graphviz import Digraph
@@ -13,13 +16,23 @@ except Exception:  # pragma: no cover - graphviz optional
 
 @dataclass
 class StepEvent:
-    """Compact event emitted by the orchestrator."""
+    """Compact event emitted by the orchestrator.
+
+    Additional metadata capture tool invocations, agent contributions and
+    pruning/merge state so the visualiser can expose full reasoning paths.
+    """
 
     run_id: str
     step_id: str
     parent_id: Optional[str]
     event_type: str
     payload: dict
+    tool: Optional[str] = None
+    agent: Optional[str] = None
+    status: str = "active"
+    merged_from: Optional[List[str]] = None
+    reasoning: Optional[str] = None
+    timestamp: float = field(default_factory=lambda: time.time())
 
 
 class WorkflowVisualizer:
@@ -36,9 +49,25 @@ class WorkflowVisualizer:
     # Event collection
     # ------------------------------------------------------------------
     def add_event(self, event: StepEvent) -> None:
-        """Record a step event."""
+        """Record a step event and emit a LangSmith trace."""
 
         self.events.append(event)
+        try:
+            with trace(
+                "workflow_step",
+                metadata={
+                    "run_id": event.run_id,
+                    "step_id": event.step_id,
+                    "tool": event.tool,
+                    "agent": event.agent,
+                    "status": event.status,
+                    "timestamp": event.timestamp,
+                },
+            ):
+                pass
+        except Exception:
+            # LangSmith is optional; failures should not block visualization
+            pass
 
     # ------------------------------------------------------------------
     # Graph construction
@@ -48,10 +77,22 @@ class WorkflowVisualizer:
             raise RuntimeError("graphviz is not installed")
         dot = Digraph(comment="workflow")
         for event in self.events:
-            label = f"{event.event_type}\n{event.step_id}"
-            dot.node(event.step_id, label=label)
+            label_lines = [event.event_type, event.step_id]
+            if event.tool:
+                label_lines.append(f"🔧 {event.tool}")
+            if event.agent:
+                label_lines.append(f"👤 {event.agent}")
+            label = "\n".join(label_lines)
+            color = {
+                "pruned": "red",
+                "merged": "blue",
+            }.get(event.status, "green")
+            dot.node(event.step_id, label=label, color=color, style="filled")
             if event.parent_id:
                 dot.edge(event.parent_id, event.step_id)
+            if event.merged_from:
+                for src in event.merged_from:
+                    dot.edge(src, event.step_id, style="dashed")
         return dot
 
     # ------------------------------------------------------------------
@@ -71,6 +112,30 @@ class WorkflowVisualizer:
             json.dump([asdict(e) for e in self.events], fh, indent=2)
 
     # ------------------------------------------------------------------
+    # Event log rendering
+    # ------------------------------------------------------------------
+    def render_event_log(self, show_reasoning: bool = False) -> List[str]:
+        """Return a formatted log of events.
+
+        When ``show_reasoning`` is ``True`` the rationale for each event is
+        included, allowing users to audit branches that were pruned or merged.
+        """
+
+        lines: List[str] = []
+        for e in self.events:
+            base = f"{e.timestamp:.0f} | {e.event_type}"
+            if e.agent:
+                base += f" | agent={e.agent}"
+            if e.tool:
+                base += f" | tool={e.tool}"
+            if e.status != "active":
+                base += f" | status={e.status}"
+            if show_reasoning and e.reasoning:
+                base += f" | reason={e.reasoning}"
+            lines.append(base)
+        return lines
+
+    # ------------------------------------------------------------------
     # Streamlit integration
     # ------------------------------------------------------------------
     def streamlit_panel(self) -> None:  # pragma: no cover - UI rendering
@@ -80,6 +145,10 @@ class WorkflowVisualizer:
 
         dot = self._build_graph()
         st.graphviz_chart(dot.source, use_container_width=True)
+
+        show_reasoning = st.checkbox("Show reasoning")
+        for line in self.render_event_log(show_reasoning=show_reasoning):
+            st.write(line)
 
         col1, col2, col3 = st.columns(3)
         with col1:
