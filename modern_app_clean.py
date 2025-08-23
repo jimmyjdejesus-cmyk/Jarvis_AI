@@ -10,6 +10,7 @@ from datetime import datetime
 import os
 
 from v2.agent.adapters.langgraph_ui import visualizer
+from ui.settings_manager import SettingsManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -71,6 +72,9 @@ def render_modern_sidebar(security_manager, db_manager):
         if 'authenticated' not in st.session_state:
             st.session_state.authenticated = False
             st.session_state.username = None
+        st.session_state.setdefault('show_admin', False)
+        st.session_state.setdefault('show_security', False)
+        st.session_state.setdefault('show_settings', False)
         
         if not st.session_state.authenticated:
             st.subheader("🔐 Login")
@@ -97,6 +101,9 @@ def render_modern_sidebar(security_manager, db_manager):
                 st.session_state.authenticated = False
                 st.session_state.username = None
                 st.session_state.user_role = None
+                st.session_state.show_admin = False
+                st.session_state.show_security = False
+                st.session_state.show_settings = False
                 st.rerun()
             
             # User info
@@ -112,6 +119,8 @@ def render_modern_sidebar(security_manager, db_manager):
                     st.session_state.show_admin = True
                 if st.button("Security Dashboard"):
                     st.session_state.show_security = True
+                if st.button("Settings"):
+                    st.session_state.show_settings = True
 
 def render_modern_chat(agent, db_manager):
     """Render modern chat interface"""
@@ -305,9 +314,15 @@ def main():
     
     # Render sidebar
     render_modern_sidebar(security_manager, db_manager)
-    
+
     # Main content
-    if st.session_state.get('show_admin') and st.session_state.get('user_role') == 'admin':
+    manager = SettingsManager()
+    if st.session_state.get('show_settings') and st.session_state.get('user_role') == 'admin':
+        manager.render_settings_ui()
+        if st.button("← Back to Chat"):
+            st.session_state.show_settings = False
+            st.rerun()
+    elif st.session_state.get('show_admin') and st.session_state.get('user_role') == 'admin':
         render_admin_panel(db_manager, security_manager)
         if st.button("← Back to Chat"):
             st.session_state.show_admin = False
