@@ -63,6 +63,33 @@ using double underscores for nesting. For example:
 export JARVIS__ORCH__MIN_NOVELTY=0.25
 ```
 
+### Remote Model Setup
+
+The MCP client can route requests to remote services such as OpenAI and
+Anthropic. Provide API credentials via environment variables:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+Keys may be stored in a local `.env` file or managed through the
+`setup_api_keys.py` helper. When no keys are present the system falls back
+to local models.
+
+### Deep Research Mode
+
+The command-line interface exposes a **deep research** mode that leverages
+the multi-agent orchestrator. Enable it with the `--deep` flag on the
+`research` command:
+
+```bash
+python jarvis_cli.py research "scaling microservices" --deep
+```
+
+In this mode the orchestrator spawns specialist agents and synthesizes
+their findings into a comprehensive answer.
+
 ### Desktop App Packaging
 
 Use [PyInstaller](https://pyinstaller.org/) to create a standalone
