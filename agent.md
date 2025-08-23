@@ -244,6 +244,7 @@
 =======
 - Documented decision trace transparency roadmap in docs/feature-3-todo.md.
 
+
 ## 2025-08-25
 - Integrated deep research mode via orchestrator in CLI.
 - Added specialist dispatch interface and MCP tool execution endpoint.
@@ -253,4 +254,10 @@
 ## 2025-08-24
 - Added datetime import to orchestrator and verified deep research workflow.
 - Ran targeted pytest for orchestrator and MCP tool execution.
+
+=======
+## 2025-08-23
+- Added workflow graph panel logging tool calls and agent contributions.
+- Integrated LangSmith tracing and reasoning toggle in DAG panel.
+- Created tests for enhanced DAG panel and executed pytest.
 
