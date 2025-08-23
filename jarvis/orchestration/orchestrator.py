@@ -41,6 +41,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 from .recovery import load_state, save_state
 from .path_memory import PathMemory
 from jarvis.homeostasis.monitor import SystemMonitor
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
 
 from ..agents.specialists import (
     CodeReviewAgent,
@@ -199,6 +200,7 @@ class MultiAgentOrchestrator:
         mcp_client,
         child_specs: Optional[Dict[str, Dict[str, Any]]] = None,
         monitor: SystemMonitor | None = None,
+        knowledge_graph: KnowledgeGraph | None = None,
     ):
         """Initialize multi-agent orchestrator.
 
@@ -210,10 +212,11 @@ class MultiAgentOrchestrator:
         """
         self.mcp_client = mcp_client
         self.monitor = monitor
+        self.knowledge_graph = knowledge_graph
 
         # Initialize specialist agents
         self.specialists = {
-            "code_review": CodeReviewAgent(mcp_client),
+            "code_review": CodeReviewAgent(mcp_client, knowledge_graph=knowledge_graph),
             "security": SecurityAgent(mcp_client),
             "architecture": ArchitectureAgent(mcp_client),
             "testing": TestingAgent(mcp_client),
@@ -233,7 +236,9 @@ class MultiAgentOrchestrator:
         if child_specs:
             for name, spec in child_specs.items():
                 self.child_orchestrators[name] = SubOrchestrator(
-                    self.mcp_client, **spec
+                    self.mcp_client,
+                    knowledge_graph=self.knowledge_graph,
+                    **spec,
                 )
 
         # Agent collaboration rules
@@ -282,7 +287,11 @@ class MultiAgentOrchestrator:
         """
         from .sub_orchestrator import SubOrchestrator
 
-        orchestrator = SubOrchestrator(self.mcp_client, **spec)
+        orchestrator = SubOrchestrator(
+            self.mcp_client,
+            knowledge_graph=self.knowledge_graph,
+            **spec,
+        )
         self.child_orchestrators[name] = orchestrator
         return orchestrator
 

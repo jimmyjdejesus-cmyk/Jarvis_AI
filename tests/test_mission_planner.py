@@ -83,6 +83,24 @@ home_pkg.monitor = monitor_mod
 sys.modules["jarvis.homeostasis"] = home_pkg
 sys.modules["jarvis.homeostasis.monitor"] = monitor_mod
 
+# Stub orchestrator to satisfy ExecutiveAgent imports
+orchestr_pkg = types.ModuleType("jarvis.orchestration")
+orchestr_mod = types.ModuleType("jarvis.orchestration.orchestrator")
+
+class _DummyOrchestrator:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def coordinate_specialists(self, *args, **kwargs):
+        return {}
+
+orchestr_mod.MultiAgentOrchestrator = _DummyOrchestrator
+orchestr_pkg.orchestrator = orchestr_mod
+orchestr_pkg.MultiAgentOrchestrator = _DummyOrchestrator
+orchestr_pkg.SubOrchestrator = _DummyOrchestrator
+sys.modules["jarvis.orchestration"] = orchestr_pkg
+sys.modules["jarvis.orchestration.orchestrator"] = orchestr_mod
+
 spec3 = importlib.util.spec_from_file_location(
     "jarvis.ecosystem.meta_intelligence", ROOT / "jarvis" / "ecosystem" / "meta_intelligence.py"
 )

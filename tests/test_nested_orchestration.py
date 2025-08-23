@@ -36,11 +36,20 @@ class DummySpecialist:
 class DummySubOrchestrator(SubOrchestrator):
     """SubOrchestrator using dummy specialists for tests."""
 
-    def __init__(self, mcp_client, allowed_specialists=None, mission_name=None):
+    def __init__(
+        self,
+        mcp_client,
+        allowed_specialists=None,
+        mission_name=None,
+        monitor=None,
+        knowledge_graph=None,
+    ):
         super().__init__(
             mcp_client,
             mission_name=mission_name,
             allowed_specialists=allowed_specialists,
+            monitor=monitor,
+            knowledge_graph=knowledge_graph,
         )
         if allowed_specialists:
             self.specialists = {

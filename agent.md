@@ -229,3 +229,4 @@
 - Added ConstitutionalCritic to veto unsafe plans.
 - Updated tests and exports to reflect the new executive agent.
 
+\n## 2025-08-24\n- Integrated knowledge graph querying across agents.\n- Extended CodeReviewAgent to leverage world model for dependency analysis.\n- Propagated KnowledgeGraph through orchestrators and meta-intelligence.\n

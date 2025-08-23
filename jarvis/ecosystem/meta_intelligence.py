@@ -160,13 +160,19 @@ class SystemEvolutionPlan:
 
 class AIAgent(ABC):
     """Abstract base class for AI agents in the ecosystem"""
-    
-    def __init__(self, agent_id: str, capabilities: List[AgentCapability]):
+
+    def __init__(
+        self,
+        agent_id: str,
+        capabilities: List[AgentCapability],
+        knowledge_graph: KnowledgeGraph | None = None,
+    ):
         self.agent_id = agent_id
         self.capabilities = capabilities
         self.metrics = AgentMetrics(agent_id)
         self.created_at = datetime.now()
         self.is_active = True
+        self.knowledge_graph = knowledge_graph
     
     @abstractmethod
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
@@ -195,8 +201,22 @@ class AIAgent(ABC):
         self.metrics.resource_usage = (
             (1 - alpha) * self.metrics.resource_usage + alpha * resource_usage
         )
-        
+
         self.metrics.last_updated = datetime.now()
+
+    # ------------------------------------------------------------------
+    def set_knowledge_graph(self, graph: KnowledgeGraph) -> None:
+        """Attach a :class:`KnowledgeGraph` instance to this agent."""
+
+        self.knowledge_graph = graph
+
+    # ------------------------------------------------------------------
+    def query_knowledge_graph(self, query: str) -> Any:
+        """Query the attached knowledge graph."""
+
+        if not self.knowledge_graph:
+            raise ValueError("KnowledgeGraph not available")
+        return self.knowledge_graph.query(query)
 
 class ExecutiveAgent(AIAgent):
     """Executive agent that manages other AI agents.
@@ -241,11 +261,6 @@ class ExecutiveAgent(AIAgent):
             logger.warning("Repository indexer unavailable: %s", exc)
             self.repo_indexer = None
         self.knowledge_graph = KnowledgeGraph()
-        if self.repo_indexer:
-            try:
-                self.knowledge_graph.populate_from_indexer(self.repo_indexer)
-            except Exception as exc:  # pragma: no cover - best effort
-                logger.warning("Knowledge graph population failed: %s", exc)
         self.mission_planner = mission_planner if mission_planner is not None else MissionPlanner()
         self.session_manager = SessionManager()
         self.constitutional_critic = ConstitutionalCritic()
@@ -255,7 +270,6 @@ class ExecutiveAgent(AIAgent):
             if enable_blue_team
             else None
         )
-        self.knowledge_graph = KnowledgeGraph()
         self.system_monitor = SystemMonitor()
         if self.mcp_client:
             self.mcp_client.monitor = self.system_monitor
@@ -270,12 +284,6 @@ class ExecutiveAgent(AIAgent):
             self.repo_indexer.index_repository(self.knowledge_graph)
         except Exception as exc:  # pragma: no cover - best effort
             logger.warning("Knowledge graph population failed: %s", exc)
-
-    def create_sub_orchestrator(self, name: str, spec: Dict[str, Any]) -> MultiAgentOrchestrator:
-        """Instantiate and cache a sub-orchestrator."""
-        orchestrator = self.orchestrator_cls(self.mcp_client, **spec)
-        self.sub_orchestrators[name] = orchestrator
-        return orchestrator
 
     def manage_directive(self, directive_text: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """Decompose a directive into a task graph with constitutional review."""
@@ -442,7 +450,7 @@ class ExecutiveAgent(AIAgent):
         # For now, create a simple specialist agent
         if required_capabilities:
             capabilities = [AgentCapability(cap) for cap in required_capabilities if cap in [c.value for c in AgentCapability]]
-            new_agent = SpecialistAIAgent(agent_id, capabilities)
+            new_agent = SpecialistAIAgent(agent_id, capabilities, self.knowledge_graph)
             self.managed_agents[agent_id] = new_agent
 
             return {
@@ -455,7 +463,10 @@ class ExecutiveAgent(AIAgent):
 
     def create_sub_orchestrator(self, name: str, spec: Dict[str, Any]) -> MultiAgentOrchestrator:
         orchestrator = self.orchestrator_cls(
-            self.mcp_client, monitor=self.system_monitor, **spec
+            self.mcp_client,
+            monitor=self.system_monitor,
+            knowledge_graph=self.knowledge_graph,
+            **spec,
         )
         self.sub_orchestrators[name] = orchestrator
         return orchestrator
@@ -503,9 +514,14 @@ class ExecutiveAgent(AIAgent):
 
 class SpecialistAIAgent(AIAgent):
     """Specialist AI agent with specific capabilities"""
-    
-    def __init__(self, agent_id: str, capabilities: List[AgentCapability]):
-        super().__init__(agent_id, capabilities)
+
+    def __init__(
+        self,
+        agent_id: str,
+        capabilities: List[AgentCapability],
+        knowledge_graph: KnowledgeGraph | None = None,
+    ):
+        super().__init__(agent_id, capabilities, knowledge_graph)
         self.knowledge_base: Dict[str, Any] = {}
         self.learning_history: List[Dict[str, Any]] = []
     
@@ -589,7 +605,9 @@ class MetaIntelligenceCore:
         ]
         
         for agent_id, capabilities in base_agents:
-            agent = SpecialistAIAgent(agent_id, capabilities)
+            agent = SpecialistAIAgent(
+                agent_id, capabilities, self.meta_agent.knowledge_graph
+            )
             self.meta_agent.managed_agents[agent_id] = agent
     
     async def analyze_system_state(self) -> Dict[str, Any]:

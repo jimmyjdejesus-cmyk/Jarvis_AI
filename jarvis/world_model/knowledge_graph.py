@@ -62,3 +62,23 @@ class KnowledgeGraph:
         """Return identifiers of all file nodes."""
 
         return [n for n, data in self.graph.nodes(data=True) if data.get("type") == "file"]
+
+    # ------------------------------------------------------------------
+    def find_functions(self, name: str) -> list[str]:
+        """Return node identifiers for functions matching ``name``."""
+
+        return [
+            n
+            for n, data in self.graph.nodes(data=True)
+            if data.get("type") == "function" and data.get("name") == name
+        ]
+
+    # ------------------------------------------------------------------
+    def get_function_dependencies(self, function_id: str) -> list[str]:
+        """Return functions called by ``function_id``."""
+
+        return [
+            target
+            for _, target, data in self.graph.out_edges(function_id, data=True)
+            if data.get("type") == "calls"
+        ]
