@@ -472,8 +472,7 @@ class MultiAgentOrchestrator:
             grouped[(server, primary_model)].append(
                 (specialist_type, specialist, prompt, models)
             )
-        
-
+    
         try:
             batch_tasks = []
             group_info = []
