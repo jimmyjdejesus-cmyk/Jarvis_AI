@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
+from pathlib import Path
+from typing import Dict
 
 from config.config_loader import load_config as load_raw_config
 
@@ -58,10 +60,30 @@ def load_config() -> Config:
     return Config(**data)
 
 
+def save_secrets(secrets: Dict[str, str]) -> None:
+    """Persist secret values to the local .env file."""
+    env_path = Path(".env")
+    existing: Dict[str, str] = {}
+
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            existing[key] = value
+
+    existing.update(secrets)
+
+    with env_path.open("w") as fh:
+        for key, value in existing.items():
+            fh.write(f"{key}={value}\n")
+
+
 __all__ = [
     "Config",
     "V2AgentConfig",
     "load_config",
+    "save_secrets",
     "DEFAULT_CONFIG",
     "MODELS",
     "TOOLS_ENABLED",

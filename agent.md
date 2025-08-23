@@ -230,3 +230,9 @@
 - Updated tests and exports to reflect the new executive agent.
 
 \n## 2025-08-24\n- Integrated knowledge graph querying across agents.\n- Extended CodeReviewAgent to leverage world model for dependency analysis.\n- Propagated KnowledgeGraph through orchestrators and meta-intelligence.\n
+
+## 2025-08-24
+- Added admin-only settings UI with masked API key inputs.
+- Implemented `save_secrets` in v2 config to persist to .env.
+- Integrated settings navigation and access control in modern app.
+- Ran `pytest test_basic.py` (no tests collected).
