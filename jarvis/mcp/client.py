@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import time
+import hashlib
 from typing import Any, Dict, List, Optional
 
 import aiohttp
@@ -45,6 +46,16 @@ class MCPClient:
         self.session: Optional[aiohttp.ClientSession] = None
         self.monitor = monitor
 
+        # Optional Redis cache for LLM responses
+        try:
+            import redis  # type: ignore
+
+            self.cache = redis.Redis.from_url(
+                os.getenv("REDIS_URL", "redis://localhost:6379/0")
+            )
+        except Exception:  # pragma: no cover - cache fallback
+            self.cache = {}
+
     async def __aenter__(self) -> "MCPClient":
         self.session = aiohttp.ClientSession()
         return self
@@ -52,6 +63,31 @@ class MCPClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if self.session:
             await self.session.close()
+
+    def _cache_get(self, key: str) -> Optional[str]:
+        if self.cache is None:
+            return None
+        try:
+            if hasattr(self.cache, "get"):
+                val = self.cache.get(key)
+                if val:
+                    return val.decode() if isinstance(val, bytes) else val
+            else:
+                return self.cache.get(key)
+        except Exception:
+            return None
+        return None
+
+    def _cache_set(self, key: str, value: str) -> None:
+        if self.cache is None:
+            return
+        try:
+            if hasattr(self.cache, "set"):
+                self.cache.set(key, value)
+            else:
+                self.cache[key] = value
+        except Exception:
+            pass
 
     async def _request_with_retry(
         self,
@@ -202,6 +238,11 @@ class MCPClient:
             if not await self.connect_to_server(server):
                 raise MCPConnectionError(f"Cannot connect to server: {server}")
 
+        cache_key = hashlib.sha256(f"{server}:{model}:{prompt}".encode()).hexdigest()
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         start = time.perf_counter()
         try:
             if server == "ollama":
@@ -216,12 +257,26 @@ class MCPClient:
             if self.monitor:
                 self.monitor.record_tokens(len(prompt) + len(result))
             self._emit_llm_call(server, model, True, time.perf_counter() - start)
+            self._cache_set(cache_key, result)
             return result
         except MCPError as e:
             self._emit_llm_call(
                 server, model, False, time.perf_counter() - start, str(e)
             )
             raise
+
+    async def generate_response_batch(
+        self, server: str, model: str, prompts: List[str]
+    ) -> List[str]:
+        """Generate responses for multiple prompts using same model.
+
+        This basic implementation executes requests sequentially. Model-specific
+        batching optimizations can be added per provider.
+        """
+        results = []
+        for p in prompts:
+            results.append(await self.generate_response(server, model, p))
+        return results
 
     async def _generate_ollama_response(self, model: str, prompt: str) -> str:
         """Generate response using Ollama API."""

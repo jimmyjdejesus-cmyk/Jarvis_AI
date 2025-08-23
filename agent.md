@@ -243,3 +243,9 @@
 - Imported analytics module and ran `pytest test_basic.py` (no tests collected).
 =======
 - Documented decision trace transparency roadmap in docs/feature-3-todo.md.
+
+=======
+## 2025-08-24
+- Implemented dynamic model routing with resource-aware model selection.
+- Added Redis-backed caching and request batching in MCP client and orchestrator.
+- Created tests for routing, caching, and batching.

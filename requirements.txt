@@ -5,3 +5,4 @@ langsmith
 ollama
 fastapi
 uvicorn
+redis
