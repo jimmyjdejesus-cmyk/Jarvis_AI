@@ -1,5 +1,10 @@
 # Agent Log
 
+## 2025-09-01
+- Added root cause failure analysis with `RootCauseAnalyzer` and negative pathway support in `PolicyOptimizer` and `HierarchicalHypergraph`.
+- Created unit test for negative pathway creation.
+- Ran `pip install networkx neo4j -q` and `pytest tests/test_policy_optimizer.py tests/test_live_test_agent.py tests/test_simulation_agent.py tests/test_curiosity_agent.py -q`.
+
 ## 2025-08-31
 - Added GitHub issue monitor `LiveTestAgent` with directive dispatch and learning loop.
 - Introduced `PolicyOptimizer` and Neo4j-backed `HierarchicalHypergraph` with fallback.

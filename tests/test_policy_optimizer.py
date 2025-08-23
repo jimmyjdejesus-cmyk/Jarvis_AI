@@ -15,3 +15,13 @@ def test_policy_optimizer_updates_strategy():
     node = hg.query(2, key)
     assert node is not None
     assert node["confidence"] > 0.2
+
+
+def test_negative_pathway_created_on_failure():
+    hg = HierarchicalHypergraph()
+    key = hg.add_strategy(["step"], confidence=0.5, dependencies=["python<3.10"])
+    opt = PolicyOptimizer(hg)
+    opt.update_strategy(key, reward=0.0)
+    neg = hg.query(2, f"{key}_neg")
+    assert neg is not None
+    assert neg["root_cause"]["component"] == "python<3.10"

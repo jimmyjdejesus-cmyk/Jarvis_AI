@@ -86,10 +86,32 @@ class HierarchicalHypergraph:
         self.update_node(3, key, data)
         return key
 
-    def add_strategy(self, steps: List[str], confidence: float) -> str:
+    def add_strategy(
+        self, steps: List[str], confidence: float, dependencies: List[str] | None = None
+    ) -> str:
         """Create a strategy node in Layer 2 from reasoning steps."""
-        key = f"strategy_{len(self.layers.get(2, {})) + 1}" if not self.driver else f"strategy_{int(time.time()*1000)}"
+        key = (
+            f"strategy_{len(self.layers.get(2, {})) + 1}"
+            if not self.driver
+            else f"strategy_{int(time.time()*1000)}"
+        )
         data = {"steps": steps, "confidence": confidence}
+        if dependencies:
+            data["dependencies"] = dependencies
+        self.update_node(2, key, data)
+        return key
+
+    def add_negative_pathway(
+        self, strategy_key: str, root_cause: Dict[str, Any]
+    ) -> str:
+        """Record a negative pathway node linked to a failed strategy."""
+        key = f"{strategy_key}_neg"
+        data = {
+            "strategy": strategy_key,
+            "root_cause": root_cause,
+            "type": "negative_pathway",
+            "confidence": 0.0,
+        }
         self.update_node(2, key, data)
         return key
 
