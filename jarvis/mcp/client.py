@@ -294,3 +294,26 @@ class MCPClient:
                 "last_check": None,
             }
         return status
+
+    # ------------------------------------------------------------------
+    @rate_limit(calls=10, period=60)
+    @timeout(30)
+    async def execute_tool(
+        self, server: str, tool: str, params: Dict[str, Any] | None = None
+    ) -> Any:
+        """Execute a tool exposed by an MCP server.
+
+        The default implementation expects servers to expose tool endpoints at
+        ``/tools/{tool}`` and to accept JSON payloads.  This lightweight
+        wrapper enables end-to-end testing with mock servers and can be
+        extended for specific server behaviours.
+        """
+
+        if server not in self.active_connections:
+            if not await self.connect_to_server(server):
+                raise MCPConnectionError(f"Cannot connect to server: {server}")
+
+        base = self.servers[server].rstrip("/")
+        return await self._request_with_retry(
+            "POST", f"{base}/tools/{tool}", json=params or {}
+        )

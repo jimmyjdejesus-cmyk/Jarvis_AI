@@ -35,6 +35,7 @@ mission‑specific workflows.
 
 import logging
 import warnings
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
@@ -378,17 +379,39 @@ class MultiAgentOrchestrator:
         # Record outcome in path memory
         path_memory.record(result.get("type") != "error")
         return result
+
+    # ------------------------------------------------------------------
+    async def dispatch_specialist(
+        self,
+        specialist_type: str,
+        task: str,
+        *,
+        context: Any | None = None,
+        user_context: str | None = None,
+    ) -> Dict[str, Any]:
+        """Execute a task with the requested specialist.
+
+        This helper provides a single interface for invoking specialists and
+        will be used by the different coordination strategies.  It makes
+        adding or replacing specialists during runtime straightforward and
+        keeps subtask/result passing consistent across strategies.
+        """
+
+        specialist = self.specialists[specialist_type]
+        return await specialist.process_task(
+            task, context=context, user_context=user_context
+        )
     
     async def _single_specialist_analysis(self, request: str, analysis: Dict, path_memory: PathMemory, code: str = None, user_context: str = None) -> Dict[str, Any]:
         """Handle analysis with single specialist"""
         specialist_type = analysis["specialists_needed"][0]
-        specialist = self.specialists[specialist_type]
-        
         # Create task with full context
         task = self._create_specialist_task(request, code, user_context)
-        
+
         try:
-            result = await specialist.process_task(task, context=None, user_context=user_context)
+            result = await self.dispatch_specialist(
+                specialist_type, task, user_context=user_context
+            )
             path_memory.add_decisions(result.get("suggestions", [])[:3])
             
             return {
@@ -415,8 +438,11 @@ class MultiAgentOrchestrator:
         # Run specialists in parallel
         tasks = []
         for specialist_type in specialists_needed:
-            specialist = self.specialists[specialist_type]
-            tasks.append(specialist.process_task(task, context=None, user_context=user_context))
+            tasks.append(
+                self.dispatch_specialist(
+                    specialist_type, task, user_context=user_context
+                )
+            )
         
         try:
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -466,10 +492,10 @@ class MultiAgentOrchestrator:
         
         try:
             for specialist_type in specialists_needed:
-                specialist = self.specialists[specialist_type]
-                
                 # Process with accumulated context
-                result = await specialist.process_task(task, context=shared_context, user_context=user_context)
+                result = await self.dispatch_specialist(
+                    specialist_type, task, context=shared_context, user_context=user_context
+                )
                 specialist_results[specialist_type] = result
 
                 # Add result to shared context for next specialists

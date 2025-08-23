@@ -243,3 +243,14 @@
 - Imported analytics module and ran `pytest test_basic.py` (no tests collected).
 =======
 - Documented decision trace transparency roadmap in docs/feature-3-todo.md.
+
+## 2025-08-25
+- Integrated deep research mode via orchestrator in CLI.
+- Added specialist dispatch interface and MCP tool execution endpoint.
+- Documented API key setup and deep research usage in README.
+
+
+## 2025-08-24
+- Added datetime import to orchestrator and verified deep research workflow.
+- Ran targeted pytest for orchestrator and MCP tool execution.
+
