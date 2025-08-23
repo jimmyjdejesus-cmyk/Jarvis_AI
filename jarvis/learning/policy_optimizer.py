@@ -1,19 +1,26 @@
 from __future__ import annotations
 
-"""Simple REX-RAG policy optimizer."""
+"""Simple REX-RAG policy optimizer with failure analysis."""
 
 from typing import Dict, Any
 
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
+from .root_cause_analyzer import RootCauseAnalyzer
 
 
 class PolicyOptimizer:
     """Update strategy confidence based on reward feedback."""
 
-    def __init__(self, hypergraph: HierarchicalHypergraph, learning_rate: float = 0.1) -> None:
+    def __init__(
+        self,
+        hypergraph: HierarchicalHypergraph,
+        learning_rate: float = 0.1,
+        root_cause_analyzer: RootCauseAnalyzer | None = None,
+    ) -> None:
         self.hypergraph = hypergraph
         self.learning_rate = learning_rate
         self.history: list[Dict[str, Any]] = []
+        self.root_cause_analyzer = root_cause_analyzer or RootCauseAnalyzer()
 
     def update_strategy(self, strategy_key: str, reward: float) -> None:
         """Adjust the confidence of a strategy node using REX-RAG update rule."""
@@ -24,3 +31,9 @@ class PolicyOptimizer:
         updated = confidence + self.learning_rate * (reward - confidence)
         self.hypergraph.update_node(2, strategy_key, {"confidence": updated})
         self.history.append({"strategy": strategy_key, "reward": reward, "confidence": updated})
+
+        if reward == 0.0:
+            trajectory = node.get("steps", [])
+            dependencies = node.get("dependencies", [])
+            root_cause = self.root_cause_analyzer.analyze(trajectory, dependencies)
+            self.hypergraph.add_negative_pathway(strategy_key, root_cause)
