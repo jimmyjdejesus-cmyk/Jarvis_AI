@@ -13,6 +13,7 @@ except Exception:  # pragma: no cover
 from .mission_planner import MissionPlanner
 from .base_specialist import BaseSpecialist
 from .simulation_agent import SimulationAgent
+from .benchmark_agent import BenchmarkRewardAgent
 
 # New specialist agents
 try:
@@ -33,6 +34,7 @@ try:
         'MissionPlanner',
         'BaseSpecialist',
         'SimulationAgent',
+        'BenchmarkRewardAgent',
         'SpecialistAgent',
         'CodeReviewAgent',
         'SecurityAgent',
@@ -44,7 +46,13 @@ try:
     
 except Exception:  # pragma: no cover
     # Fallback if specialist agents not available
-    __all__ = ['CodingAgent', 'get_coding_agent', 'MissionPlanner', 'SimulationAgent']
+    __all__ = [
+        'CodingAgent',
+        'get_coding_agent',
+        'MissionPlanner',
+        'SimulationAgent',
+        'BenchmarkRewardAgent'
+    ]
 
 # Version info
 __version__ = "2.0.0"

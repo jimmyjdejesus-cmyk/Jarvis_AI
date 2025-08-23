@@ -269,3 +269,7 @@
 - Created tests for enhanced DAG panel and executed pytest.
 
 
+## 2025-08-23
+- Added `BenchmarkRewardAgent` for exact-match REX-RAG scoring and token tracking.
+- Exported the agent via `jarvis.agents` package.
+- Ran `pytest test_basic.py` to confirm no test regressions.
