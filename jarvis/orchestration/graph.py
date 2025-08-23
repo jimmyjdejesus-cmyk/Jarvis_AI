@@ -119,8 +119,37 @@ class MultiTeamOrchestrator:
             )
 
         yellow_output, green_output = asyncio.run(run_pair())
+        oracle_result = self._oracle_judge(yellow_output, green_output)
         state["team_outputs"]["competitive_pair"] = [yellow_output, green_output]
+        state["team_outputs"]["oracle_result"] = oracle_result
+        state["context"]["reinforced_strategy"] = oracle_result["winning_output"]
         return state
+
+    @staticmethod
+    def _oracle_judge(yellow_output: Dict[str, Any], green_output: Dict[str, Any]) -> Dict[str, Any]:
+        """Evaluate team outputs and select the winner based on a score."""
+
+        def _score(output: Any) -> float:
+            if isinstance(output, dict):
+                for key in ("score", "quality"):
+                    if key in output and isinstance(output[key], (int, float)):
+                        return float(output[key])
+                return float(len(str(output)))
+            return float(len(str(output)))
+
+        yellow_score = _score(yellow_output)
+        green_score = _score(green_output)
+        if yellow_score >= green_score:
+            winner = "Yellow"
+            winning_output = yellow_output
+        else:
+            winner = "Green"
+            winning_output = green_output
+        return {
+            "winner": winner,
+            "scores": {"Yellow": yellow_score, "Green": green_score},
+            "winning_output": winning_output,
+        }
 
     def _run_security_quality(self, state: TeamWorkflowState) -> TeamWorkflowState:
         """Runs the White team."""

@@ -467,7 +467,6 @@ class MultiAgentOrchestrator:
             server = specialist._get_server_for_model(primary_model)
             grouped[(server, primary_model)].append(
                 (specialist_type, specialist, prompt, models)
-    )
             )
 
             tasks.append(

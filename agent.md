@@ -347,3 +347,11 @@
 - Implemented Monte Carlo exploration capability with `MonteCarloExplorer` and `SimulationAgent.quick_simulate`.
 - Registered new explorer in `jarvis.agents` exports.
 - Attempted to run `pytest -q` after installing missing dependencies (`networkx`, `graphviz`).
+
+## 2025-09-??
+- Implemented Oracle scoring between Yellow and Green teams with reinforcement in MultiTeamOrchestrator.
+- Fixed syntax error in orchestrator module to enable imports.
+- Added unit tests for Oracle evaluation.
+- Installed dependencies `langgraph`, `networkx`, `neo4j`, and `beautifulsoup4`.
+- Ran `pytest tests/test_competitive_oracle.py -q`.
+
