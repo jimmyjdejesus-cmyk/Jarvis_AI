@@ -51,7 +51,7 @@ class PathMemory:
             key_decisions=self.decisions,
             embedding=[],
             metrics=Metrics(novelty=0.0, growth=0.0, cost=0.0),
-            outcome=Outcome(result="fail"),
+            outcome=Outcome(result="fail", oracle_score=0.0),
             scope=self.target,
         )
         result = avoid_negative(
@@ -64,26 +64,26 @@ class PathMemory:
         return avoid, similarity
 
     # ------------------------------------------------------------------
-    def record(self, success: bool) -> None:
+    def record(self, score: float, threshold: float = 0.5) -> None:
         """Persist the current path signature to the memory service."""
         novelty = len(set(self.steps)) / max(len(self.steps), 1)
         growth = len(set(self.decisions)) / max(len(self.decisions), 1) if self.decisions else 0.0
         cost = float(len(self.tools))
 
+        success = score >= threshold
         signature = PathSignature(
             steps=self.steps,
             tools_used=self.tools,
             key_decisions=self.decisions,
             embedding=[],
             metrics=Metrics(novelty=novelty, growth=growth, cost=cost),
-            outcome=Outcome(result="pass" if success else "fail"),
+            outcome=Outcome(result="pass" if success else "fail", oracle_score=score),
             scope=self.target,
         )
         record_path(
             PathRecord(
                 actor=self.actor,
                 target=self.target,
-                kind="positive" if success else "negative",
                 signature=signature,
             )
         )

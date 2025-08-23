@@ -341,6 +341,11 @@
 - Ran `pytest tests/test_cerebro_dashboard.py -q`.
 
 ## 2025-08-23
+
+- Integrated Oracle score-based path classification into memory service and orchestrator.
+- Updated tests and path memory recording accordingly.
+- Ran `pytest tests/path_memory_test.py tests/test_orchestrator_path_memory.py tests/test_pruning.py tests/test_routing_cache_batch.py -q`.
+=======
 - Reviewed user description of Monte Carlo exploration mechanism; no code changes performed.
 - Logged actions only as per instructions.
 ## 2025-08-23
@@ -348,10 +353,13 @@
 - Registered new explorer in `jarvis.agents` exports.
 - Attempted to run `pytest -q` after installing missing dependencies (`networkx`, `graphviz`).
 
+
 ## 2025-09-??
 - Implemented Oracle scoring between Yellow and Green teams with reinforcement in MultiTeamOrchestrator.
 - Fixed syntax error in orchestrator module to enable imports.
 - Added unit tests for Oracle evaluation.
 - Installed dependencies `langgraph`, `networkx`, `neo4j`, and `beautifulsoup4`.
 - Ran `pytest tests/test_competitive_oracle.py -q`.
+
+=======
 

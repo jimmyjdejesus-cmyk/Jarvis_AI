@@ -1,10 +1,15 @@
 import sys
 from pathlib import Path
+import types
 
 import pytest
 
 # Ensure repository root is on path for direct module imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+sys.modules.setdefault("networkx", types.SimpleNamespace())
+dummy_neo4j = types.SimpleNamespace(GraphDatabase=object, Driver=object)
+sys.modules.setdefault("neo4j", dummy_neo4j)
 
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
@@ -52,7 +57,7 @@ async def test_merge_and_dead_end_events():
         key_decisions=[],
         embedding=[],
         metrics=Metrics(novelty=0.0, growth=0.0, cost=0.0),
-        outcome=Outcome(result="fail"),
+        outcome=Outcome(result="fail", oracle_score=0.0),
         scope="project",
     )
     await evaluator.merge_state("t1", "t2", ["a.txt"], signature=sig)

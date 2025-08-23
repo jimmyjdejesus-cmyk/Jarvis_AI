@@ -144,7 +144,6 @@ class PruningEvaluator:
                 PathRecord(
                     actor="orchestrator",
                     target="project",
-                    kind="negative",
                     signature=signature,
                 )
             )
@@ -160,7 +159,6 @@ class PruningEvaluator:
             PathRecord(
                 actor="orchestrator",
                 target="project",
-                kind="negative",
                 signature=signature,
             )
         )

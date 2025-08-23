@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import time
+import pathlib
+import sys
 
 from fastapi.testclient import TestClient
 
+sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent))
 from memory_service import PathSignature, app, generate_hash
 
 
-def _sample_signature(ts: float | None = None) -> dict:
+def _sample_signature(score: float, ts: float | None = None) -> dict:
     sig = {
         "steps": ["step1", "step2"],
         "tools_used": ["tool"],
         "key_decisions": ["dec"],
         "embedding": [],
         "metrics": {"novelty": 0.1, "growth": 0.2, "cost": 0.3},
-        "outcome": {"result": "fail"},
+        "outcome": {"result": "pass" if score >= 0.5 else "fail", "oracle_score": score},
         "scope": "demo",
         "citations": [],
     }
@@ -26,14 +29,13 @@ def _sample_signature(ts: float | None = None) -> dict:
 def test_path_acl_and_query() -> None:
     client = TestClient(app)
 
-    sig1 = _sample_signature()
+    sig1 = _sample_signature(0.95)
     # orchestrator writes to project positive
     resp = client.post(
         "/paths/record",
         json={
             "actor": "orchestrator",
             "target": "project",
-            "kind": "positive",
             "signature": sig1,
         },
     )
@@ -42,13 +44,12 @@ def test_path_acl_and_query() -> None:
     expected_hash = generate_hash(PathSignature(**sig1))
 
     # team cannot write project negative
-    sig2 = _sample_signature()
+    sig2 = _sample_signature(0.1)
     resp = client.post(
         "/paths/record",
         json={
             "actor": "team/red",
             "target": "project",
-            "kind": "negative",
             "signature": sig2,
         },
     )
@@ -60,20 +61,18 @@ def test_path_acl_and_query() -> None:
         json={
             "actor": "team/red",
             "target": "team/red",
-            "kind": "local",
             "signature": sig2,
         },
     )
     assert resp.status_code == 200
 
     # orchestrator records project negative
-    sig3 = _sample_signature()
+    sig3 = _sample_signature(0.1)
     resp = client.post(
         "/paths/record",
         json={
             "actor": "orchestrator",
             "target": "project",
-            "kind": "negative",
             "signature": sig3,
         },
     )
@@ -125,13 +124,12 @@ def test_path_acl_and_query() -> None:
 def test_negative_lookup_and_prune() -> None:
     client = TestClient(app)
 
-    sig = _sample_signature()
+    sig = _sample_signature(0.1)
     client.post(
         "/paths/record",
         json={
             "actor": "orchestrator",
             "target": "project",
-            "kind": "negative",
             "signature": sig,
         },
     )
@@ -151,13 +149,12 @@ def test_negative_lookup_and_prune() -> None:
 
     # record an old path and prune it
     old_ts = time.time() - 100
-    old_sig = _sample_signature(ts=old_ts)
+    old_sig = _sample_signature(0.95, ts=old_ts)
     client.post(
         "/paths/record",
         json={
             "actor": "orchestrator",
             "target": "project",
-            "kind": "positive",
             "signature": old_sig,
         },
     )
