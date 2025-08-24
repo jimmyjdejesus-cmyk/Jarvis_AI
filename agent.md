@@ -371,3 +371,8 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+## 2025-08-24
+- Added secure plugin publishing endpoint with role-based access control.
+- Extended plugin hub auth to support multiple roles and publisher accounts.
+- Hardened plugin installation utilities and added comprehensive tests.
+- Ran `pytest tests/test_plugin_hub.py -q`.

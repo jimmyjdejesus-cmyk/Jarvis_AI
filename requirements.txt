@@ -8,3 +8,6 @@ uvicorn
 redis
 neo4j
 pyotp
+bcrypt
+python-multipart
+httpx<0.28
