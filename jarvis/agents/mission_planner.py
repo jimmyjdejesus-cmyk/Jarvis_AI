@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict
 
 from jarvis.models.client import model_client
+from jarvis.world_model.predictive_simulation import PredictiveSimulator
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +14,15 @@ logger = logging.getLogger(__name__)
 class MissionPlanner:
     """Plan missions by decomposing goals into executable tasks."""
 
-    def __init__(self, client=model_client, model: str = "llama3.2"):
+    def __init__(
+        self,
+        client=model_client,
+        model: str = "llama3.2",
+        predictor: PredictiveSimulator | None = None,
+    ) -> None:
         self.client = client
         self.model = model
+        self.predictor = predictor
 
     def plan(self, goal: str) -> List[str]:
         """Break a high-level goal into tasks using the LLM.
@@ -52,6 +59,8 @@ class MissionPlanner:
                 task = line
             if task:
                 tasks.append(task)
+        if self.predictor:
+            tasks = self.predictor.rank_actions({}, tasks)
         logger.debug("Planned tasks: %s", tasks)
         return tasks
 

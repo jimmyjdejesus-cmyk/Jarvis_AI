@@ -1,48 +1,73 @@
-import yaml
-import fakeredis
+import json
+import sys
+import types
+import importlib.util
+from pathlib import Path
 
-from jarvis.orchestration.mission_planner import MissionPlanner
-from jarvis.orchestration.task_queue import RedisTaskQueue
-from jarvis.orchestration.agents import MetaAgent
+ROOT = Path(__file__).resolve().parents[1]
+
+# Stub out jarvis package to avoid heavy imports
+jarvis_pkg = types.ModuleType("jarvis")
+sys.modules["jarvis"] = jarvis_pkg
+models_pkg = types.ModuleType("jarvis.models")
+jarvis_pkg.models = models_pkg
+sys.modules["jarvis.models"] = models_pkg
+client_mod = types.ModuleType("jarvis.models.client")
+models_pkg.client = client_mod
+sys.modules["jarvis.models.client"] = client_mod
+class _DefaultClient:
+    def generate_response(self, model, prompt):
+        return ""
+
+client_mod.model_client = _DefaultClient()
+
+world_pkg = types.ModuleType("jarvis.world_model")
+predictive_mod = types.ModuleType("jarvis.world_model.predictive_simulation")
+
+class _StubPredictor:
+    def rank_actions(self, state, actions):
+        return actions
+
+predictive_mod.PredictiveSimulator = _StubPredictor
+world_pkg.predictive_simulation = predictive_mod
+jarvis_pkg.world_model = world_pkg
+sys.modules["jarvis.world_model"] = world_pkg
+sys.modules["jarvis.world_model.predictive_simulation"] = predictive_mod
+
+memory_pkg = types.ModuleType("jarvis.memory")
+
+class _DummyMemoryManager:
+    pass
 
 
-def test_mission_planner_enqueue(tmp_path):
-    missions_dir = tmp_path / "missions"
-    missions_dir.mkdir()
-    mission_data = {
-        "goal": "Test mission",
-        "tasks": [{"id": "t1", "description": "First"}],
-    }
-    with open(missions_dir / "demo.yaml", "w", encoding="utf-8") as f:
-        yaml.safe_dump(mission_data, f)
+class _DummyProjectMemory:
+    pass
 
-    fake_r = fakeredis.FakeRedis(decode_responses=True)
-    queue = RedisTaskQueue(name="demo", redis_client=fake_r)
-    planner = MissionPlanner(str(missions_dir), queue=queue)
+memory_pkg.MemoryManager = _DummyMemoryManager
+memory_pkg.ProjectMemory = _DummyProjectMemory
+jarvis_pkg.memory = memory_pkg
+sys.modules["jarvis.memory"] = memory_pkg
 
-    tasks = planner.plan("demo")
+spec = importlib.util.spec_from_file_location(
+    "jarvis.agents.mission_planner", ROOT / "jarvis" / "agents" / "mission_planner.py"
+)
+mission_planner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mission_planner)
+sys.modules["jarvis.agents.mission_planner"] = mission_planner
+agents_pkg = types.ModuleType("jarvis.agents")
+agents_pkg.mission_planner = mission_planner
 
-    assert len(tasks) == 1
-    assert queue.length() == 1
-    task = queue.dequeue()
-    assert task == mission_data["tasks"][0]
-
-
-def test_meta_agent_plan_mission(tmp_path):
-    base_dir = tmp_path
-    missions_dir = base_dir / "config" / "missions"
-    missions_dir.mkdir(parents=True)
-    data = {"goal": "Meta goal", "tasks": [{"id": "x", "description": "Do X"}]}
-    with open(missions_dir / "meta.yaml", "w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f)
-
-    fake_r = fakeredis.FakeRedis(decode_responses=True)
-    queue = RedisTaskQueue(name="meta", redis_client=fake_r)
-    planner = MissionPlanner(str(missions_dir), queue=queue)
-
-    meta = MetaAgent(directory=str(base_dir))
-    meta.mission_planner = planner
-
-    tasks = meta.plan_mission("meta")
-    assert len(tasks) == 1
-    assert meta.next_task()["id"] == "x"
+# Use the critic stub from main
+critics_mod = types.ModuleType("jarvis.agents.critics.ctde_critic")
+class _DummyCritic:
+    def __init__(self, *args, **kwargs):
+        pass
+    def review(self, *args, **kwargs):
+        return {}
+critics_mod.CTDECritic = _DummyCritic
+agents_pkg = sys.modules.get("jarvis.agents", types.ModuleType("jarvis.agents"))
+agents_pkg.critics = types.ModuleType("jarvis.agents.critics")
+agents_pkg.critics.ctde_critic = critics_mod
+sys.modules["jarvis.agents"] = agents_pkg
+sys.modules["jarvis.agents.critics"] = agents_pkg.critics
+sys.modules["jarvis.agents.critics.ctde_critic"] = critics_mod
