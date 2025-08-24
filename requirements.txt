@@ -8,3 +8,5 @@ uvicorn
 redis
 neo4j
 pyotp
+bcrypt
+streamlit
