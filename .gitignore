@@ -41,3 +41,5 @@ data/repo_index/
 node_modules/
 extensions/**/node_modules/
 extensions/**/out/
+
+# Deprecated code

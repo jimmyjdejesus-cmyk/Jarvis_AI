@@ -7,6 +7,7 @@ from typing import Dict, List
 
 from .specialist import SpecialistAgent
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.tools.execution_sandbox import run_python_code, ExecutionResult
 
 class CodeReviewAgent(SpecialistAgent):
     """Expert code reviewer specializing in code quality and best practices"""
@@ -274,9 +275,11 @@ class TestingAgent(SpecialistAgent):
         
         return await self.process_task(strategy_task)
     
-    async def generate_test_cases(self, code: str, test_type: str = "unit") -> dict:
-        """Generate specific test cases for code"""
-        test_task = f"""
+    async def generate_test_cases(self, code: str, test_type: str = "unit", max_retries: int = 3) -> dict:
+        """
+        Generate specific test cases for code with execution-guided self-correction.
+        """
+        base_prompt = f"""
         **TEST CASE GENERATION**
         
         Test Type: {test_type}
@@ -287,17 +290,62 @@ class TestingAgent(SpecialistAgent):
         ```
         
         **Requirements:**
-        1. Generate comprehensive {test_type} test cases
-        2. Include edge cases and error conditions
-        3. Provide test data and expected outcomes
-        4. Include setup and teardown requirements
-        5. Consider boundary value analysis
-        6. Include negative test scenarios
-        
-        Provide detailed test cases with executable code examples.
+        1. Generate comprehensive {test_type} test cases.
+        2. The generated code should be a single block of executable Python code.
+        3. Include necessary imports.
+        4. Use the standard `unittest` framework.
+        5. The code should be runnable as a standalone script.
         """
+
+        for i in range(max_retries):
+            # Generate the test code
+            generation_result = await self.process_task(base_prompt)
+            generated_code = generation_result.get("response", "")
+
+            if not generated_code:
+                return {"error": "Failed to generate test code."}
+
+            # Execute the generated code
+            execution_result = run_python_code(generated_code)
+
+            if execution_result.exit_code == 0:
+                # Success
+                generation_result["execution_guided"] = {
+                    "status": "success",
+                    "retries": i,
+                    "stdout": execution_result.stdout,
+                    "stderr": execution_result.stderr,
+                }
+                return generation_result
+            else:
+                # Failure, construct a new prompt for self-correction
+                base_prompt = f"""
+                The previously generated test case failed with the following error.
+                Please fix the error and provide a corrected version of the test case.
+
+                **Original Code to Test:**
+                ```
+                {code}
+                ```
+
+                **Generated Test Case (failed):**
+                ```
+                {generated_code}
+                ```
+
+                **Error Message:**
+                ```
+                {execution_result.stderr}
+                ```
+
+                **Requirements:**
+                1. Fix the error in the test case.
+                2. The generated code should be a single block of executable Python code.
+                3. Ensure all necessary imports are included.
+                4. Use the standard `unittest` framework.
+                """
         
-        return await self.process_task(test_task)
+        return {"error": f"Failed to generate a valid test case after {max_retries} retries."}
 
 class DevOpsAgent(SpecialistAgent):
     """Expert DevOps engineer specializing in automation and infrastructure"""

@@ -6,7 +6,7 @@ Your Jarvis AI system is now fully customizable and extensible. Here's everythin
 
 ### ✅ **Ready-to-Use Interfaces**
 - 🖥️ **Desktop App**: `python desktop_app.py` or `start_desktop.bat`
-- 🌐 **Web Interface**: `streamlit run legacy/app.py` or `start_web.bat`
+- 🌐 **Web Interface**: The web interface is now started via the main `jarvis` command.
 - 💻 **CLI Tools**: `python launcher.py` or `start_launcher.bat`
 - 🧪 **Direct Testing**: `python test_full_workflow.py`
 
@@ -318,7 +318,7 @@ CMD ["python", "app.py"]
 python desktop_app.py
 
 # Run web interface
-streamlit run legacy/app.py
+jarvis run
 
 # Test workflows
 python test_full_workflow.py

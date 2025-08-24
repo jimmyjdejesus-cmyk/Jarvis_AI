@@ -86,13 +86,12 @@ jarvis-setup = "jarvis_ai.setup:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["jarvis_ai*", "jarvis*", "jarvis_sdk*", "legacy*"]
+include = ["jarvis_ai*", "jarvis*", "jarvis_sdk*"]
 exclude = ["tests*", "docs*"]
 
 [tool.setuptools.package-data]
 jarvis_ai = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]
 jarvis = ["plugins/manifest.json"]
-legacy = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.txt"]
 
 [tool.black]
 line-length = 88

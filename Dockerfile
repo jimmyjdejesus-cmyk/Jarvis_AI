@@ -23,7 +23,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements and install Python dependencies
 COPY pyproject.toml /tmp/
-COPY legacy/requirements_enhanced.txt /tmp/
 
 # Install dependencies
 RUN pip install --upgrade pip setuptools wheel && \
@@ -64,7 +63,6 @@ COPY --chown=jarvis:jarvis . .
 RUN pip install -e .
 
 # Copy default configuration
-COPY --chown=jarvis:jarvis legacy/config/config.example.yaml config/config.yaml
 
 # Create healthcheck script
 RUN echo '#!/bin/bash\ncurl -f http://localhost:8501/_stcore/health || exit 1' > /usr/local/bin/healthcheck.sh && \

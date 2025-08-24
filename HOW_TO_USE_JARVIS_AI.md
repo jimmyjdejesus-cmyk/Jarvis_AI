@@ -27,7 +27,7 @@ python -m jarvis_ai.cli config --validate
 ### **3. Web Interface (Most Features)**
 ```bash
 # Direct streamlit launch
-streamlit run legacy/app.py
+jarvis run
 ```
 
 ## 🔐 **Authentication & User Management**

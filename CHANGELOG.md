@@ -8,4 +8,4 @@
 ### Changed
 - Moved reusable LangGraph workflow nodes to `v2/agent`.
 - Archived legacy LangGraph agent and UI modules with explanatory stubs.
-- Marked legacy Streamlit application as deprecated in the README after E2E parity tests.
+- Marked legacy Streamlit application as deprecated in the README.

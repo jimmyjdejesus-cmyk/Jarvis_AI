@@ -32,7 +32,7 @@ python launcher.py
 # Then choose option 3 (Web UI)
 
 # Option B: Direct web launch
-streamlit run legacy/app.py
+jarvis run
 
 # Option C: CLI access
 python -m jarvis_ai.cli run
