@@ -44,6 +44,7 @@ from .recovery import load_state, save_state
 from .path_memory import PathMemory
 from jarvis.homeostasis.monitor import SystemMonitor
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 
 from ..agents.specialists import (
     CodeReviewAgent,
@@ -230,6 +231,7 @@ class MultiAgentOrchestrator:
 
         self.task_history = []
         self.active_collaborations = {}
+        self.exploration_stats: List[Dict[str, float]] = []
 
         # Lifecycle tracking for child orchestrators
         from .sub_orchestrator import SubOrchestrator
@@ -434,6 +436,15 @@ class MultiAgentOrchestrator:
                 task, context=None, user_context=user_context, models=models
             )
             path_memory.add_decisions(result.get("suggestions", [])[:3])
+
+            candidate = Candidate(
+                agent=specialist_type,
+                bid=float(result.get("confidence", 0.0)),
+                content=result.get("response", ""),
+            )
+            auction = run_vickrey_auction([candidate])
+            self.exploration_stats.append(auction.metrics)
+
             return {
                 "type": "single_specialist",
                 "complexity": analysis["complexity"],
@@ -442,6 +453,8 @@ class MultiAgentOrchestrator:
                 "synthesized_response": result["response"],
                 "confidence": result["confidence"],
                 "coordination_summary": f"Analysis completed by {specialist_type} specialist",
+                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "exploration_metrics": auction.metrics,
             }
         except Exception as e:
             logger.error(f"Single specialist analysis failed: {e}")
@@ -523,11 +536,18 @@ class MultiAgentOrchestrator:
                         result.get("suggestions", [])[:3]
                     )
 
-            synthesized_response = await self._synthesize_parallel_results(
-                request, successful_results
-            )
-            overall_confidence = self._calculate_overall_confidence(
-                successful_results
+            candidates = [
+                Candidate(
+                    agent=res.get("specialist", "unknown"),
+                    bid=float(res.get("confidence", 0.0)),
+                    content=res.get("response", ""),
+                )
+                for res in successful_results
+            ]
+            auction = run_vickrey_auction(candidates)
+            self.exploration_stats.append(auction.metrics)
+            merged = "\n\n".join(
+                f"{c.agent}: {c.content}" for c in auction.rankings
             )
 
             return {
@@ -535,9 +555,11 @@ class MultiAgentOrchestrator:
                 "complexity": analysis["complexity"],
                 "specialists_used": specialists_needed,
                 "results": specialist_results,
-                "synthesized_response": synthesized_response,
-                "confidence": overall_confidence,
-                "coordination_summary": f"Parallel analysis by {len(successful_results)} specialists",
+                "synthesized_response": merged,
+                "confidence": auction.winner.bid,
+                "coordination_summary": f"Auction won by {auction.winner.agent}",
+                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "exploration_metrics": auction.metrics,
             }
 
         except Exception as e:
@@ -585,16 +607,27 @@ class MultiAgentOrchestrator:
             
             # Final synthesis with all results
             synthesized_response = await self._synthesize_sequential_results(request, specialist_results)
-            overall_confidence = self._calculate_overall_confidence(list(specialist_results.values()))
-            
+            candidates = [
+                Candidate(
+                    agent=typ,
+                    bid=float(res.get("confidence", 0.0)),
+                    content=res.get("response", ""),
+                )
+                for typ, res in specialist_results.items()
+            ]
+            auction = run_vickrey_auction(candidates)
+            self.exploration_stats.append(auction.metrics)
+
             return {
                 "type": "sequential_specialists",
                 "complexity": analysis["complexity"],
                 "specialists_used": specialists_needed,
                 "results": specialist_results,
                 "synthesized_response": synthesized_response,
-                "confidence": overall_confidence,
-                "coordination_summary": f"Sequential analysis with {len(specialists_needed)} specialists building on each other's insights"
+                "confidence": auction.winner.bid,
+                "coordination_summary": f"Auction won by {auction.winner.agent} after sequential analysis",
+                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "exploration_metrics": auction.metrics,
             }
             
         except Exception as e:

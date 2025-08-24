@@ -1,5 +1,12 @@
 # Agent Log
 
+## 2025-08-24
+- Added Vickrey auction scoring module and orchestrator integration.
+- Merged specialist outputs via Vickrey auction with exploration metrics tracking.
+- Created unit tests for auction logic and orchestrator merging.
+- Ran `pytest tests/test_vickrey_auction.py tests/test_orchestrator_auction.py tests/test_orchestrator_path_memory.py -q`.
+=======
+
 
 ## 2025-09-01
 - Added root cause failure analysis with `RootCauseAnalyzer` and negative pathway support in `PolicyOptimizer` and `HierarchicalHypergraph`.
