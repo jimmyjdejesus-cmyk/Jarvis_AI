@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, List
 import subprocess
 import json
+import re
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -47,11 +48,13 @@ async def install_plugin(
     dependencies: str = Form(""),
     user=Depends(require_role("admin")),
 ):
+    _validate_package_name(name)
     deps = [d.strip() for d in dependencies.split(",") if d.strip()]
     for dep in deps:
         if not _dependency_installed(dep):
-            _pip_install(dep)
-    _pip_install(f"{name}=={version}" if version != "latest" else name)
+            _pip_install([dep])
+    install_args = [f"{name}=={version}"] if version != "latest" else [name]
+    _pip_install(install_args)
     _installed_plugins[name] = {
         "name": name,
         "version": version,
@@ -60,6 +63,27 @@ async def install_plugin(
         "dependencies": deps,
     }
     return {"status": "installed", "plugin": _installed_plugins[name]}
+
+
+@app.post("/api/plugins/publish")
+async def publish_plugin(
+    name: str = Form(...),
+    version: str = Form("latest"),
+    url: str = Form(...),
+    user=Depends(require_role(["admin", "publisher"])),
+):
+    """Publish a plugin from an external source URL after validating the name."""
+
+    _validate_package_name(name)
+    _pip_install([url])
+    _installed_plugins[name] = {
+        "name": name,
+        "version": version,
+        "url": url,
+        "author": user["username"],
+        "dependencies": [],
+    }
+    return {"status": "published", "plugin": _installed_plugins[name]}
 
 
 @app.post("/api/plugins/uninstall")
@@ -75,7 +99,7 @@ async def uninstall_plugin(name: str = Form(...), user=Depends(require_role("adm
 async def update_plugin(name: str = Form(...), user=Depends(require_role("admin"))):
     if name not in _installed_plugins:
         raise HTTPException(status_code=404, detail="Plugin not installed")
-    _pip_install(f"{name} --upgrade")
+    _pip_install([name, "--upgrade"])
     return {"status": "updated"}
 
 
@@ -131,30 +155,26 @@ async def export_events(session_id: str | None = None):
 
 # Utility functions
 
+def _validate_package_name(name: str) -> None:
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        raise HTTPException(status_code=400, detail="Invalid package name")
+
+
 def _dependency_installed(package: str) -> bool:
-    import importlib.util
+    """Return True if ``package`` is installed via pip."""
 
-    return importlib.util.find_spec(package) is not None
-
-    """
-    Check if a package is installed via pip (i.e., present in the list of installed distributions).
-    """
     try:
-        # importlib.metadata returns a PackageNotFoundError if not installed via pip
-        importlib.metadata.version(package)
+        import importlib.metadata as metadata
+
+        metadata.version(package)
         return True
-    except importlib.metadata.PackageNotFoundError:
+    except metadata.PackageNotFoundError:
         return False
-    except Exception:
-        # Fallback: not installed
-        return False
-def _pip_install(package: str):
-    try:
-        subprocess.run(["pip", "install"] + package.split(), check=True)
-    except Exception as exc:
+
+
 def _pip_install(package_args: List[str]):
     try:
-        subprocess.run(["pip", "install"] + package_args, check=True)
+        subprocess.run(["pip", "install", *package_args], check=True)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to install {' '.join(package_args)}: {exc}")
 
@@ -168,7 +188,12 @@ def _pip_uninstall(package: str):
 
 def _pip_outdated() -> List[Dict[str, str]]:
     try:
-        result = subprocess.run(["pip", "list", "--outdated", "--format", "json"], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            ["pip", "list", "--outdated", "--format", "json"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         return json.loads(result.stdout)
     except Exception:
         return []

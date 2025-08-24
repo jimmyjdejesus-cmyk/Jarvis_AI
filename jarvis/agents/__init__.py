@@ -1,22 +1,41 @@
-"""
-Jarvis AI Agents - Specialized AI assistants and expert agents
+"""Lightweight agents package used in tests.
+
+Only a small subset of the full project agents are exposed here with guarded
+imports to avoid heavy optional dependencies during testing.
 """
 
-# Legacy coding agent
-try:
+from __future__ import annotations
+
+# Core planning and curiosity utilities
+try:  # pragma: no cover - optional dependencies
+    from .mission_planner import MissionPlanner
+except Exception:  # pragma: no cover
+    MissionPlanner = None  # type: ignore
+
+try:  # pragma: no cover - optional dependencies
+    from .curiosity_agent import CuriosityAgent
+except Exception:  # pragma: no cover
+    CuriosityAgent = None  # type: ignore
+
+# Optional specialist agents – failure to import simply leaves them as ``None``
+try:  # pragma: no cover
     from .coding_agent import CodingAgent, get_coding_agent
 except Exception:  # pragma: no cover
-    CodingAgent = None
+    CodingAgent = None  # type: ignore
 
-    def get_coding_agent(*args, **kwargs):  # type: ignore
+    def get_coding_agent(*_args, **_kwargs):  # type: ignore
         raise ImportError("CodingAgent not available")
-from .mission_planner import MissionPlanner
+
 from .base_specialist import BaseSpecialist
 from .simulation_agent import SimulationAgent
 from .monte_carlo_explorer import MonteCarloExplorer
-from .curiosity_agent import CuriosityAgent
 from .benchmark_agent import BenchmarkRewardAgent
-from .live_test_agent import LiveTestAgent
+from .decentralized_actor import DecentralizedActor
+
+try:
+    from .live_test_agent import LiveTestAgent
+except Exception:  # pragma: no cover
+    LiveTestAgent = None
 
 # New specialist agents
 try:
@@ -47,7 +66,8 @@ try:
         'ArchitectureAgent',
         'TestingAgent',
         'DevOpsAgent',
-        'RedTeamCritic'
+        'RedTeamCritic',
+        'DecentralizedActor'
     ]
     
 except Exception:  # pragma: no cover
@@ -60,10 +80,6 @@ except Exception:  # pragma: no cover
         'MonteCarloExplorer',
         'CuriosityAgent',
         'BenchmarkRewardAgent',
-        'LiveTestAgent'
+        'LiveTestAgent',
+        'DecentralizedActor'
     ]
-
-# Version info
-__version__ = "2.0.0"
-__author__ = "Jarvis AI Team"
-
