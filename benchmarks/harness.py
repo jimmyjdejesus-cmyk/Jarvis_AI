@@ -10,7 +10,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 
 @dataclass
@@ -22,9 +22,11 @@ class Metric:
     token_count: int
     prune_rate: float
     bq_score: float
+    answer_relevance: float
+    citation_count: int
 
 
-ScenarioFn = Callable[["Context"], Awaitable[str]]
+ScenarioFn = Callable[["Context"], Awaitable[Union[str, Dict[str, Any]]]]
 
 
 @dataclass
@@ -68,18 +70,22 @@ class BenchmarkRunner:
             first_token_time: Optional[float] = None
             token_counter = 0
 
-            async def token_stream() -> str:
-                nonlocal first_token_time, token_counter
-                # Simulate streaming tokens from the scenario function.
-                result = await scenario.fn(ctx)
-                for i, token in enumerate(result.split()):
-                    if first_token_time is None:
-                        first_token_time = time.perf_counter()
-                    token_counter += 1
-                    await asyncio.sleep(0)
-                return result
+            result = await scenario.fn(ctx)
+            if isinstance(result, dict):
+                answer = result.get("answer", "")
+                relevance = float(result.get("relevance", 0.0))
+                citations = result.get("citations", [])
+            else:
+                answer = result
+                relevance = 0.0
+                citations = []
 
-            await token_stream()
+            for token in answer.split():
+                if first_token_time is None:
+                    first_token_time = time.perf_counter()
+                token_counter += 1
+                await asyncio.sleep(0)
+
             end = time.perf_counter()
 
         return Metric(
@@ -88,6 +94,8 @@ class BenchmarkRunner:
             token_count=token_counter,
             prune_rate=0.0 if policy == "no-prune" else 0.3,
             bq_score=1.0,
+            answer_relevance=relevance,
+            citation_count=len(citations),
         )
 
     async def run(self, policy: str) -> Dict[str, Metric]:
@@ -112,6 +120,10 @@ def benchmark_table(balanced: Dict[str, Metric], no_prune: Dict[str, Metric]) ->
                 "latency_increase": latency_increase,
                 "bq_balanced": b.bq_score,
                 "bq_no_prune": n.bq_score,
+                "relevance_balanced": b.answer_relevance,
+                "relevance_no_prune": n.answer_relevance,
+                "citations_balanced": b.citation_count,
+                "citations_no_prune": n.citation_count,
             }
         )
     return table

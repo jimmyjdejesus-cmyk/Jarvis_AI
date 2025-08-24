@@ -8,3 +8,4 @@ uvicorn
 redis
 neo4j
 pyotp
+networkx

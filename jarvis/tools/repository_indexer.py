@@ -2,9 +2,10 @@ import ast
 import json
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional, Any
+from typing import Any, Dict, List, Optional
 import zlib
 
+import networkx as nx
 import numpy as np
 
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
@@ -136,7 +137,7 @@ class RepositoryIndexer:
 
     # ------------------------------------------------------------------
     def index_repository(self, graph: KnowledgeGraph) -> None:
-        """Populate a :class:`KnowledgeGraph` with code entities."""
+        """Populate ``graph`` with code entities and persist to disk."""
 
         for file_path in self.repo_path.rglob("*.py"):
             rel = str(file_path.relative_to(self.repo_path))
@@ -150,7 +151,12 @@ class RepositoryIndexer:
                     func_id = f"{rel}::{node.name}"
                     graph.add_node(func_id, "function", {"name": node.name, "file": rel})
                     graph.add_edge(rel, func_id, "contains")
-                    for call in [n for n in ast.walk(node) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]:
+                    calls = [
+                        n
+                        for n in ast.walk(node)
+                        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                    ]
+                    for call in calls:
                         target = f"{rel}::{call.func.id}"
                         graph.add_node(target, "function")
                         graph.add_edge(func_id, target, "calls")
@@ -169,3 +175,7 @@ class RepositoryIndexer:
                         target = f"{module}.{alias.name}" if module else alias.name
                         graph.add_node(target, "module")
                         graph.add_edge(rel, target, "imports")
+
+        graph_file = self.index_dir / f"graph_{self.version}.json"
+        data = nx.node_link_data(graph.graph)
+        graph_file.write_text(json.dumps(data, indent=2))
