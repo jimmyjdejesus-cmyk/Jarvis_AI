@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 import tempfile
 import shutil
 import logging
+import ast
 
 logger = logging.getLogger(__name__)
 
@@ -371,55 +372,82 @@ class TestingAdapter(IntegrationAdapter):
             return {"success": False, "error": str(e)}
     
     async def _generate_tests(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate test cases for code"""
+        """Generate test cases for code."""
         code = params.get("code")
         file_path = params.get("file_path")
         test_type = params.get("test_type", "unit")
-        
+
         if file_path and os.path.exists(file_path):
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 code = f.read()
-        
+
         if not code:
             return {"success": False, "error": "No code provided"}
-        
-        # Generate basic test template
-        test_code = f"""
-import unittest
-from unittest.mock import Mock, patch
 
-class TestGeneratedCode(unittest.TestCase):
-    \"\"\"
-    Generated test cases for the provided code
-    \"\"\"
-    
-    def setUp(self):
-        \"\"\"Set up test fixtures\"\"\"
-        pass
-    
-    def test_basic_functionality(self):
-        \"\"\"Test basic functionality\"\"\"
-        # TODO: Implement actual test
-        self.assertTrue(True)
-    
-    def test_edge_cases(self):
-        \"\"\"Test edge cases\"\"\"
-        # TODO: Implement edge case tests
-        pass
-    
-    def test_error_handling(self):
-        \"\"\"Test error handling\"\"\"
-        # TODO: Implement error handling tests
-        pass
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as exc:
+            return {"success": False, "error": f"Invalid Python code: {exc}"}
 
-if __name__ == '__main__':
-    unittest.main()
-"""
-        
+        test_lines: List[str] = [
+            "import unittest",
+            "import types",
+            f"SOURCE = {code!r}",
+            "",
+            "module = types.ModuleType('generated_module')",
+            "exec(SOURCE, module.__dict__)",
+            "",
+            "class TestGeneratedCode(unittest.TestCase):",
+            '    """Generated test cases for the provided code"""',
+        ]
+
+        functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
+
+        if not functions:
+            test_lines.extend(
+                [
+                    "    def test_module_executes(self):",
+                    "        self.assertIsNotNone(module)",
+                    "",
+                ]
+            )
+        else:
+            for func in functions:
+                name = func.name
+                arg_count = len(func.args.args)
+                args_call = ", ".join(["1"] * arg_count)
+                call = f"module.{name}({args_call})" if arg_count else f"module.{name}()"
+                test_lines.extend(
+                    [
+                        f"    def test_{name}_basic(self):",
+                        f"        self.assertIsNotNone({call})",
+                        "",
+                        f"    def test_{name}_edge_case(self):",
+                    ]
+                )
+                edge_args = ", ".join(["None"] * arg_count)
+                edge_call = (
+                    f"module.{name}({edge_args})" if arg_count else f"module.{name}(None)"
+                )
+                test_lines.extend(
+                    [
+                        "        with self.assertRaises(Exception):",
+                        f"            {edge_call}",
+                        "",
+                    ]
+                )
+
+        test_lines.extend([
+            "if __name__ == '__main__':",
+            "    unittest.main()",
+        ])
+
+        test_code = "\n".join(test_lines)
+
         return {
             "success": True,
             "test_code": test_code,
-            "test_type": test_type
+            "test_type": test_type,
         }
 
 class GitAdapter(IntegrationAdapter):
