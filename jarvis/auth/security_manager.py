@@ -23,6 +23,7 @@ class SecurityManager:
         self._lock = threading.Lock()
         self._path_permissions: Dict[str, List[str]] = {}
         self._command_permissions: Dict[str, List[str]] = {}
+        self._role_permissions: Dict[str, Dict[str, List[str]]] = {}
         
         # Rate limiting settings
         self.max_attempts = 5
@@ -134,32 +135,59 @@ class SecurityManager:
 
     # Permission management
     def grant_path_access(self, username: str, path: str):
-        """Grant user access to a file path."""
+        """Grant a specific user access to a file path."""
         resolved = str(Path(path).resolve())
         with self._lock:
             self._path_permissions.setdefault(username, []).append(resolved)
 
     def grant_command_access(self, username: str, command: str):
-        """Grant user access to execute a command."""
+        """Grant a specific user access to execute a command."""
         with self._lock:
             self._command_permissions.setdefault(username, []).append(command)
 
-    def has_path_access(self, username: str, path: str) -> bool:
-        """Check if user has access to a path."""
+    def grant_role_path_access(self, role: str, path: str):
+        """Grant a role access to a file path."""
         resolved = str(Path(path).resolve())
         with self._lock:
-            allowed = self._path_permissions.get(username, [])
-        resolved_path = Path(path).resolve()
+            perms = self._role_permissions.setdefault(role, {"paths": [], "commands": []})
+            perms["paths"].append(resolved)
+
+    def grant_role_command_access(self, role: str, command: str):
+        """Grant a role access to execute a command."""
         with self._lock:
-            allowed = self._path_permissions.get(username, [])
-        return any(resolved_path.is_relative_to(Path(p)) for p in allowed)
+            perms = self._role_permissions.setdefault(role, {"paths": [], "commands": []})
+            perms["commands"].append(command)
+
+    def _get_user_role(self, username: str) -> str:
+        """Retrieve a user's role from the database manager if available."""
+        if not self.db_manager:
+            return "user"
+        try:
+            user = self.db_manager.get_user(username)
+            if not user:
+                return "user"
+            return user.get("role", "user")
+        except Exception:
+            return "user"
+
+    def has_path_access(self, username: str, path: str) -> bool:
+        """Check if a user (via role or direct grant) can access a path."""
+        resolved_path = Path(path).resolve()
+        role = self._get_user_role(username)
+        with self._lock:
+            user_paths = self._path_permissions.get(username, [])
+            role_paths = self._role_permissions.get(role, {}).get("paths", [])
+        allowed_paths = user_paths + role_paths
+        return any(resolved_path.is_relative_to(Path(p)) for p in allowed_paths)
 
     def has_command_access(self, username: str, command: str) -> bool:
-        """Check if user can execute a command."""
-        with self._lock:
-            allowed = self._command_permissions.get(username, [])
+        """Check if a user (via role or direct grant) can run a command."""
+        role = self._get_user_role(username)
         base_command = command.strip().split()[0] if command.strip() else ""
-        return base_command in allowed
+        with self._lock:
+            user_cmds = self._command_permissions.get(username, [])
+            role_cmds = self._role_permissions.get(role, {}).get("commands", [])
+        return base_command in user_cmds or base_command in role_cmds
     
     def authenticate_user(self, username: str, password: str, 
                          ip_address: str = None) -> Optional[Dict]:

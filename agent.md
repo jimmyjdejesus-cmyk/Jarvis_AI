@@ -371,3 +371,10 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+
+## 2025-08-24
+- Added role-based access control to SecurityManager with role-level path and command grants.
+- Updated environment tools to enforce RBAC and require confirmation for high-impact operations.
+- Added unit tests for RBAC enforcement and confirmation prompts.
+- Ran `pytest tests/auth/test_security_rbac.py tests/tools/test_environment_rbac.py tests/tools/test_prompt_injection.py -q`.
+
