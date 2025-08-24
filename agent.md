@@ -371,3 +371,9 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+
+## 2025-08-24
+- Moved VS Code integration into `integrations/vscode` with repository indexer suggestions and debugging.
+- Documented setup in `docs/vscode_extension.md`.
+- Added unit tests and ran `pytest tests/test_vscode_extension.py -q`.
+
