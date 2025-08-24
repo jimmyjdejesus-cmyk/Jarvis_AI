@@ -1,31 +1,46 @@
-"""
-VS Code Integration for Jarvis AI Coding Assistant
-Provides commands and API endpoints for IDE integration
-"""
+"""VS Code Integration for Jarvis AI Coding Assistant.
+Provides commands and API endpoints for IDE integration."""
 
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import argparse
 import asyncio
 
 try:
     import websockets
+    WebSocketServerProtocol = websockets.WebSocketServerProtocol
 except ImportError:  # pragma: no cover - handled at runtime
     websockets = None
+    from typing import Any as WebSocketServerProtocol
 
-# Add the parent directory to path to import jarvis
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add the repository root to path to import jarvis
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import jarvis
+from jarvis.tools.repository_indexer import RepositoryIndexer
+
+
+def _get_coding_agent(workspace: Optional[str] = None):
+    """Lazily import Jarvis and return a coding agent."""
+    import jarvis  # local import to avoid heavy dependencies at module load
+
+    base_agent = jarvis.get_jarvis_agent()
+    return jarvis.get_coding_agent(base_agent, workspace) if workspace else jarvis.get_coding_agent(base_agent)
+
+
+def get_repository_indexer(workspace: str) -> RepositoryIndexer:
+    """Create and build a :class:`RepositoryIndexer` for a workspace."""
+    path = str(Path(workspace).resolve())
+    indexer = RepositoryIndexer(path)
+    indexer.build_index(force_rebuild=True)
+    return indexer
 
 def analyze_file(file_path: str) -> Dict[str, Any]:
     """Analyze a single file"""
     try:
-        base_agent = jarvis.get_jarvis_agent()
-        coding_agent = jarvis.get_coding_agent(base_agent, str(Path(file_path).parent))
-        
+        coding_agent = _get_coding_agent(str(Path(file_path).parent))
+
         result = coding_agent.analyze_file_content(file_path)
         
         return {
@@ -46,13 +61,12 @@ def review_code(file_path: str, language: str = None) -> Dict[str, Any]:
         path = Path(file_path)
         if not language:
             language = get_language_from_file(file_path)
-        
+
         with open(path, 'r', encoding='utf-8') as f:
             code = f.read()
-        
-        base_agent = jarvis.get_jarvis_agent()
-        coding_agent = jarvis.get_coding_agent(base_agent)
-        
+
+        coding_agent = _get_coding_agent()
+
         review = coding_agent.code_review(code, language, f"File: {path.name}")
         
         return {
@@ -74,13 +88,12 @@ def generate_tests(file_path: str, language: str = None) -> Dict[str, Any]:
         path = Path(file_path)
         if not language:
             language = get_language_from_file(file_path)
-        
+
         with open(path, 'r', encoding='utf-8') as f:
             code = f.read()
-        
-        base_agent = jarvis.get_jarvis_agent()
-        coding_agent = jarvis.get_coding_agent(base_agent)
-        
+
+        coding_agent = _get_coding_agent()
+
         tests = coding_agent.create_tests(code, language)
         
         return {
@@ -96,18 +109,22 @@ def generate_tests(file_path: str, language: str = None) -> Dict[str, Any]:
             "file": file_path
         }
 
-def explain_code_selection(code: str, language: str = "python") -> Dict[str, Any]:
-    """Explain selected code"""
+def explain_code_selection(code: str, language: str = "python", workspace: Optional[str] = None) -> Dict[str, Any]:
+    """Explain selected code and surface related files."""
     try:
-        base_agent = jarvis.get_jarvis_agent()
-        coding_agent = jarvis.get_coding_agent(base_agent)
-        
+        coding_agent = _get_coding_agent()
+
         explanation = coding_agent.explain_code(code, language)
-        
+        suggestions: List[Dict[str, Any]] = []
+        if workspace:
+            indexer = get_repository_indexer(workspace)
+            suggestions = indexer.search(code)
+
         return {
             "success": True,
             "explanation": explanation,
-            "language": language
+            "language": language,
+            "suggestions": suggestions,
         }
     except Exception as e:
         return {
@@ -115,18 +132,22 @@ def explain_code_selection(code: str, language: str = "python") -> Dict[str, Any
             "error": str(e)
         }
 
-def debug_error(error_message: str, code: str = "", language: str = "python") -> Dict[str, Any]:
-    """Debug an error"""
+def debug_error(error_message: str, code: str = "", language: str = "python", workspace: Optional[str] = None) -> Dict[str, Any]:
+    """Debug an error and suggest related files."""
     try:
-        base_agent = jarvis.get_jarvis_agent()
-        coding_agent = jarvis.get_coding_agent(base_agent)
-        
+        coding_agent = _get_coding_agent()
+
         debug_help = coding_agent.debug_assistance(error_message, code, language)
-        
+        related: List[Dict[str, Any]] = []
+        if workspace:
+            indexer = get_repository_indexer(workspace)
+            related = indexer.search(error_message)
+
         return {
             "success": True,
             "debug_help": debug_help,
-            "language": language
+            "language": language,
+            "related_files": related,
         }
     except Exception as e:
         return {
@@ -137,11 +158,12 @@ def debug_error(error_message: str, code: str = "", language: str = "python") ->
 def analyze_workspace(workspace_path: str) -> Dict[str, Any]:
     """Analyze entire workspace"""
     try:
-        base_agent = jarvis.get_jarvis_agent()
-        coding_agent = jarvis.get_coding_agent(base_agent, workspace_path)
-        
+        coding_agent = _get_coding_agent(workspace_path)
+
         analysis = coding_agent.analyze_codebase(workspace_path)
-        
+        # ensure repository index is built for subsequent suggestions
+        get_repository_indexer(workspace_path)
+
         return {
             "success": True,
             "analysis": analysis,
@@ -155,7 +177,7 @@ def analyze_workspace(workspace_path: str) -> Dict[str, Any]:
         }
 
 
-async def _ws_handler(websocket: websockets.WebSocketServerProtocol):
+async def _ws_handler(websocket: WebSocketServerProtocol):
     """Handle incoming websocket messages"""
     async for message in websocket:
         try:
@@ -169,7 +191,8 @@ async def _ws_handler(websocket: websockets.WebSocketServerProtocol):
         if command == "inline-suggestion":
             code = data.get("code", "")
             language = data.get("language", "python")
-            response = explain_code_selection(code, language)
+            workspace = data.get("workspace")
+            response = explain_code_selection(code, language, workspace)
         elif command == "stream-context":
             workspace = data.get("workspace", "")
             response = analyze_workspace(workspace)
@@ -177,7 +200,8 @@ async def _ws_handler(websocket: websockets.WebSocketServerProtocol):
             err = data.get("error", "")
             code = data.get("code", "")
             language = data.get("language", "python")
-            response = debug_error(err, code, language)
+            workspace = data.get("workspace")
+            response = debug_error(err, code, language, workspace)
         else:
             response = {"success": False, "error": f"Unknown command: {command}"}
 
@@ -253,9 +277,9 @@ def main():
         result = generate_tests(args.file, args.language)
     elif command == "explain-code" and args.code:
         language = args.language or "python"
-        result = explain_code_selection(args.code, language)
+        result = explain_code_selection(args.code, language, args.workspace)
     elif command == "debug-error" and args.error:
-        result = debug_error(args.error, args.code or "", args.language or "python")
+        result = debug_error(args.error, args.code or "", args.language or "python", args.workspace)
     elif command == "analyze-workspace" and args.workspace:
         result = analyze_workspace(args.workspace)
     else:

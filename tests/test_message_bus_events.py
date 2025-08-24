@@ -1,10 +1,13 @@
+import importlib
 import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))
-from jarvis.orchestration.message_bus import MessageBus
+repo_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(repo_root / "jarvis" / "orchestration"))
+
+MessageBus = importlib.import_module("message_bus").MessageBus
 
 
 @pytest.mark.asyncio

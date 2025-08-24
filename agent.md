@@ -1,3 +1,8 @@
+## 2025-09-02
+- Implemented secure git command execution with subprocess, input sanitization, and error handling.
+- Added unit tests covering typical git commands and failure scenarios.
+- Ran `pytest tests/test_git_command_tool.py -q`.
+=======
 # Agent Log
 
 ## 2025-08-24
@@ -6,6 +11,63 @@
 - Created unit tests for auction logic and orchestrator merging.
 - Ran `pytest tests/test_vickrey_auction.py tests/test_orchestrator_auction.py tests/test_orchestrator_path_memory.py -q`.
 =======
+
+
+## 2025-08-24
+- Introduced bandwidth-limited communication channel with penalty delays and integrated it into the MessageBus.
+- Added partial observability benchmark and unit tests.
+- Ran `pip install psutil networkx bcrypt pytest-asyncio -q` and `pytest tests/test_bandwidth_channel.py tests/test_message_bus_events.py -q`.
+=======
+## 2025-09-02
+
+- Implemented repository indexer with AST, CFG, and DFG generation.
+- Added Neo4j adapter and docker-compose service.
+- Created tests for flow graphs and Neo4j connector.
+- Ran `pytest tests/test_repository_indexer_graphs.py -q`.
+=======
+
+# Agent Log
+=======
+
+- Enhanced `MetaAgent` with planning heuristics, critic feedback loop, and metrics tracking.
+- Integrated orchestrator results with `jarvis.ecosystem.superintelligence` and emergent metrics registry.
+- Added unit test for MetaAgent planning and updated tests to load modules directly.
+- Installed `psutil`, `bcrypt`, and `networkx`; tests failed during collection due to syntax error in `jarvis/agents/specialists.py`.
+=======
+- Replaced template code generation with specialist agent invocation in `CodeGenerationAdapter`.
+- Added unit tests covering success and error paths.
+- Ran `pytest tests/test_code_generation_adapter.py -q`.
+
+## 2025-09-02
+- Added unit tests for `parse_natural_language` and `execute_plan` in `legacy/tests/tests/test_core.py` using mocks for approval and workflow parsing failures.
+- Ran `pytest legacy/tests/tests/test_core.py -q`.
+
+## 2025-09-03
+- Created lightweight MetaAgent for spawning sub-orchestrators and dynamic execution graphs.
+- Refactored orchestrator into reusable template with path memory and child lifecycle.
+- Exposed MetaAgent as ecosystem entry point and ran targeted tests.
+
+## 2025-08-24
+- Added GitHub Actions workflows for linting, testing, and deployment.
+- Configured ELK stack in docker-compose.logging.yml with Filebeat and Logstash.
+- Documented deployment steps in docs/operations.md.
+- Attempted `pip install -e .` (failed: TOML decode error).
+- Ran `pytest test_basic.py` (0 tests collected).
+
+
+
+## 2025-08-24
+- Introduced `MissionPlanner` with Redis-backed `RedisTaskQueue` for sub-task planning.
+- Extended `MetaAgent` to plan missions and queue tasks; added mission configs.
+- Created tests for mission planning and queue integration.
+- Ran `PYTHONPATH=. pytest tests/test_mission_planner.py -q`.
+
+## 2025-08-24
+- Added standardized benchmarking harness with coding, repo reasoning and Q&A scenarios.
+- Generated result cards with summaries and latency plot.
+- Hooked harness into CI and created unit test.
+- Ran `flake8 benchmarks/harness.py tests/test_benchmark_harness.py`, `black benchmarks/harness.py tests/test_benchmark_harness.py --config /dev/null`, `pytest tests/test_benchmark_harness.py -q` and `python benchmarks/harness.py`.
+
 
 
 ## 2025-09-01
@@ -300,6 +362,10 @@
 
 =======
 ## 2025-08-24
+- Implemented MCTS-based mission planner and planning package.
+- Added success, token cost, and latency metrics to benchmarking harness.
+- Created unit tests for MCTS planner and updated benchmark harness tests.
+- Ran `pytest tests/test_mcts_planner.py tests/test_benchmark_harness.py -q`.
 - Implemented dynamic model routing with resource-aware model selection.
 - Added Redis-backed caching and request batching in MCP client and orchestrator.
 - Created tests for routing, caching, and batching.
@@ -377,4 +443,89 @@
 - Installed dependencies `langgraph`, `networkx`, `neo4j`, and `beautifulsoup4`.
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
+## 2025-08-24
+- Modified plugin scaffold to generate an executable echo plugin with documentation.
+- Added integration test verifying scaffolded plugin registration and execution.
+- Ran `pytest tests/test_plugin_system.py -q`.
+
+
+
+## 2025-08-24a
+- Added graph construction utilities in `jarvis/retrieval/graph_rag.py` with build, save, and load helpers.
+- Stored knowledge graph data during repository indexing and persisted to `graph_<commit>.json`.
+- Extended benchmarking harness with answer relevance and citation metrics.
+- Created unit tests for graph utilities, repository graph persistence, and benchmark metrics.
+- Ran `pytest tests/test_graph_rag.py tests/test_repository_indexer_graph.py tests/test_benchmark_metrics.py -q`.
+=======
+
+
+## 2025-08-24
+- Implemented centralized critic module `CTDECritic` and decentralized actors with shared gradient buffers.
+- Added CTDE benchmark utilities and corresponding tests.
+- Installed `networkx` and executed `pytest tests/test_ctde_learning.py -q`.
+=======
+- Added role-based access control to SecurityManager with role-level path and command grants.
+- Updated environment tools to enforce RBAC and require confirmation for high-impact operations.
+- Added unit tests for RBAC enforcement and confirmation prompts.
+- Ran `pytest tests/auth/test_security_rbac.py tests/tools/test_environment_rbac.py tests/tools/test_prompt_injection.py -q`.
+
+=======
+- Added specialized agent and tool registries in `jarvis_sdk` with dedicated decorators.
+- Updated documentation with examples for `jarvis_tool` and `jarvis_agent`.
+- Added unit tests for SDK registration.
+- Created separate `pyproject.toml` for SDK packaging and attempted build & TestPyPI upload.
+- Ran `pytest tests/test_sdk_registration.py -q` and `python -m build` in `jarvis_sdk/`.
+=======
+## 2025-02-14
+- Implemented `ResearchAgent` with web scraping, summarization, and citation tracking utilities.
+- Added `WebSearchTool` and `WebReaderTool` helpers.
+- Created unit tests mocking HTTP responses for the research agent.
+- Ran `pytest tests/test_research_agent.py -q`.
+=======
+
+
+## 2025-08-24
+- Moved VS Code integration into `integrations/vscode` with repository indexer suggestions and debugging.
+- Documented setup in `docs/vscode_extension.md`.
+- Added unit tests and ran `pytest tests/test_vscode_extension.py -q`.
+
+
+## 2025-08-24
+- Introduced dedicated `jarvis/critics` package with Red and Blue Team critics.
+- Wired critics into `ExecutiveAgent` for staged self-correction using config toggles.
+- Added per-critic enable flags in configuration and tests validating toggles.
+- Ran `pytest tests/test_constitutional_critic.py tests/test_critic_toggle.py -q`.
+
+=======
+=======
+
+## 2025-08-24
+- Integrated JetBrains IDE commands for file opening and lint execution with prompts.
+- Added unit tests mocking IDE interface to verify dispatch.
+- Installed `psutil` to support JetBrains integration.
+- Ran `pytest legacy/tests/test_ide_commands.py -q`.
+ax=======
+## 2025-08-24
+- Enhanced test generation with assertions and edge-case checks in `TestingAdapter`.
+- Added tests verifying generated suites run and invalid code handling.
+- Ran `ruff check jarvis/workflows/integrations.py tests/test_workflow_test_generation.py --fix` (TOML parse error).
+- Ran `pytest tests/test_workflow_test_generation.py -q`.
+
+
+## 2025-08-24
+- Added nested orchestrator context/result propagation and recursive tests.
+- Ran `pytest tests/test_nested_orchestration.py::test_recursive_orchestrators_context_flow -q`.
+
+## 2025-08-24
+- Added secure plugin publishing endpoint with role-based access control.
+- Extended plugin hub auth to support multiple roles and publisher accounts.
+- Hardened plugin installation utilities and added comprehensive tests.
+- Ran `pytest tests/test_plugin_hub.py -q`.
+
+
+## 2025-08-24
+- Added SelfRAGGate module with precision/latency gating and metrics tracking.
+- Exposed retrieval gating configuration in `config/config.yaml`.
+- Added unit tests for gating logic and metrics.
+- Ran `pytest tests/test_self_rag_gate.py -q`.
 

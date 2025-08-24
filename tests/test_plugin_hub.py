@@ -41,11 +41,13 @@ def test_install_plugin_admin(monkeypatch):
     _installed_plugins.clear()
     client = TestClient(app)
     token = login(client, "admin", "admin")
+    class Dummy:
+        stdout = "[]"
 
-    def fake_install(package: str):
-        return None
+    def fake_run(*args, **kwargs):
+        return Dummy()
 
-    monkeypatch.setattr("jarvis.plugin_hub.hub._pip_install", fake_install)
+    monkeypatch.setattr("jarvis.plugin_hub.hub.subprocess.run", fake_run)
     res = client.post(
         "/api/plugins/install",
         headers={"Authorization": f"Bearer {token}"},
@@ -71,10 +73,13 @@ def test_moderation_flow(monkeypatch):
     pend = client.get("/api/moderation/pending", headers={"Authorization": f"Bearer {admin_token}"})
     assert any(s["id"] == submission_id for s in pend.json())
 
-    def fake_install(package: str):
-        return None
+    class Dummy:
+        stdout = "[]"
 
-    monkeypatch.setattr("jarvis.plugin_hub.hub._pip_install", fake_install)
+    def fake_run(*args, **kwargs):
+        return Dummy()
+
+    monkeypatch.setattr("jarvis.plugin_hub.hub.subprocess.run", fake_run)
     approve = client.post(
         "/api/moderation/approve",
         headers={"Authorization": f"Bearer {admin_token}"},
@@ -82,3 +87,32 @@ def test_moderation_flow(monkeypatch):
     )
     assert approve.status_code == 200
     assert "sub" in _installed_plugins
+
+
+def test_publish_plugin_with_publisher_role(monkeypatch):
+    _installed_plugins.clear()
+    client = TestClient(app)
+    publisher_token = login(client, "publisher", "publisher")
+    user_token = login(client, "user", "user")
+    class Dummy:
+        stdout = "[]"
+
+    def fake_run(*args, **kwargs):
+        return Dummy()
+
+    monkeypatch.setattr("jarvis.plugin_hub.hub.subprocess.run", fake_run)
+
+    res = client.post(
+        "/api/plugins/publish",
+        headers={"Authorization": f"Bearer {publisher_token}"},
+        data={"name": "demo", "version": "0.1", "url": "demo==0.1"},
+    )
+    assert res.status_code == 200
+    assert _installed_plugins["demo"]["version"] == "0.1"
+
+    res_forbidden = client.post(
+        "/api/plugins/publish",
+        headers={"Authorization": f"Bearer {user_token}"},
+        data={"name": "demo2", "version": "0.1", "url": "demo2==0.1"},
+    )
+    assert res_forbidden.status_code == 403
