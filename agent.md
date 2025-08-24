@@ -467,3 +467,7 @@
 - Ran `ruff check jarvis/workflows/integrations.py tests/test_workflow_test_generation.py --fix` (TOML parse error).
 - Ran `pytest tests/test_workflow_test_generation.py -q`.
 
+
+## 2025-08-24
+- Added nested orchestrator context/result propagation and recursive tests.
+- Ran `pytest tests/test_nested_orchestration.py::test_recursive_orchestrators_context_flow -q`.

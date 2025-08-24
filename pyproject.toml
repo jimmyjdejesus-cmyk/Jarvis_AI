@@ -35,6 +35,7 @@ dependencies = [
     "cryptography>=40.0.0",
     "bcrypt>=4.0.0",
     "psutil>=5.9.0",
+    "networkx>=3.0",
     "plotly>=5.14.0",
     "duckduckgo-search>=4.0.0",
     "pillow>=10.0.0",
@@ -45,7 +46,6 @@ dependencies = [
     "keyring>=24.0.0",
     "pyotp>=2.9.0",
     "redis>=5.0.0",
-    "networkx>=3.0",
     "websockets>=12.0",
     
     # Lang Family Tools for V2 Architecture
