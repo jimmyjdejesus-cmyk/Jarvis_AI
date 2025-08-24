@@ -44,6 +44,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
       "keyring>=24.0.0",
       "pyotp>=2.9.0",
+    "networkx>=3.0",
+    "websockets>=12.0",
     
     # Lang Family Tools for V2 Architecture
     "langchain",

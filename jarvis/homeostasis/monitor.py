@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict
 
-import psutil
+try:  # pragma: no cover - optional dependency
+    import psutil
+except Exception:  # pragma: no cover
+    psutil = None  # type: ignore
 
 
 @dataclass
@@ -33,8 +36,11 @@ class SystemMonitor:
     def snapshot(self) -> ResourceSnapshot:
         """Return current resource utilization."""
 
-        cpu = psutil.cpu_percent(interval=0.1)
-        mem = psutil.virtual_memory().percent
+        if psutil:
+            cpu = psutil.cpu_percent(interval=0.1)
+            mem = psutil.virtual_memory().percent
+        else:  # pragma: no cover - best effort when psutil missing
+            cpu = mem = 0.0
         return ResourceSnapshot(cpu=cpu, memory=mem, api_tokens=self.api_tokens)
 
     # ------------------------------------------------------------------

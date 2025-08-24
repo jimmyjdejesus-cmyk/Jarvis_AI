@@ -5,5 +5,6 @@ integrations:
     base_url: "http://localhost:11434"
 v2_agent:
   default_model: "llama3.2"
-  enable_critics: true
+  enable_red_team: true
+  enable_blue_team: true
   # Add other v2-specific settings here

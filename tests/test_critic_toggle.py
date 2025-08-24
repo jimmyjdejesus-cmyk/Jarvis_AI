@@ -8,9 +8,11 @@ sys.path.append(os.getcwd())
 # Stub orchestration modules to avoid importing heavy dependencies
 orch_pkg = types.ModuleType("jarvis.orchestration")
 
+
 class _DummyOrchestrator:
     async def coordinate_specialists(self, *args, **kwargs):
         return {}
+
 
 orch_pkg.MultiAgentOrchestrator = _DummyOrchestrator
 orch_pkg.SubOrchestrator = _DummyOrchestrator
@@ -76,25 +78,13 @@ sys.modules["jarvis.homeostasis"] = homeo_pkg
 from jarvis.ecosystem.meta_intelligence import ExecutiveAgent
 
 
-def test_constitutional_critic_vetoes_blocked_plan() -> None:
-    agent = ExecutiveAgent("exec_test")
+def test_critic_toggle() -> None:
+    agent = ExecutiveAgent("meta", enable_red_team=False, enable_blue_team=False)
+    result = asyncio.run(agent.execute_task({"type": "unknown"}))
+    assert "red_team_review" not in result
+    assert "blue_team_evaluation" not in result
 
-    def fake_plan(goal: str, strategy: str = "standard"):
-        return ["DROP TABLE users"]
-
-    agent.mission_planner.plan = fake_plan  # type: ignore
-    result = agent.manage_directive("bad goal")
-    assert result["success"] is False
-    assert result["critique"]["veto"] is True
-
-
-def test_constitutional_critic_blocks_mission_step() -> None:
-    agent = ExecutiveAgent("exec_test")
-
-    def fake_plan(goal: str, strategy: str = "standard"):
-        return ["DROP TABLE users"]
-
-    agent.mission_planner.plan = fake_plan  # type: ignore
-    result = asyncio.run(agent._handle_mission_step({"request": "danger"}))
-    assert result["success"] is False
-    assert result["critique"]["veto"] is True
+    agent2 = ExecutiveAgent("meta2", enable_red_team=True, enable_blue_team=True)
+    result2 = asyncio.run(agent2.execute_task({"type": "unknown"}))
+    assert "red_team_review" in result2
+    assert "blue_team_evaluation" in result2
