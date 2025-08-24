@@ -42,8 +42,10 @@ TOOLS_ENABLED = [
 class V2AgentConfig(BaseModel):
     """Settings specific to the v2 agent."""
 
+    model_config = ConfigDict(extra="allow")
     default_model: str = Field(default="llama3.2")
-    enable_critics: bool = Field(default=True)
+    enable_red_team: bool = Field(default=True)
+    enable_blue_team: bool = Field(default=True)
 
 
 class Config(BaseModel):

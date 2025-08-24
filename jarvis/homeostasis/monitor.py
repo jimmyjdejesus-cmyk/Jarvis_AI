@@ -5,13 +5,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-import psutil
 import time
 
 from jarvis.observability.logger import get_logger
 from jarvis.learning.root_cause_analyzer import RootCauseAnalyzer
 from jarvis.learning.remediation_agent import RemediationAgent
 
+try:  # pragma: no cover - optional dependency
+    import psutil
+except Exception:  # pragma: no cover
+    psutil = None  # type: ignore
 
 @dataclass
 class ResourceSnapshot:
@@ -51,8 +54,11 @@ class SystemMonitor:
     def snapshot(self) -> ResourceSnapshot:
         """Return current resource utilization."""
 
-        cpu = psutil.cpu_percent(interval=0.1)
-        mem = psutil.virtual_memory().percent
+        if psutil:
+            cpu = psutil.cpu_percent(interval=0.1)
+            mem = psutil.virtual_memory().percent
+        else:  # pragma: no cover - best effort when psutil missing
+            cpu = mem = 0.0
         return ResourceSnapshot(cpu=cpu, memory=mem, api_tokens=self.api_tokens)
 
     # ------------------------------------------------------------------

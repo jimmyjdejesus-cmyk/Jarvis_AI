@@ -72,7 +72,7 @@ def write_file(path: str, content: str, username: str,
             )
         raise PermissionError("Access denied")
 
-    if not _confirm(f"Allow {username} to write {path}?"):
+    if not _confirm(f"High-impact: allow {username} to write {path}?"):
         logger.info("User %s denied write for %s", username, path)
         return False
 
@@ -106,7 +106,7 @@ def run_shell_command(command: str, username: str,
             )
         raise PermissionError("Command not permitted")
 
-    if not _confirm(f"Allow {username} to run '{command}'?"):
+    if not _confirm(f"High-impact: allow {username} to run '{command}'?"):
         logger.info("User %s denied command '%s'", username, command)
         return None
 

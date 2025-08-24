@@ -35,21 +35,25 @@ dependencies = [
     "cryptography>=40.0.0",
     "bcrypt>=4.0.0",
     "psutil>=5.9.0",
+    "networkx>=3.0",
     "plotly>=5.14.0",
     "duckduckgo-search>=4.0.0",
     "pillow>=10.0.0",
     "structlog>=23.1.0",
     "graphviz>=0.20.1",
+    "networkx>=3.0",
     "chromadb>=0.5.0",
     "python-dotenv>=1.0.0",
-      "keyring>=24.0.0",
-      "pyotp>=2.9.0",
+    "keyring>=24.0.0",
+    "pyotp>=2.9.0",
+    "redis>=5.0.0",
+    "websockets>=12.0",
     
     # Lang Family Tools for V2 Architecture
     "langchain",
     "langchain-core", 
     "langchain-community",
-    "langgraph"
+    "langgraph",
     "langsmith",
     
     # API Framework for V2 Backend
@@ -72,6 +76,7 @@ dev = [
     "mypy>=1.4.0",
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "fakeredis>=2.0.0",
 ]
 
 [project.urls]
@@ -86,18 +91,13 @@ jarvis-setup = "jarvis_ai.setup:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-=======
 include = ["jarvis_ai*", "jarvis*", "jarvis_sdk*", "legacy*"]
-
 exclude = ["tests*", "docs*"]
 
 [tool.setuptools.package-data]
 jarvis_ai = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]
 jarvis = ["plugins/manifest.json"]
-
-=======
 legacy = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.txt"]
-
 
 [tool.black]
 line-length = 88

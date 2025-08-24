@@ -2,6 +2,9 @@
 # Set ENABLE_RED_TEAM to true to enable the red team critic that reviews
 # specialist outputs for logical errors and conflicting assumptions.
 ENABLE_RED_TEAM: false
+# Set ENABLE_BLUE_TEAM to true to enable the blue team critic that audits
+# final results for risk and ethical concerns.
+ENABLE_BLUE_TEAM: true
 
 
 orch:

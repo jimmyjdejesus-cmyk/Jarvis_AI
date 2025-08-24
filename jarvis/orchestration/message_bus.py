@@ -12,6 +12,11 @@ import uuid
 from collections import defaultdict
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+try:
+    from .bandwidth_channel import BandwidthLimitedChannel
+except Exception:  # pragma: no cover - allow direct module import
+    from bandwidth_channel import BandwidthLimitedChannel
+
 from pydantic import BaseModel, Field
 
 
@@ -34,11 +39,13 @@ class Event(BaseModel):
 class MessageBus:
     """In-memory pub/sub message bus with scoped event storage."""
 
-    def __init__(self) -> None:
+    def __init__(self, channel: Optional[BandwidthLimitedChannel] = None) -> None:
         # Mapping of event name to subscribers
         self._subscribers: Dict[str, List[EventHandler]] = defaultdict(list)
         # Scoped memory of published events
         self._memory: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        # Optional communication channel enforcing bandwidth penalties
+        self._channel = channel
 
     def subscribe(self, event: str, handler: EventHandler) -> None:
         """Register a handler for a specific event type."""
@@ -89,6 +96,9 @@ class MessageBus:
             log=log,
         )
         self._memory[scope].append(message.model_dump())
+
+        if self._channel is not None:
+            await self._channel.transmit(message.model_dump())
 
         for handler in list(self._subscribers.get(event, [])):
             if asyncio.iscoroutinefunction(handler):
