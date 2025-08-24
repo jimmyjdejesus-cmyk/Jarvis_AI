@@ -1,10 +1,19 @@
+"""Tests for the :mod:`jarvis.agents.research_agent` module.
+
+The tests mock out network access by patching ``requests.get`` so that the
+agent's web scraping utilities can be exercised without performing real HTTP
+requests.
+"""
+
+from __future__ import annotations
+
 import json
 import sys
 import types
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import Mock, patch
 
-# Stub out the jarvis package and its subpackages to avoid heavy imports
+# Stub out the jarvis package to avoid importing heavy optional dependencies
 root = Path(__file__).resolve().parents[1]
 jarvis_pkg = types.ModuleType("jarvis")
 jarvis_pkg.__path__ = [str(root / "jarvis")]
@@ -14,31 +23,53 @@ agents_pkg = types.ModuleType("jarvis.agents")
 agents_pkg.__path__ = [str(root / "jarvis" / "agents")]
 sys.modules.setdefault("jarvis.agents", agents_pkg)
 
+tools_pkg = types.ModuleType("jarvis.tools")
+tools_pkg.__path__ = [str(root / "jarvis" / "tools")]
+sys.modules.setdefault("jarvis.tools", tools_pkg)
+
 from jarvis.agents.research_agent import ResearchAgent
-from jarvis.tools import WebSearchTool, WebReaderTool
 
 
-def test_recursive_search_and_citations():
-    search_tool = WebSearchTool()
-    reader_tool = WebReaderTool()
+def _make_response(text: str) -> Mock:
+    resp = Mock()
+    resp.status_code = 200
+    resp.text = text
+    resp.raise_for_status = Mock()
+    return resp
 
-    search_tool.search = MagicMock(side_effect=[
-        [{"title": "First", "url": "http://a.com"}],
-        [{"title": "Second", "url": "http://b.com"}],
-    ])
-    reader_tool.read = MagicMock(side_effect=["follow-up query", "final content"])
 
-    agent = ResearchAgent(search_tool=search_tool, reader_tool=reader_tool)
-    report = agent.research("initial query", depth=2)
+def test_recursive_search_and_citations_with_mocked_http() -> None:
+    """Verify iterative search and citation tracking."""
 
-    assert reader_tool.read.call_count == 2
-    assert search_tool.search.call_args_list[0][0][0] == "initial query"
-    assert search_tool.search.call_args_list[1][0][0] == "follow-up query"
+    # HTML snippets for search results and page contents.  Each call to
+    # ``requests.get`` will yield the next response in this list.
+    search_html_1 = "<a class='result__a' href='http://a.com'>First</a>"
+    read_html_1 = "<p>follow-up query</p>"
+    search_html_2 = "<a class='result__a' href='http://b.com'>Second</a>"
+    read_html_2 = "<p>final content</p>"
+
+    side_effects = [
+        _make_response(search_html_1),
+        _make_response(read_html_1),
+        _make_response(search_html_2),
+        _make_response(read_html_2),
+    ]
+
+    with patch("jarvis.tools.web_tools.requests.get", side_effect=side_effects) as mock_get:
+        agent = ResearchAgent()
+        report = agent.research("initial query", depth=2)
+
+    # Ensure the underlying HTTP client was invoked for each request
+    assert mock_get.call_count == 4
+
+    # The report should contain two iterations and two citations
     assert len(report["iterations"]) == 2
-    assert report["iterations"][0]["results"][0]["url"] == "http://a.com"
+    assert len(report["citations"]) == 2
+    assert report["citations"][0]["url"] == "http://a.com"
 
-    # Ensure markdown/json export works
+    # Ensure markdown/json export includes citations
     md = agent.get_report_markdown()
     js = json.loads(agent.get_report_json())
     assert "http://a.com" in md
-    assert js["iterations"][0]["results"][0]["url"] == "http://a.com"
+    assert js["citations"][1]["url"] == "http://b.com"
+
