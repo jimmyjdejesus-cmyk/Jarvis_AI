@@ -7,6 +7,23 @@ import types
 sys.modules.setdefault("networkx", types.SimpleNamespace())
 dummy_neo4j = types.SimpleNamespace(GraphDatabase=object, Driver=object)
 sys.modules.setdefault("neo4j", dummy_neo4j)
+sys.modules.setdefault("psutil", types.SimpleNamespace())
+sys.modules.setdefault("jarvis.agents", types.SimpleNamespace())
+
+class _Dummy:
+    def __init__(self, *args, **kwargs):
+        pass
+
+sys.modules.setdefault(
+    "jarvis.agents.specialists",
+    types.SimpleNamespace(
+        CodeReviewAgent=_Dummy,
+        SecurityAgent=_Dummy,
+        ArchitectureAgent=_Dummy,
+        TestingAgent=_Dummy,
+        DevOpsAgent=_Dummy,
+    ),
+)
 sys.path.append('.')
 
 import pytest

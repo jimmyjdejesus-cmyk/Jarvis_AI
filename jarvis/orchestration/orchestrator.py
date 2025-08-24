@@ -24,6 +24,64 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+# Orchestration Package
+"""
+Multi-agent orchestration system for coordinating specialist AI agents
+
+This package provides:
+- MultiAgentOrchestrator: Coordinates multiple specialists for complex tasks
+- SubOrchestrator: Scoped orchestrator used for nested missions
+- Workflow management and task delegation
+- Result synthesis and conflict resolution
+This package provides building blocks for creating LangGraph based
+orchestration workflows.  The previous specialised orchestrator has been
+replaced by a small, generic template which can dynamically assemble graphs
+from ``AgentSpec`` definitions.
+"""
+
+from importlib import import_module
+from types import ModuleType
+from typing import Any
+
+__all__ = [
+    "AgentSpec",
+    "DynamicOrchestrator",
+    "MultiAgentOrchestrator",
+    "SubOrchestrator",
+    "PathMemory",
+    "MessageBus",
+    "HierarchicalMessageBus",
+    "Event",
+    "BandwidthLimitedChannel",
+    "MissionPlanner",
+    "RedisTaskQueue",
+    "END",
+]
+
+
+def __getattr__(name: str) -> Any:  # pragma: no cover - thin wrapper
+    mapping = {
+        "AgentSpec": (".orchestrator", "AgentSpec"),
+        "DynamicOrchestrator": (".orchestrator", "DynamicOrchestrator"),
+        "MultiAgentOrchestrator": (".orchestrator", "MultiAgentOrchestrator"),
+        "END": (".orchestrator", "END"),
+        "SubOrchestrator": (".sub_orchestrator", "SubOrchestrator"),
+        "PruningManager": (".pruning", "PruningManager"),
+        "PathMemory": (".path_memory", "PathMemory"),
+        "MessageBus": (".message_bus", "MessageBus"),
+        "HierarchicalMessageBus": (".message_bus", "HierarchicalMessageBus"),
+        "Event": (".message_bus", "Event"),
+        "BandwidthLimitedChannel": (".bandwidth_channel", "BandwidthLimitedChannel"),
+        "MissionPlanner": (".mission_planner", "MissionPlanner"),
+        "RedisTaskQueue": (".task_queue", "RedisTaskQueue"),
+    }
+    if name not in mapping:
+        raise AttributeError(f"module 'jarvis.orchestration' has no attribute {name}")
+    module_name, attr = mapping[name]
+    module: ModuleType = import_module(module_name, __name__)
+    value = getattr(module, attr)
+    globals()[name] = value
+    return value
 from langgraph.graph import END, StateGraph
 
 from .path_memory import PathMemory
@@ -87,6 +145,10 @@ class MultiAgentOrchestrator:
             context=context,
             user_context=user_context,
         )
+
+self.task_history = []
+        self.active_collaborations = {}
+        self.exploration_stats: List[Dict[str, float]] = []
 
     async def analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
         """Analyze a request using the :class:`RequestClassifier`."""
@@ -226,11 +288,25 @@ class MultiAgentOrchestrator:
                 specialist_type, task, context=context, user_context=user_context
             )
             path_memory.add_decisions(result.get("suggestions", [])[:3])
-            return {
-                "type": "single_specialist", "complexity": analysis["complexity"],
-                "specialists_used": [specialist_type], "results": {specialist_type: result},
-                "synthesized_response": result.get("response"), "confidence": result.get("confidence"),
-                "coordination_summary": f"Analysis completed by {specialist_type} specialist",
+
+            candidate = Candidate(
+                agent=specialist_type,
+                bid=float(result.get("confidence", 0.0)),
+                content=result.get("response", ""),
+            )
+            auction = run_vickrey_auction([candidate])
+            self.exploration_stats.append(auction.metrics)
+
+           return {
+                "type": "parallel_specialists",
+                "complexity": analysis["complexity"],
+                "specialists_used": specialists_needed,
+                "results": specialist_results,
+                "synthesized_response": merged,
+                "confidence": auction.winner.bid,
+                "coordination_summary": f"Auction won by {auction.winner.agent}",
+                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "exploration_metrics": auction.metrics,
             }
         except Exception as e:
             logger.error(f"Single specialist analysis failed: {e}")
@@ -276,19 +352,45 @@ class MultiAgentOrchestrator:
                             path_memory.add_decisions(res.get("suggestions", [])[:3])
                     continue
 
-                for (stype, spec, _, _), resp in zip(items, responses):
-                    res = spec.process_model_response(resp, model, task)
-                    specialist_results[stype] = res
-                    successful_results.append(res)
-                    path_memory.add_decisions(res.get("suggestions", [])[:3])
+for (specialist_type, specialist, _, _), response in zip(
+                    items, responses
+                ):
+                    result = specialist.process_model_response(
+                        response, model, task
+                    )
+                    specialist_results[specialist_type] = result
+                    successful_results.append(result)
+                    path_memory.add_decisions(
+                        result.get("suggestions", [])[:3]
+                    )
+
+            candidates = [
+                Candidate(
+                    agent=res.get("specialist", "unknown"),
+                    bid=float(res.get("confidence", 0.0)),
+                    content=res.get("response", ""),
+                )
+                for res in successful_results
+            ]
+            auction = run_vickrey_auction(candidates)
+            self.exploration_stats.append(auction.metrics)
+            merged = "\n\n".join(
+                f"{c.agent}: {c.content}" for c in auction.rankings
+            )
 
             synthesized_response = await self._synthesize_parallel_results(request, successful_results)
             overall_confidence = self._calculate_overall_confidence(successful_results)
             return {
-                "type": "parallel_specialists", "complexity": analysis["complexity"],
-                "specialists_used": specialists_needed, "results": specialist_results,
-                "synthesized_response": synthesized_response, "confidence": overall_confidence,
-                "coordination_summary": f"Parallel analysis with {len(specialists_needed)} specialists",
+return {
+                "type": "parallel_specialists",
+                "complexity": analysis["complexity"],
+                "specialists_used": specialists_needed,
+                "results": specialist_results,
+                "synthesized_response": merged,
+                "confidence": auction.winner.bid,
+                "coordination_summary": f"Auction won by {auction.winner.agent}",
+                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "exploration_metrics": auction.metrics,
             }
         except Exception as e:
             logger.error(f"Parallel specialist analysis failed: {e}")
@@ -323,12 +425,17 @@ class MultiAgentOrchestrator:
                 logger.info(f"Completed {specialist_type} analysis, passing context to next specialist")
 
             synthesized_response = await self._synthesize_sequential_results(request, specialist_results)
-            overall_confidence = self._calculate_overall_confidence(list(specialist_results.values()))
-            return {
-                "type": "sequential_specialists", "complexity": analysis["complexity"],
-                "specialists_used": specialists_needed, "results": specialist_results,
-                "synthesized_response": synthesized_response, "confidence": overall_confidence,
-                "coordination_summary": f"Sequential analysis with {len(specialists_needed)} specialists",
+return {
+                "type": "sequential_specialists",
+                "complexity": analysis["complexity"],
+                "specialists_used": specialists_needed,
+                "results": specialist_results,
+                "synthesized_response": synthesized_response,
+                "confidence": auction.winner.bid,
+                "coordination_summary": f"Auction won by {auction.winner.agent} after sequential analysis",
+                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "exploration_metrics": auction.metrics,
+            }
             }
         except Exception as e:
             logger.error(f"Sequential specialist analysis failed: {e}")

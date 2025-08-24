@@ -5,6 +5,13 @@
 =======
 # Agent Log
 
+## 2025-08-24
+- Added Vickrey auction scoring module and orchestrator integration.
+- Merged specialist outputs via Vickrey auction with exploration metrics tracking.
+- Created unit tests for auction logic and orchestrator merging.
+- Ran `pytest tests/test_vickrey_auction.py tests/test_orchestrator_auction.py tests/test_orchestrator_path_memory.py -q`.
+=======
+
 
 ## 2025-08-24
 - Introduced bandwidth-limited communication channel with penalty delays and integrated it into the MessageBus.
