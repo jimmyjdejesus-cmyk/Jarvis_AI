@@ -371,3 +371,7 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+
+## 2025-08-24
+- Added nested orchestrator context/result propagation and recursive tests.
+- Ran `pytest tests/test_nested_orchestration.py::test_recursive_orchestrators_context_flow -q`.

@@ -304,6 +304,39 @@ class MultiAgentOrchestrator:
     def list_child_orchestrators(self) -> List[str]:
         """List identifiers of active child orchestrators."""
         return list(self.child_orchestrators.keys())
+
+    async def run_child_orchestrator(
+        self,
+        name: str,
+        request: str,
+        *,
+        context: Any | None = None,
+        user_context: str | None = None,
+    ) -> Dict[str, Any]:
+        """Execute a task using a registered child orchestrator.
+
+        This allows hierarchical orchestration where a parent orchestrator can
+        delegate work to nested orchestrators and receive their results.
+
+        Args:
+            name: Identifier of the child orchestrator to run.
+            request: Task description for the child orchestrator.
+            context: Optional context object passed to the child orchestrator.
+            user_context: Optional end-user context string.
+
+        Returns:
+            The result returned by the child orchestrator.
+        """
+
+        orchestrator = self.child_orchestrators.get(name)
+        if orchestrator is None:
+            raise ValueError(f"Unknown child orchestrator: {name}")
+
+        return await orchestrator.coordinate_specialists(
+            request,
+            context=context,
+            user_context=user_context,
+        )
     
     async def analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
         """Analyze a request using the :class:`RequestClassifier`."""
@@ -344,7 +377,14 @@ class MultiAgentOrchestrator:
             return cloud + local
         return local + cloud
     
-    async def coordinate_specialists(self, request: str, code: str = None, user_context: str = None, novelty_boost: float = 0.0) -> Dict[str, Any]:
+    async def coordinate_specialists(
+        self,
+        request: str,
+        code: str | None = None,
+        user_context: str | None = None,
+        context: Any | None = None,
+        novelty_boost: float = 0.0,
+    ) -> Dict[str, Any]:
         """
         Coordinate multiple specialists to handle complex request
         
@@ -352,6 +392,8 @@ class MultiAgentOrchestrator:
             request: User request
             code: Optional code to analyze
             user_context: Additional user context
+            context: Optional context object forwarded to specialists or
+                nested orchestrators
             
         Returns:
             Coordinated analysis results
@@ -384,11 +426,22 @@ class MultiAgentOrchestrator:
         
         # Execute coordination strategy
         if analysis["coordination_type"] == "single":
-            result = await self._single_specialist_analysis(request, analysis, path_memory, code, user_context)
+            result = await self._single_specialist_analysis(
+                request,
+                analysis,
+                path_memory,
+                code,
+                user_context,
+                context,
+            )
         elif analysis["coordination_type"] == "parallel":
-            result = await self._parallel_specialist_analysis(request, analysis, path_memory, code, user_context)
+            result = await self._parallel_specialist_analysis(
+                request, analysis, path_memory, code, user_context, context
+            )
         else:  # sequential
-            result = await self._sequential_specialist_analysis(request, analysis, path_memory, code, user_context)
+            result = await self._sequential_specialist_analysis(
+                request, analysis, path_memory, code, user_context, context
+            )
 
         # Record outcome in path memory
         score = result.get("oracle_score", 1.0 if result.get("type") != "error" else 0.0)
@@ -403,6 +456,7 @@ class MultiAgentOrchestrator:
         *,
         context: Any | None = None,
         user_context: str | None = None,
+        models: List[str] | None = None,
     ) -> Dict[str, Any]:
         """Execute a task with the requested specialist.
 
@@ -412,26 +466,38 @@ class MultiAgentOrchestrator:
         keeps subtask/result passing consistent across strategies.
         """
 
-        specialist = self.specialists[specialist_type]
-        return await specialist.process_task(
-            task, context=context, user_context=user_context
-        )
+        if specialist_type in self.specialists:
+            specialist = self.specialists[specialist_type]
+            kwargs = {"context": context, "user_context": user_context}
+            if models is not None:
+                kwargs["models"] = models
+            return await specialist.process_task(task, **kwargs)
+        if specialist_type in self.child_orchestrators:
+            return await self.run_child_orchestrator(
+                specialist_type,
+                task,
+                context=context,
+                user_context=user_context,
+            )
+        raise ValueError(f"Unknown specialist or orchestrator: {specialist_type}")
 
     async def _single_specialist_analysis(
         self,
         request: str,
         analysis: Dict,
         path_memory: PathMemory,
-        code: str = None,
-        user_context: str = None,
+        code: str | None = None,
+        user_context: str | None = None,
+        context: Any | None = None,
     ) -> Dict[str, Any]:
         specialist_type = analysis["specialists_needed"][0]
-        specialist = self.specialists[specialist_type]
         task = self._create_specialist_task(request, code, user_context)
-        models = self._route_model_preferences(specialist, analysis["complexity"])
         try:
-            result = await specialist.process_task(
-                task, context=None, user_context=user_context, models=models
+            result = await self.dispatch_specialist(
+                specialist_type,
+                task,
+                context=context,
+                user_context=user_context,
             )
             path_memory.add_decisions(result.get("suggestions", [])[:3])
             return {
@@ -439,8 +505,8 @@ class MultiAgentOrchestrator:
                 "complexity": analysis["complexity"],
                 "specialists_used": [specialist_type],
                 "results": {specialist_type: result},
-                "synthesized_response": result["response"],
-                "confidence": result["confidence"],
+                "synthesized_response": result.get("response"),
+                "confidence": result.get("confidence"),
                 "coordination_summary": f"Analysis completed by {specialist_type} specialist",
             }
         except Exception as e:
@@ -453,8 +519,9 @@ class MultiAgentOrchestrator:
         request: str,
         analysis: Dict,
         path_memory: PathMemory,
-        code: str = None,
-        user_context: str = None,
+        code: str | None = None,
+        user_context: str | None = None,
+        context: Any | None = None,
     ) -> Dict[str, Any]:
         """Handle analysis with parallel specialist coordination"""
         specialists_needed = analysis["specialists_needed"]
@@ -466,7 +533,7 @@ class MultiAgentOrchestrator:
         for specialist_type in specialists_needed:
             specialist = self.specialists[specialist_type]
             models = self._route_model_preferences(specialist, analysis["complexity"])
-            prompt = specialist.build_prompt(task, None, user_context)
+            prompt = specialist.build_prompt(task, context, user_context)
             primary_model = models[0]
             server = specialist._get_server_for_model(primary_model)
             grouped[(server, primary_model)].append(
@@ -495,7 +562,7 @@ class MultiAgentOrchestrator:
                         try:
                             result = await specialist.process_task(
                                 task,
-                                context=None,
+                                context=context,
                                 user_context=user_context,
                                 models=models,
                             )
@@ -544,26 +611,38 @@ class MultiAgentOrchestrator:
             logger.error(f"Parallel specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
     
-    async def _sequential_specialist_analysis(self, request: str, analysis: Dict, path_memory: PathMemory, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def _sequential_specialist_analysis(
+        self,
+        request: str,
+        analysis: Dict,
+        path_memory: PathMemory,
+        code: str | None = None,
+        user_context: str | None = None,
+        context: Any | None = None,
+    ) -> Dict[str, Any]:
         """Handle analysis with sequential specialist coordination"""
         specialists_needed = analysis["specialists_needed"]
         
         # Build context progressively
-        shared_context = []
+        shared_context = [] if context is None else [context]
         specialist_results = {}
         
         task = self._create_specialist_task(request, code, user_context)
 
         try:
             for specialist_type in specialists_needed:
-                specialist = self.specialists[specialist_type]
-
-                models = self._route_model_preferences(
-                    specialist, analysis["complexity"]
+                specialist = self.specialists.get(specialist_type)
+                models = (
+                    self._route_model_preferences(
+                        specialist, analysis["complexity"]
+                    )
+                    if specialist
+                    else None
                 )
 
                 # Process with accumulated context
-                result = await specialist.process_task(
+                result = await self.dispatch_specialist(
+                    specialist_type,
                     task,
                     context=shared_context,
                     user_context=user_context,

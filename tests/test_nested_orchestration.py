@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+from typing import Any, Dict
 
 sys.path.append(os.getcwd())
 
@@ -87,3 +88,54 @@ async def test_parent_orchestrator_child_lifecycle():
     assert "child1" in parent.list_child_orchestrators()
     assert parent.remove_child_orchestrator("child1")
     assert "child1" not in parent.list_child_orchestrators()
+
+
+@pytest.mark.asyncio
+async def test_recursive_orchestrators_context_flow(monkeypatch):
+    mcp = DummyMCP()
+
+    import jarvis.orchestration.sub_orchestrator as sub_mod
+
+    RealSub = sub_mod.SubOrchestrator
+
+    class RecursiveSubOrchestrator(RealSub):
+        async def coordinate_specialists(
+            self,
+            request: str,
+            code: str | None = None,
+            user_context: str | None = None,
+            context: Any | None = None,
+            novelty_boost: float = 0.0,
+        ) -> Dict[str, Any]:
+            data: Dict[str, Any] = {
+                "name": self.mission_name,
+                "received": context,
+            }
+            if self.child_orchestrators:
+                child_name = next(iter(self.child_orchestrators))
+                data["child"] = await self.run_child_orchestrator(
+                    child_name,
+                    request,
+                    context={"caller": self.mission_name},
+                )
+            return data
+
+    monkeypatch.setattr(sub_mod, "SubOrchestrator", RecursiveSubOrchestrator)
+
+    child_specs = {
+        "child": {
+            "mission_name": "child",
+            "child_specs": {"grand": {"mission_name": "grandchild"}},
+        }
+    }
+
+    parent = MultiAgentOrchestrator(mcp, child_specs=child_specs)
+
+    result = await parent.run_child_orchestrator(
+        "child", "root-task", context={"caller": "parent"}
+    )
+
+    assert result["name"] == "child"
+    assert result["received"] == {"caller": "parent"}
+    assert result["child"]["name"] == "grandchild"
+    assert result["child"]["received"] == {"caller": "child"}
