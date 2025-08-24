@@ -12,6 +12,7 @@ neo4j
 networkx
 ollama
 pyotp
+networkx
 python-multipart
 redis
 requests

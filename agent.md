@@ -438,6 +438,12 @@
 
 ## 2025-08-24
 
+
+## 2025-08-24
+- Implemented centralized critic module `CTDECritic` and decentralized actors with shared gradient buffers.
+- Added CTDE benchmark utilities and corresponding tests.
+- Installed `networkx` and executed `pytest tests/test_ctde_learning.py -q`.
+=======
 - Added role-based access control to SecurityManager with role-level path and command grants.
 - Updated environment tools to enforce RBAC and require confirmation for high-impact operations.
 - Added unit tests for RBAC enforcement and confirmation prompts.
@@ -495,3 +501,4 @@
 - Extended plugin hub auth to support multiple roles and publisher accounts.
 - Hardened plugin installation utilities and added comprehensive tests.
 - Ran `pytest tests/test_plugin_hub.py -q`.
+

@@ -26,34 +26,60 @@ except Exception:  # pragma: no cover
     def get_coding_agent(*_args, **_kwargs):  # type: ignore
         raise ImportError("CodingAgent not available")
 
-try:  # pragma: no cover
-    from .simulation_agent import SimulationAgent
-except Exception:  # pragma: no cover
-    SimulationAgent = None  # type: ignore
+from .base_specialist import BaseSpecialist
+from .simulation_agent import SimulationAgent
+from .monte_carlo_explorer import MonteCarloExplorer
+from .benchmark_agent import BenchmarkRewardAgent
+from .decentralized_actor import DecentralizedActor
 
-try:  # pragma: no cover
-    from .monte_carlo_explorer import MonteCarloExplorer
-except Exception:  # pragma: no cover
-    MonteCarloExplorer = None  # type: ignore
-
-try:  # pragma: no cover
-    from .benchmark_agent import BenchmarkRewardAgent
-except Exception:  # pragma: no cover
-    BenchmarkRewardAgent = None  # type: ignore
-
-try:  # pragma: no cover
+try:
     from .live_test_agent import LiveTestAgent
 except Exception:  # pragma: no cover
-    LiveTestAgent = None  # type: ignore
+    LiveTestAgent = None
 
-__all__ = [
-    "CodingAgent",
-    "get_coding_agent",
-    "MissionPlanner",
-    "CuriosityAgent",
-    "SimulationAgent",
-    "MonteCarloExplorer",
-    "BenchmarkRewardAgent",
-    "LiveTestAgent",
-]
-
+# New specialist agents
+try:
+    from .specialist import SpecialistAgent
+    from .specialists import (
+        CodeReviewAgent,
+        SecurityAgent,
+        ArchitectureAgent,
+        TestingAgent,
+        DevOpsAgent
+    )
+    from .critics import RedTeamCritic
+    
+    # Add specialist agents to exports
+    __all__ = [
+        'CodingAgent',
+        'get_coding_agent',
+        'MissionPlanner',
+        'BaseSpecialist',
+        'SimulationAgent',
+        'MonteCarloExplorer',
+        'CuriosityAgent',
+        'BenchmarkRewardAgent',
+        'LiveTestAgent',
+        'SpecialistAgent',
+        'CodeReviewAgent',
+        'SecurityAgent',
+        'ArchitectureAgent',
+        'TestingAgent',
+        'DevOpsAgent',
+        'RedTeamCritic',
+        'DecentralizedActor'
+    ]
+    
+except Exception:  # pragma: no cover
+    # Fallback if specialist agents not available
+    __all__ = [
+        'CodingAgent',
+        'get_coding_agent',
+        'MissionPlanner',
+        'SimulationAgent',
+        'MonteCarloExplorer',
+        'CuriosityAgent',
+        'BenchmarkRewardAgent',
+        'LiveTestAgent',
+        'DecentralizedActor'
+    ]
