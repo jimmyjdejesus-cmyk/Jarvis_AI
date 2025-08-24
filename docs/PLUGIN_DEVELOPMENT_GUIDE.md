@@ -1,8 +1,8 @@
 # Jarvis SDK Plugin Development Tutorial
 
-The `jarvis_sdk` package (version 0.1.0) makes it easy to build and share
-plugins for the Jarvis AI system.  This tutorial covers creating plugins,
-auto-registration, and the included examples for tools, specialists, and critics.
+The `jarvis_sdk` package (version 0.1.1) makes it easy to build and share
+plugins for the Jarvis AI system. This tutorial covers creating plugins,
+auto-registration, and the included examples for tools and agents.
 
 ## Installing
 
@@ -20,7 +20,9 @@ Use the SDK's scaffolding utility to generate a plugin module:
 ```python
 from jarvis_sdk import create_plugin
 
-create_plugin("jarvis/plugins", "my_plugin", plugin_type="tool", description="Demo plugin")
+create_plugin(
+    "jarvis/plugins", "my_plugin", plugin_type="tool", description="Demo plugin"
+)
 ```
 
 The command above creates `jarvis/plugins/my_plugin.py` populated with a
@@ -28,59 +30,50 @@ registered stub ready for implementation.
 
 ## Plugin Types
 
-`jarvis_sdk.jarvis_plugin` registers callables or classes under a plugin type.
-The SDK ships with three common categories:
+The SDK exposes specialised decorators for the most common plugin categories:
 
-- **tool** – a simple callable used as a tool
-- **specialist** – a class offering a specialised capability
-- **critic** – a callable that reviews or validates data
+- `jarvis_sdk.jarvis_tool` – register a simple callable as a tool
+- `jarvis_sdk.jarvis_agent` – register a class implementing an agent
+
+For advanced scenarios, `jarvis_sdk.jarvis_plugin` allows registration under a
+custom `plugin_type` value.
 
 ### Tool Example
 
 ```python
-from jarvis_sdk import jarvis_plugin
+from jarvis_sdk import jarvis_tool
 
-@jarvis_plugin(plugin_type="tool", description="Say hello")
+@jarvis_tool(description="Say hello")
 def greet(name: str = "world") -> str:
     return f"Hello {name}!"
 ```
 
-### Specialist Example
+### Agent Example
 
 ```python
-from jarvis_sdk import jarvis_plugin
+from jarvis_sdk import jarvis_agent
 
-@jarvis_plugin(plugin_type="specialist", description="Evaluate math")
-class MathSpecialist:
+@jarvis_agent(description="Evaluate math")
+class MathAgent:
     def run(self, expression: str) -> str:
         return str(eval(expression))
-```
-
-### Critic Example
-
-```python
-from jarvis_sdk import jarvis_plugin
-
-@jarvis_plugin(plugin_type="critic", description="Check text length")
-def length_checker(text: str, max_length: int = 100) -> str:
-    if len(text) > max_length:
-        return f"Text too long by {len(text) - max_length} characters."
-    return "Text length OK."
 ```
 
 ## Discovery and Auto‑registration
 
 Plugin modules are listed in `jarvis/plugins/manifest.json` and imported when
 `jarvis.plugins` is loaded. Importing the package automatically registers all
-listed plugins with the SDK registry.
+listed plugins with the global registry, as well as the dedicated agent and tool
+registries.
 
 To load the bundled examples and view what is registered:
 
 ```python
 import jarvis.plugins  # triggers discovery
-from jarvis_sdk import registry
+from jarvis_sdk import agent_registry, tool_registry
 
-print(registry.all())
+print(agent_registry.all())
+print(tool_registry.all())
 ```
 
 ## Next Steps

@@ -11,7 +11,7 @@ This extension connects VS Code to the Jarvis AI backend over WebSockets to prov
 1. Ensure the Python backend has the `websockets` package installed:
    ```bash
    pip install websockets
-   python vscode_integration.py --server
+   python -m integrations.vscode --server
    ```
    The server listens on `ws://localhost:8765` by default.
 

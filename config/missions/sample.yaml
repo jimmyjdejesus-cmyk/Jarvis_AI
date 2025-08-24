@@ -1,0 +1,6 @@
+goal: Demonstrate MissionPlanner
+tasks:
+  - id: write-docs
+    description: Write documentation for MissionPlanner
+  - id: run-tests
+    description: Execute unit tests for mission planning
