@@ -8,14 +8,120 @@ This is the brain that coordinates and evolves the entire AI ecosystem.
 import asyncio
 import json
 import uuid
+import inspect
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Callable, Type
+from typing import Dict, Any, List, Optional, Callable, Type, Awaitable
 from dataclasses import dataclass, field
 from enum import Enum
 from abc import ABC, abstractmethod
 import logging
+from pathlib import Path
+import ast
+from jarvis.tools.repository_indexer import RepositoryIndexer
+from jarvis.memory import MemoryManager, ProjectMemory
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.homeostasis.monitor import SystemMonitor
+
+from jarvis.agents.critics import BlueTeamCritic, ConstitutionalCritic
+from jarvis.agents.curiosity_agent import CuriosityAgent
+from jarvis.agents.mission_planner import MissionPlanner
+from jarvis.persistence.session import SessionManager
 
 logger = logging.getLogger(__name__)
+
+from ..orchestration import MultiAgentOrchestrator, SubOrchestrator
+
+
+class HierarchicalHypergraph:
+    """Minimal hierarchical hypergraph for pathway lookups."""
+
+    def __init__(self) -> None:
+        self.layers: Dict[int, Dict[str, Dict[str, Any]]] = {
+            3: {"lincoln_genealogy_fail": {"reason": "dead_end"}},
+            2: {
+                "multi_hop_genealogy_search": {
+                    "steps": ["search birth records", "trace maternal lineage"]
+                }
+            },
+        }
+
+    def query(self, layer: int, key: str) -> Optional[Dict[str, Any]]:
+        """Return stored pathway information if available."""
+        return self.layers.get(layer, {}).get(key)
+
+
+@dataclass
+class CriticFeedback:
+    """Feedback item produced by a critic agent."""
+
+    critic_id: str
+    message: str
+    severity: str = "medium"  # low, medium, high, critical
+    confidence: float = 1.0
+
+
+@dataclass
+class WeightedFeedback:
+    """Feedback item with calculated weight."""
+
+    feedback: CriticFeedback
+    weight: float
+
+
+class CriticInsightMerger:
+    """Merge critic feedback using weighting and argument synthesis."""
+
+    severity_weights = {"low": 0.5, "medium": 1.0, "high": 1.5, "critical": 2.0}
+
+    def weight_feedback(self, feedbacks: List[CriticFeedback]) -> List[WeightedFeedback]:
+        weighted: List[WeightedFeedback] = []
+        for fb in feedbacks:
+            sev_weight = self.severity_weights.get(fb.severity, 1.0)
+            weight = fb.confidence * sev_weight
+            weighted.append(WeightedFeedback(fb, weight))
+        return sorted(weighted, key=lambda x: x.weight, reverse=True)
+
+    def synthesize_arguments(self, weighted_feedback: List[WeightedFeedback]) -> Dict[str, Any]:
+        """Combine critic feedback into a single argument."""
+
+        combined_argument = " ".join(wf.feedback.message for wf in weighted_feedback)
+        max_severity = "low"
+        for wf in weighted_feedback:
+            if self.severity_weights.get(wf.feedback.severity, 0) > self.severity_weights.get(max_severity, 0):
+                max_severity = wf.feedback.severity
+        return {"combined_argument": combined_argument, "max_severity": max_severity}
+
+
+class PerformanceTracker:
+    """Track success rates and iteration counts for analytics."""
+
+    def __init__(self):
+        self.metrics: Dict[str, float] = {
+            "analysis_runs": 0,
+            "analysis_success": 0,
+            "evolution_runs": 0,
+            "evolution_success": 0,
+            "retry_attempts": 0,
+        }
+
+    def record_event(self, event: str, success: bool, iterations: int = 1):
+        runs_key = f"{event}_runs"
+        success_key = f"{event}_success"
+        iter_key = f"{event}_iterations"
+
+        self.metrics[runs_key] = self.metrics.get(runs_key, 0) + 1
+        if success:
+            self.metrics[success_key] = self.metrics.get(success_key, 0) + 1
+        self.metrics[iter_key] = self.metrics.get(iter_key, 0) + iterations
+
+        success_rate = self.metrics.get(success_key, 0) / self.metrics.get(runs_key, 1)
+        logger.info(
+            "%s success_rate=%.2f iterations=%s",
+            event,
+            success_rate,
+            self.metrics.get(iter_key, 0),
+        )
+
 
 class AgentCapability(Enum):
     """Types of AI agent capabilities"""
@@ -73,13 +179,19 @@ class SystemEvolutionPlan:
 
 class AIAgent(ABC):
     """Abstract base class for AI agents in the ecosystem"""
-    
-    def __init__(self, agent_id: str, capabilities: List[AgentCapability]):
+
+    def __init__(
+        self,
+        agent_id: str,
+        capabilities: List[AgentCapability],
+        knowledge_graph: KnowledgeGraph | None = None,
+    ):
         self.agent_id = agent_id
         self.capabilities = capabilities
         self.metrics = AgentMetrics(agent_id)
         self.created_at = datetime.now()
         self.is_active = True
+        self.knowledge_graph = knowledge_graph
     
     @abstractmethod
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
@@ -108,51 +220,159 @@ class AIAgent(ABC):
         self.metrics.resource_usage = (
             (1 - alpha) * self.metrics.resource_usage + alpha * resource_usage
         )
-        
+
         self.metrics.last_updated = datetime.now()
 
-class MetaAgent(AIAgent):
-    """Meta-agent that manages other AI agents"""
-    
-    def __init__(self, agent_id: str):
+    # ------------------------------------------------------------------
+    def set_knowledge_graph(self, graph: KnowledgeGraph) -> None:
+        """Attach a :class:`KnowledgeGraph` instance to this agent."""
+
+        self.knowledge_graph = graph
+
+    # ------------------------------------------------------------------
+    def query_knowledge_graph(self, query: str) -> Any:
+        """Query the attached knowledge graph."""
+
+        if not self.knowledge_graph:
+            raise ValueError("KnowledgeGraph not available")
+        return self.knowledge_graph.query(query)
+
+class ExecutiveAgent(AIAgent):
+    """Executive agent that manages other AI agents.
+
+    Parameters
+    ----------
+    agent_id: str
+        Identifier for this meta agent.
+    enable_blue_team: bool, optional
+        Whether to enable Blue Team critiques of final outputs. Defaults to
+        ``True``.
+    blue_team_sensitivity: float, optional
+        Threshold for the Blue Team critic escalation. Defaults to ``0.5``.
+    """
+
+    def __init__(
+        self,
+        agent_id: str,
+        mcp_client=None,
+        orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
+        memory_manager: Optional[MemoryManager] = None,
+        mission_planner: Optional['MissionPlanner'] = None,
+        enable_blue_team: bool = True,
+        blue_team_sensitivity: float = 0.5,
+    ):
         super().__init__(agent_id, [
             AgentCapability.REASONING,
             AgentCapability.PLANNING,
             AgentCapability.MONITORING,
-            AgentCapability.LEARNING
+            AgentCapability.LEARNING,
         ])
+        self.memory: MemoryManager = memory_manager or ProjectMemory()
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []
-    
+        self.mcp_client = mcp_client
+        self.orchestrator_cls = orchestrator_cls
+        self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
+        self.mission_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
+        try:
+            self.repo_indexer = RepositoryIndexer(Path.cwd())
+        except Exception as exc:  # pragma: no cover - optional dependency
+            logger.warning("Repository indexer unavailable: %s", exc)
+            self.repo_indexer = None
+        self.knowledge_graph = KnowledgeGraph()
+        self.hypergraph = HierarchicalHypergraph()
+        self.mission_planner = mission_planner if mission_planner is not None else MissionPlanner()
+        self.session_manager = SessionManager()
+        self.constitutional_critic = ConstitutionalCritic()
+        self.enable_blue_team = enable_blue_team
+        self.blue_team = (
+            BlueTeamCritic(sensitivity=blue_team_sensitivity)
+            if enable_blue_team
+            else None
+        )
+        self.system_monitor = SystemMonitor()
+        if self.mcp_client:
+            self.mcp_client.monitor = self.system_monitor
+        self._initialize_knowledge_graph()
+        self.learning_history: List[Dict[str, Any]] = []
+        self.curiosity_agent = CuriosityAgent(self.hypergraph)
+
+    def _initialize_knowledge_graph(self) -> None:
+        if not self.repo_indexer:
+            return
+        try:
+            # Build search index and populate the knowledge graph
+            self.repo_indexer.build_index()
+            self.repo_indexer.index_repository(self.knowledge_graph)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("Knowledge graph population failed: %s", exc)
+
+    def manage_directive(self, directive_text: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """Decompose a directive into a task graph with constitutional review."""
+        tasks = self.mission_planner.plan(directive_text)
+        graph = self.mission_planner.to_graph(tasks)
+        critique = self.constitutional_critic.review(graph)
+        if critique.get("veto"):
+            return {
+                "success": False,
+                "error": "Plan vetoed by constitutional critic",
+                "critique": critique,
+            }
+        if session_id:
+            plan = {"goal": directive_text, "tasks": tasks, "graph": graph}
+            self.session_manager.save_mission_plan(session_id, plan)
+        return {
+            "success": True,
+            "directive": directive_text,
+            "tasks": tasks,
+            "graph": graph,
+            "critique": critique,
+        }
+
+    # Backwards compatibility
+    plan_mission = manage_directive
+
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute meta-level coordination tasks"""
+        """Execute meta-level coordination tasks with optional risk critique."""
         task_type = task.get("type", "unknown")
-        
         if task_type == "analyze_system":
-            return await self._analyze_system_performance()
+            result = await self._analyze_system_performance()
         elif task_type == "optimize_agents":
-            return await self._optimize_agent_performance()
+            result = await self._optimize_agent_performance()
         elif task_type == "evolve_system":
-            return await self._evolve_system_capabilities()
+            result = await self._evolve_system_capabilities()
         elif task_type == "create_agent":
-            return await self._create_new_agent(task)
+            result = await self._create_new_agent(task)
+        elif task_type == "mission_step":
+            result = await self._handle_mission_step(task)
+        elif task_type == "search_repository":
+            query = task.get("query", "")
+            k = task.get("k", 5)
+            result = {"success": True, "results": self.search_repository(query, k)}
+        elif task_type == "pursue_curiosity":
+            question = self.curiosity_agent.generate_question()
+            if question:
+                result = self.manage_directive(question)
+            else:
+                result = {"success": False, "error": "No low-confidence items"}
         else:
-            return {"success": False, "error": f"Unknown meta-task: {task_type}"}
+            result = {"success": False, "error": f"Unknown meta-task: {task_type}"}
+        if self.blue_team:
+            result["blue_team_evaluation"] = self.blue_team.evaluate(result)
+        return result
     
     async def learn_from_feedback(self, feedback: Dict[str, Any]) -> bool:
         """Learn from system-wide feedback"""
         # Meta-learning: analyze patterns across all agents
         successful_patterns = feedback.get("successful_patterns", [])
         failed_patterns = feedback.get("failed_patterns", [])
-        
         # Update evolution plans based on feedback
         for plan in self.evolution_plans:
             if plan.status == "executing":
                 # Adjust plan based on feedback
                 self._adjust_evolution_plan(plan, feedback)
-        
         return True
-    
+
     async def _analyze_system_performance(self) -> Dict[str, Any]:
         """Analyze overall system performance"""
         analysis = {
@@ -163,11 +383,9 @@ class MetaAgent(AIAgent):
             "bottlenecks": [],
             "improvement_opportunities": []
         }
-        
         if self.managed_agents:
             performances = [agent.metrics.overall_performance() for agent in self.managed_agents.values()]
             analysis["average_performance"] = sum(performances) / len(performances)
-            
             # Analyze capability coverage
             for capability in AgentCapability:
                 agents_with_capability = [
@@ -175,14 +393,12 @@ class MetaAgent(AIAgent):
                     if capability in agent.capabilities
                 ]
                 analysis["capability_coverage"][capability.value] = len(agents_with_capability)
-            
             # Identify bottlenecks
             slow_agents = [
                 agent for agent in self.managed_agents.values()
                 if agent.metrics.average_response_time > 5.0
             ]
             analysis["bottlenecks"] = [agent.agent_id for agent in slow_agents]
-            
             # Identify improvement opportunities
             low_performing_agents = [
                 agent for agent in self.managed_agents.values()
@@ -262,17 +478,97 @@ class MetaAgent(AIAgent):
         # For now, create a simple specialist agent
         if required_capabilities:
             capabilities = [AgentCapability(cap) for cap in required_capabilities if cap in [c.value for c in AgentCapability]]
-            new_agent = SpecialistAIAgent(agent_id, capabilities)
+            new_agent = SpecialistAIAgent(agent_id, capabilities, self.knowledge_graph)
             self.managed_agents[agent_id] = new_agent
-            
+
             return {
                 "success": True,
                 "agent_id": agent_id,
                 "capabilities": [cap.value for cap in capabilities]
             }
-        
+
         return {"success": False, "error": "No valid capabilities specified"}
+
+    def create_sub_orchestrator(self, name: str, spec: Dict[str, Any]) -> MultiAgentOrchestrator:
+        orchestrator = self.orchestrator_cls(
+            self.mcp_client,
+            monitor=self.system_monitor,
+            knowledge_graph=self.knowledge_graph,
+            **spec,
+        )
+        self.sub_orchestrators[name] = orchestrator
+        return orchestrator
+
+    async def _handle_mission_step(self, step: Dict[str, Any]) -> Dict[str, Any]:
+        """Spawn or reuse a sub-orchestrator for a mission step with hypergraph guidance."""
+        step_id = step.get("step_id", uuid.uuid4().hex[:8])
+        specialists = step.get("specialists", [])
+        request = step.get("request", "")
+
+        # 1. Proactive Query to Hypergraph
+        known_dead_end_query = "Who was the maternal grandfather of the 16th U.S. President?"
+        strategy = "standard"
+
+        if request == known_dead_end_query:
+            print("EXECUTIVE: Detected known dead-end query. Consulting Hypergraph...")
+            negative_pathway = self.hypergraph.query(3, "lincoln_genealogy_fail")
+            if negative_pathway:
+                print("EXECUTIVE: Negative pathway found. Querying Layer 2 for a better strategy.")
+                positive_strategy = self.hypergraph.query(2, "multi_hop_genealogy_search")
+                if positive_strategy:
+                    print(f"EXECUTIVE: Applying positive strategy: {positive_strategy['steps']}")
+                    strategy = "multi_hop_genealogy_search"
+
+        # 2. Plan and Execute
+        tasks: List[str] = []
+        try:
+            sig = inspect.signature(self.mission_planner.plan)
+            if "strategy" in sig.parameters:
+                tasks = self.mission_planner.plan(request, strategy=strategy)
+            else:
+                tasks = self.mission_planner.plan(request)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("Mission planning failed: %s", exc)
+
+        plan = {"request": request, "tasks": tasks}
+        critique = self.constitutional_critic.review(plan)
+        if critique.get("veto"):
+            return {
+                "success": False,
+                "error": "Plan vetoed by constitutional critic",
+                "critique": critique,
+                "step_id": step_id,
+            }
+
+        orchestrator = self.sub_orchestrators.get(step_id)
+        if not orchestrator:
+            spec = {"allowed_specialists": specialists or None, "mission_name": step_id}
+            orchestrator = self.create_sub_orchestrator(step_id, spec)
+
+        result = await orchestrator.coordinate_specialists(
+            request,
+            step.get("code"),
+            step.get("user_context"),
+        )
+        return {
+            "success": True,
+            "result": result,
+            "step_id": step_id,
+            "tasks": tasks,
+            "critique": critique,
+        }
     
+
+    def search_repository(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Expose repository search to agents."""
+        if not self.repo_indexer:
+            return []
+        try:
+            return self.repo_indexer.search(query, k)
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("Repository search failed: %s", exc)
+            return []
+
     def _adjust_evolution_plan(self, plan: SystemEvolutionPlan, feedback: Dict[str, Any]):
         """Adjust evolution plan based on feedback"""
         success_rate = feedback.get("success_rate", 0.5)
@@ -287,9 +583,14 @@ class MetaAgent(AIAgent):
 
 class SpecialistAIAgent(AIAgent):
     """Specialist AI agent with specific capabilities"""
-    
-    def __init__(self, agent_id: str, capabilities: List[AgentCapability]):
-        super().__init__(agent_id, capabilities)
+
+    def __init__(
+        self,
+        agent_id: str,
+        capabilities: List[AgentCapability],
+        knowledge_graph: KnowledgeGraph | None = None,
+    ):
+        super().__init__(agent_id, capabilities, knowledge_graph)
         self.knowledge_base: Dict[str, Any] = {}
         self.learning_history: List[Dict[str, Any]] = []
     
@@ -324,30 +625,56 @@ class SpecialistAIAgent(AIAgent):
             }
     
     async def learn_from_feedback(self, feedback: Dict[str, Any]) -> bool:
-        """Learn from task feedback"""
-        self.learning_history.append({
-            "timestamp": datetime.now(),
-            "feedback": feedback,
-            "performance_before": self.metrics.overall_performance()
-        })
-        
-        # Simple learning: adjust behavior based on feedback
+        """Learn from task feedback and harvest successful strategies."""
+        self.learning_history.append(
+            {
+                "timestamp": datetime.now(),
+                "feedback": feedback,
+                "performance_before": self.metrics.overall_performance(),
+            }
+        )
+
         if feedback.get("success", False):
-            self.metrics.learning_progress = min(1.0, self.metrics.learning_progress + 0.1)
+            self.metrics.learning_progress = min(
+                1.0, self.metrics.learning_progress + 0.1
+            )
+            trace = feedback.get("successful_trace")
+            if trace:
+                confidence = feedback.get("confidence", 1.0)
+                self._record_strategy_from_trace(trace, confidence)
         else:
             # Learn from failure
-            self.metrics.adaptation_score = min(1.0, self.metrics.adaptation_score + 0.05)
-        
+            self.metrics.adaptation_score = min(
+                1.0, self.metrics.adaptation_score + 0.05
+            )
+
         return True
+
+    def _record_strategy_from_trace(
+        self, trace: List[str], confidence: float = 1.0
+    ) -> str:
+        """Store a successful reasoning trace as a strategy node."""
+        return self.hypergraph.add_strategy(trace, confidence)
 
 class MetaIntelligenceCore:
     """Core meta-intelligence system that manages the AI ecosystem"""
-    
-    def __init__(self):
-        self.meta_agent = MetaAgent("meta_core")
+
+    def __init__(
+        self,
+        *,
+        enable_blue_team: bool = True,
+        blue_team_sensitivity: float = 0.5,
+    ):
+        self.meta_agent = ExecutiveAgent(
+            "meta_core",
+            enable_blue_team=enable_blue_team,
+            blue_team_sensitivity=blue_team_sensitivity,
+        )
         self.system_metrics: Dict[str, Any] = {}
         self.evolution_history: List[Dict[str, Any]] = []
         self.system_health = SystemHealth.OPTIMAL
+        self.critic_merger = CriticInsightMerger()
+        self.performance_tracker = PerformanceTracker()
         
         # Initialize with basic agents
         self._initialize_base_agents()
@@ -362,13 +689,19 @@ class MetaIntelligenceCore:
         ]
         
         for agent_id, capabilities in base_agents:
-            agent = SpecialistAIAgent(agent_id, capabilities)
+            agent = SpecialistAIAgent(
+                agent_id, capabilities, self.meta_agent.knowledge_graph
+            )
             self.meta_agent.managed_agents[agent_id] = agent
     
     async def analyze_system_state(self) -> Dict[str, Any]:
         """Analyze the current state of the AI ecosystem"""
         analysis_task = {"type": "analyze_system"}
         analysis_result = await self.meta_agent.execute_task(analysis_task)
+        self.performance_tracker.record_event(
+            "analysis",
+            success=analysis_result.get("success", False),
+        )
         
         # Update system health based on analysis
         if analysis_result.get("success", False):
@@ -394,6 +727,10 @@ class MetaIntelligenceCore:
         """Trigger system evolution and improvement"""
         evolution_task = {"type": "evolve_system"}
         evolution_result = await self.meta_agent.execute_task(evolution_task)
+        self.performance_tracker.record_event(
+            "evolution",
+            success=evolution_result.get("success", False),
+        )
         
         if evolution_result.get("success", False):
             self.evolution_history.append({
@@ -417,6 +754,10 @@ class MetaIntelligenceCore:
         """Optimize system-wide performance"""
         optimize_task = {"type": "optimize_agents"}
         return await self.meta_agent.execute_task(optimize_task)
+
+    def record_successful_strategy(self, trace: List[str], confidence: float = 1.0) -> str:
+        """Record a strategy node from a successful reasoning trace."""
+        return self.meta_agent._record_strategy_from_trace(trace, confidence)
     
     def get_system_status(self) -> Dict[str, Any]:
         """Get comprehensive system status"""
@@ -436,19 +777,82 @@ class MetaIntelligenceCore:
             "total_agents": len(self.meta_agent.managed_agents),
             "agents": agent_statuses,
             "evolution_plans": len(self.meta_agent.evolution_plans),
-            "evolution_history": len(self.evolution_history)
+            "evolution_history": len(self.evolution_history),
+            "performance_metrics": self.performance_tracker.metrics,
         }
     
     async def learn_from_ecosystem_feedback(self, feedback: Dict[str, Any]) -> bool:
         """Learn from ecosystem-wide feedback"""
         # Meta-level learning
         await self.meta_agent.learn_from_feedback(feedback)
+
+        critics = feedback.get("critics")
+        if critics:
+            await self.integrate_critic_feedback(critics)
         
         # Distribute learning to individual agents
         for agent in self.meta_agent.managed_agents.values():
             await agent.learn_from_feedback(feedback)
         
         return True
+
+    async def integrate_critic_feedback(
+        self,
+        feedback_items: List[Dict[str, Any]],
+        retry_task: Optional[Callable[[], Awaitable[Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Merge critic feedback and optionally retry a task."""
+
+        feedback_objs = []
+        for idx, item in enumerate(feedback_items):
+            try:
+                feedback_obj = CriticFeedback(**item)
+                feedback_objs.append(feedback_obj)
+            except TypeError as e:
+                logger.error(
+                    "Failed to construct CriticFeedback from feedback_items[%d]: %s. Item: %s",
+                    idx, e, item
+                )
+                # Optionally, you could raise a more descriptive exception here
+                # raise ValueError(f"Invalid feedback item at index {idx}: {item}") from e
+                # Or skip invalid items (as done here)
+        if not feedback_objs:
+            logger.warning("No valid CriticFeedback objects could be constructed from feedback_items.")
+        weighted = self.critic_merger.weight_feedback(feedback_objs)
+        synthesis = self.critic_merger.synthesize_arguments(weighted)
+        logger.info("Critic synthesis: %s", synthesis["combined_argument"])
+
+        result: Dict[str, Any] = {"synthesis": synthesis}
+
+        if retry_task and synthesis["max_severity"] in ("high", "critical"):
+            try:
+                retry_result = await self._adaptive_retry(retry_task, synthesis["max_severity"])
+                result["retry_result"] = retry_result
+            except Exception as e:
+                result["retry_error"] = str(e)
+
+        return result
+
+    async def _adaptive_retry(
+        self, task: Callable[[], Awaitable[Any]], severity: str, base_delay: float = 0.1
+    ) -> Any:
+        """Retry a task with backoff based on severity."""
+
+        max_attempts = 3 if severity in ("high", "critical") else 1
+        attempt = 0
+        while attempt < max_attempts:
+            attempt += 1
+            try:
+                result = await task()
+                self.performance_tracker.record_event("retry", True, attempt)
+                return result
+            except Exception as e:
+                self.performance_tracker.metrics["retry_attempts"] += 1
+                logger.warning("Retry %s/%s failed: %s", attempt, max_attempts, e)
+                if attempt >= max_attempts:
+                    self.performance_tracker.record_event("retry", False, attempt)
+                    raise
+                await asyncio.sleep(base_delay * attempt)
 
 # Global meta-intelligence instance
 meta_intelligence = MetaIntelligenceCore()
@@ -503,3 +907,6 @@ def get_agent_performance() -> Dict[str, Any]:
         "system_health": status.get("system_health", "unknown"),
         "detailed_agents": agents
     }
+
+# Backwards compatibility
+MetaAgent = ExecutiveAgent

@@ -7,6 +7,7 @@ import hashlib
 import logging
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional, Dict, List
 import threading
 
@@ -20,6 +21,8 @@ class SecurityManager:
         self._rate_limits = {}
         self._failed_attempts = {}
         self._lock = threading.Lock()
+        self._path_permissions: Dict[str, List[str]] = {}
+        self._command_permissions: Dict[str, List[str]] = {}
         
         # Rate limiting settings
         self.max_attempts = 5
@@ -116,7 +119,7 @@ class SecurityManager:
         # Clean rate limits
         for identifier in list(self._rate_limits.keys()):
             requests = self._rate_limits[identifier]
-            recent_requests = [req_time for req_time in requests 
+            recent_requests = [req_time for req_time in requests
                              if current_time - req_time < self.rate_limit_window]
             if recent_requests:
                 self._rate_limits[identifier] = recent_requests
@@ -128,6 +131,35 @@ class SecurityManager:
             attempts, last_attempt = self._failed_attempts[identifier]
             if current_time - last_attempt > self.lockout_duration:
                 del self._failed_attempts[identifier]
+
+    # Permission management
+    def grant_path_access(self, username: str, path: str):
+        """Grant user access to a file path."""
+        resolved = str(Path(path).resolve())
+        with self._lock:
+            self._path_permissions.setdefault(username, []).append(resolved)
+
+    def grant_command_access(self, username: str, command: str):
+        """Grant user access to execute a command."""
+        with self._lock:
+            self._command_permissions.setdefault(username, []).append(command)
+
+    def has_path_access(self, username: str, path: str) -> bool:
+        """Check if user has access to a path."""
+        resolved = str(Path(path).resolve())
+        with self._lock:
+            allowed = self._path_permissions.get(username, [])
+        resolved_path = Path(path).resolve()
+        with self._lock:
+            allowed = self._path_permissions.get(username, [])
+        return any(resolved_path.is_relative_to(Path(p)) for p in allowed)
+
+    def has_command_access(self, username: str, command: str) -> bool:
+        """Check if user can execute a command."""
+        with self._lock:
+            allowed = self._command_permissions.get(username, [])
+        base_command = command.strip().split()[0] if command.strip() else ""
+        return base_command in allowed
     
     def authenticate_user(self, username: str, password: str, 
                          ip_address: str = None) -> Optional[Dict]:

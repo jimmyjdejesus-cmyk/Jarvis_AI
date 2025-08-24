@@ -2,43 +2,80 @@
 Specialized Agent Implementations
 Each agent is an expert in their domain
 """
+import ast
+from typing import Dict, List
+
 from .specialist import SpecialistAgent
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
 
 class CodeReviewAgent(SpecialistAgent):
     """Expert code reviewer specializing in code quality and best practices"""
-    
-    def __init__(self, mcp_client):
+
+    def __init__(
+        self,
+        mcp_client,
+        knowledge_graph: KnowledgeGraph | None = None,
+    ):
         super().__init__(
             specialization="code_review",
             preferred_models=["claude-3.5-sonnet", "gpt-4", "codellama", "llama3.2"],
-            mcp_client=mcp_client
+            mcp_client=mcp_client,
         )
-    
+        self.knowledge_graph = knowledge_graph
+
+    def _dependencies_for_code(self, code: str) -> Dict[str, List[str]]:
+        """Find function call dependencies using the world model."""
+
+        if not self.knowledge_graph:
+            return {}
+        try:
+            tree = ast.parse(code)
+        except Exception:
+            return {}
+
+        deps: Dict[str, List[str]] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                func_ids = self.knowledge_graph.find_functions(node.name)
+                calls: List[str] = []
+                for fid in func_ids:
+                    calls.extend(self.knowledge_graph.get_function_dependencies(fid))
+                if calls:
+                    deps[node.name] = calls
+        return deps
+
     async def review_code(self, code: str, language: str = None, context: str = None) -> dict:
         """
-        Comprehensive code review
-        
+        Comprehensive code review with dependency analysis
+
         Args:
             code: Code to review
             language: Programming language (auto-detect if None)
             context: Additional context about the code
-            
+
         Returns:
             Detailed code review results
         """
+        deps = self._dependencies_for_code(code)
+        dep_text = "\n".join(
+            f"{func}: {', '.join(calls)}" for func, calls in deps.items()
+        )
+        dependency_section = (
+            f"\n**Known Dependencies:**\n{dep_text}\n" if dep_text else ""
+        )
         review_task = f"""
         **CODE REVIEW REQUEST**
-        
+
         Programming Language: {language or 'Auto-detect'}
-        
+
         **Code to Review:**
         ```
         {code}
         ```
-        
+        {dependency_section}
         **Additional Context:**
         {context or 'No additional context provided'}
-        
+
         **Review Requirements:**
         1. Code quality and readability assessment
         2. Security vulnerability analysis
@@ -47,10 +84,10 @@ class CodeReviewAgent(SpecialistAgent):
         5. Potential bugs or edge cases
         6. Maintainability and extensibility
         7. Testing recommendations
-        
+
         Please provide specific, actionable feedback with code examples where helpful.
         """
-        
+
         return await self.process_task(review_task)
     
     async def suggest_improvements(self, code: str, focus_area: str = None) -> dict:

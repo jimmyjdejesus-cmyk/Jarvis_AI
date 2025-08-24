@@ -1,31 +1,63 @@
-"""
-LangGraph Agent Core Module - V2 Architecture
-"""
+"""Minimal JarvisAgentV2 implementation used for testing and examples."""
+
+from __future__ import annotations
+from typing import Any, AsyncGenerator, Dict, Union
+
+from v2.config.config import Config, load_config
+from jarvis.logging.logger import get_logger
+from jarvis.mcp import MCPClient
+from jarvis.ecosystem.meta_intelligence import MetaIntelligenceCore
 
 class JarvisAgentV2:
-    """
-    Advanced agent using LangGraph architecture for enhanced reasoning.
-    """
-    
-    def __init__(self, config=None, models=None, tools=None):
-        """
-        Initialize the V2 agent with Lang family integration.
-        
-        Args:
-            config: Configuration dictionary
-            models: Dictionary of language models
-            tools: List of tools available to the agent
-        """
-        self.config = config or {}
-        self.models = models or {}
-        self.tools = tools or []
-        self.workflow = None
-        self.visualizer = None
-        
-    def setup_workflow(self):
-        """Set up the LangGraph workflow with nodes and edges."""
-        pass
-        
-    def run_workflow(self, query):
-        """Execute the agent workflow."""
-        return {"success": True, "result": f"Processed: {query}"}
+    """Minimal agent that delegates work to the orchestrator."""
+
+    def __init__(self, config: Union[Config, Dict[str, Any], None] = None) -> None:
+        if config is None:
+            self.config = load_config()
+        elif isinstance(config, Config):
+            self.config = config
+        else:
+            self.config = Config(**config)
+        self.agent_config = self.config.v2_agent
+        self.logger = get_logger(__name__)
+
+        # Initialize MCP client and meta-intelligence core
+        self.mcp_client = MCPClient()
+        self.meta_core = MetaIntelligenceCore()
+        # share the MCP client with the meta-agent
+        self.meta_core.meta_agent.mcp_client = self.mcp_client
+
+    # ------------------------------------------------------------------
+    def setup_workflow(self) -> None:  # pragma: no cover - placeholder
+        """Prepare the workflow."""
+
+    # ------------------------------------------------------------------
+    def run_workflow(self, query: str) -> Dict[str, Any]:
+        """Return a minimal response for the given query."""
+
+        return {"query": query, "result": "ok"}
+
+    # ------------------------------------------------------------------
+    async def stream_workflow(
+        self, query: str
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Yield a single fake event for streaming tests."""
+
+        yield {"step": "start", "query": query}
+
+    # ------------------------------------------------------------------
+    async def handle_request(
+        self, request: str, code: str | None = None, user_context: str | None = None
+    ) -> Dict[str, Any]:
+        self.logger.info(f"Delegating request to MetaIntelligenceCore: {request}")
+        task = {
+            "type": "mission_step",
+            "request": request,
+            "code": code,
+            "user_context": user_context,
+        }
+        result = await self.meta_core.meta_agent.execute_task(task)
+        return result.get("result", result)
+
+
+__all__ = ["JarvisAgentV2"]

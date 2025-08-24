@@ -8,6 +8,10 @@ import sys
 import logging
 from datetime import datetime
 import os
+import time
+
+from v2.agent.adapters.langgraph_ui import visualizer
+from ui.settings_manager import SettingsManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -69,6 +73,9 @@ def render_modern_sidebar(security_manager, db_manager):
         if 'authenticated' not in st.session_state:
             st.session_state.authenticated = False
             st.session_state.username = None
+        st.session_state.setdefault('show_admin', False)
+        st.session_state.setdefault('show_security', False)
+        st.session_state.setdefault('show_settings', False)
         
         if not st.session_state.authenticated:
             st.subheader("🔐 Login")
@@ -95,6 +102,9 @@ def render_modern_sidebar(security_manager, db_manager):
                 st.session_state.authenticated = False
                 st.session_state.username = None
                 st.session_state.user_role = None
+                st.session_state.show_admin = False
+                st.session_state.show_security = False
+                st.session_state.show_settings = False
                 st.rerun()
             
             # User info
@@ -110,6 +120,8 @@ def render_modern_sidebar(security_manager, db_manager):
                     st.session_state.show_admin = True
                 if st.button("Security Dashboard"):
                     st.session_state.show_security = True
+                if st.button("Settings"):
+                    st.session_state.show_settings = True
 
 def render_modern_chat(agent, db_manager):
     """Render modern chat interface"""
@@ -119,10 +131,13 @@ def render_modern_chat(agent, db_manager):
     col1, col2 = st.columns([3, 1])
     with col2:
         st.info(f"Model: {agent.model_name}")
-        if agent.is_available():
-            st.success("🟢 AI Service Online")
-        else:
-            st.error("🔴 AI Service Offline")
+        badge_color = "#28a745" if agent.is_available() else "#dc3545"
+        badge_label = "Online" if agent.is_available() else "Offline"
+        st.markdown(
+            f"<span style='background-color:{badge_color};color:white;padding:0.2em 0.6em;"
+            "border-radius:0.25em;font-weight:bold;'>Agent {badge_label}</span>",
+            unsafe_allow_html=True,
+        )
     
     # Initialize chat history
     if 'chat_history' not in st.session_state:
@@ -143,19 +158,44 @@ def render_modern_chat(agent, db_manager):
         
         # Get AI response
         with st.chat_message("assistant"):
+            progress = st.progress(0)
             with st.spinner("Thinking..."):
                 try:
+                    for i in range(100):
+                        progress.progress(i + 1)
+                        time.sleep(0.01)
                     response = agent.chat(prompt)
+                    progress.empty()
                     st.write(response)
-                    
+
+                    # Visualisation features
+                    indicators = visualizer.get_team_indicators()
+                    if indicators:
+                        st.markdown("**Team Indicators**")
+                        cols = st.columns(len(indicators))
+                        for col, info in zip(cols, indicators):
+                            col.markdown(f"{info['icon']} {info['label']}")
+
+                    dead_ends = visualizer.get_dead_ends()
+                    if dead_ends:
+                        with st.expander("🛑 Dead-End Shelf"):
+                            st.write("\n".join(dead_ends))
+
+                    try:
+                        png = visualizer.export("png")
+                        if png:
+                            st.image(png)
+                    except Exception:
+                        pass
+
                     # Save to session history
                     st.session_state.chat_history.append((prompt, response))
-                    
+
                     # Save to database if user is authenticated
                     if st.session_state.get('authenticated') and st.session_state.get('username'):
                         db_manager.save_chat_message(
-                            st.session_state.username, 
-                            prompt, 
+                            st.session_state.username,
+                            prompt,
                             response,
                             agent.model_name
                         )
@@ -283,9 +323,15 @@ def main():
     
     # Render sidebar
     render_modern_sidebar(security_manager, db_manager)
-    
+
     # Main content
-    if st.session_state.get('show_admin') and st.session_state.get('user_role') == 'admin':
+    manager = SettingsManager()
+    if st.session_state.get('show_settings') and st.session_state.get('user_role') == 'admin':
+        manager.render_settings_ui()
+        if st.button("← Back to Chat"):
+            st.session_state.show_settings = False
+            st.rerun()
+    elif st.session_state.get('show_admin') and st.session_state.get('user_role') == 'admin':
         render_admin_panel(db_manager, security_manager)
         if st.button("← Back to Chat"):
             st.session_state.show_admin = False

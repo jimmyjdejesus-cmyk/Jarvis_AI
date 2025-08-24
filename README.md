@@ -1,144 +1,183 @@
 # Jarvis AI
+[![CI](https://github.com/jimmyjdejesus-cmyk/Jarvis_AI/actions/workflows/ci.yml/badge.svg)](https://github.com/jimmyjdejesus-cmyk/Jarvis_AI/actions/workflows/ci.yml)
 
 A privacy-first modular AI development assistant with comprehensive deployment and distribution capabilities.
 
+> **Deprecated:** The legacy Streamlit application in `legacy/` has reached feature parity with V2 and is no longer maintained.
+> See `docs/migration_checklist.md` for mapping of legacy components.
+
 ## 🚀 Quick Start
 
-### Installation Methods
+### Install from PyPI
 
-#### 1. Pip Package (Recommended)
 ```bash
-pip install jarvis-ai
+pip install "jarvis-ai[ui]"
 jarvis run
 ```
 
-#### 2. Docker Container
+### Docker
+
 ```bash
-docker-compose up -d
-# Or build from source
-docker build -t jarvis-ai .
-docker run -p 8501:8501 jarvis-ai
+docker compose --profile dev up -d
 ```
 
-#### 3. One-Click Installer
-```bash
-# Unix/Linux/macOS
-curl -sSL https://raw.githubusercontent.com/jimmyjdejesus-cmyk/Jarvis_AI/main/scripts/installers/install-unix.sh | bash
+The included `docker-compose.yml` launches five services:
 
-# Windows: Download and run scripts/installers/install-windows.bat
+- `api` – main Jarvis API
+- `orchestrator` – coordination service with crash recovery
+- `memory-service` – Redis instance for conversation memory
+- `vector-db` – Qdrant vector database
+- `ollama` – local model runtime (dev/local-prod profiles)
+
+Each service exposes a basic health check so `docker compose` can wait
+for dependencies before starting `api`.
+
+Services are grouped using Docker Compose profiles. Use `dev`, `local-prod`,
+or `hybrid` (cloud LLMs) depending on your environment:
+
+```bash
+docker compose --profile hybrid up -d
+```
+
+### One-Click Installer
+
+```bash
+curl -sSL https://raw.githubusercontent.com/jimmyjdejesus-cmyk/Jarvis_AI/main/scripts/installers/install-unix.sh | bash
 ```
 
 ### Configuration
 
 ```bash
-# Initialize configuration
 jarvis config --init
-
-# Validate settings
 jarvis config --validate
-
-# Show current config
 jarvis config --show
 ```
 
-### Environment Variables (CI/CD Ready)
-```bash
-# General settings
-export JARVIS_DEBUG_MODE=true
-export JARVIS_V2_ENABLED=true
+desktop build and configuration wizard:
+Configuration profiles live under `config/profiles`. Select a profile by
+setting the `CONFIG_PROFILE` environment variable (defaults to
+`development`). Any setting can be overridden by environment variables
+using double underscores for nesting. For example:
 
-# Lang Ecosystem Integration
-export LANGSMITH_API_KEY=your_key
-export JARVIS_LANGSMITH_ENABLED=true
-export LANGGRAPH_PLATFORM_API_KEY=your_platform_key
+```bash
+export JARVIS__ORCH__MIN_NOVELTY=0.25
 ```
+
+### Remote Model Setup
+
+The MCP client can route requests to remote services such as OpenAI and
+Anthropic. Provide API credentials via environment variables:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+Keys may be stored in a local `.env` file or managed through the
+`setup_api_keys.py` helper. When no keys are present the system falls back
+to local models.
+
+### Deep Research Mode
+
+The command-line interface exposes a **deep research** mode that leverages
+the multi-agent orchestrator. Enable it with the `--deep` flag on the
+`research` command:
+
+```bash
+python jarvis_cli.py research "scaling microservices" --deep
+```
+
+In this mode the orchestrator spawns specialist agents and synthesizes
+their findings into a comprehensive answer.
+
+### Desktop App Packaging
+
+Use [PyInstaller](https://pyinstaller.org/) to create a standalone
+desktop build and configuration wizard:
+
+```bash
+pip install pyinstaller
+pyinstaller desktop_app.py --onefile --distpath dist
+pyinstaller setup_api_keys.py --onefile --distpath dist/config_wizard
+```
+
+Packaged binaries will be placed in the `dist/` directory.
+
+### Troubleshooting
+
+- **Docker services fail health checks** – ensure required ports are
+  free and rerun `docker compose up`.
+- **Missing configuration** – run the config wizard in `dist/config_wizard`
+  or create a `.env` file with required keys.
+- **PyInstaller build is large** – use the `--exclude-module` flag to
+  omit optional dependencies when packaging.
+
+
+## 🧭 Workflow Visualizer and Dead-End Shelf
+
+Jarvis now exposes its internal reasoning through a Streamlit DAG panel and a
+dead-end shelf for pruned branches. The DAG view supports DOT/JSON/PNG export
+while the shelf allows operators to override pruned paths when necessary.
+
+![Workflow DAG](docs/images/dag_panel.png)
+![Dead-End Shelf](docs/images/dead_end_shelf.png)
+
+## 📈 Graphviz
+
+Some features use the [`graphviz`](https://pypi.org/project/graphviz/) package to render diagrams.
+Install the Graphviz system binaries to enable visualization:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install graphviz
+
+# macOS
+brew install graphviz
+```
+
+If Graphviz is not installed, these features will be skipped or fall back to text-based output.
+
+## 🗂️ Logging
+
+Jarvis uses [structlog](https://www.structlog.org/) for structured logging.
+
+```python
+from jarvis.logging import configure, get_logger
+
+configure()  # writes to logs/jarvis.log
+logger = get_logger()
+logger.info("startup complete")
+```
+
+Pass a ``remote_url`` to ``configure`` to forward log events to an HTTP service.
+
+### Viewing Logs
+
+A Grafana Loki stack is provided for local development:
+
+```bash
+docker compose -f docker-compose.logging.yml up -d
+```
+
+Then open [http://localhost:3000](http://localhost:3000) and add Loki at `http://loki:3100` as a data source to explore logs.
 
 ## 📋 Features
 
-### Deployment & Distribution ✨
-- **Python Package**: Install via `pip install jarvis-ai`
-- **Docker Support**: Multi-stage builds with health checks
-- **One-Click Installers**: For non-technical users
-- **YAML Configuration**: Hierarchical settings with validation
-- **Environment Overrides**: Perfect for CI/CD deployments
-- **UI Settings Manager**: Web-based configuration interface
-
-### Lang Ecosystem Integration 🤖
-- **LangSmith**: Production monitoring and tracing
-- **LangGraph Platform**: Team collaboration and agent sharing
-- **LangChain Tools**: Standardized plugin development
-- **Deployment Telemetry**: Performance and error tracking
-
-## Repository Structure
-
-This repository is organized as follows:
-
-### Legacy Code
-All previous implementation of the Jarvis AI assistant has been archived in the `legacy/` folder. This includes:
-- Original Python application files
-- Database implementation
-- UI components
-- Agent implementation
-- Authentication system
-- Tools and plugins
-- Documentation
-
-### New Development
-The root directory now serves as the starting point for the next phase of development. Future implementations will be built here while preserving the legacy code for reference.
-
-## 📖 Documentation
-
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**: Comprehensive deployment and distribution documentation
-- **[Lang Ecosystem Integration](docs/LANG_ECOSYSTEM_ISSUE_INTEGRATION.md)**: Integration with LangChain, LangGraph, and LangSmith
-- **Legacy Documentation**: Available in the `legacy/` folder
+- Modular agent framework
+- Lang ecosystem integration (LangChain, LangGraph, LangSmith)
+- YAML configuration with environment overrides
+- Docker support and one-click installers
 
 ## 🔧 Development
 
 ```bash
-# Clone repository
 git clone https://github.com/jimmyjdejesus-cmyk/Jarvis_AI.git
 cd Jarvis_AI
-
-# Install in development mode
-pip install -e .
-
-# Validate deployment
-./scripts/validate_deployment.sh
+pip install -e .[dev]
+pytest
 ```
 
-## Getting Started
+## 📄 License
 
-## Quick Demo Script
-.\venv\Scripts\python.exe -m streamlit run ui_demo.py
+MIT
 
-To work with this repository:
-
-1. **For End Users**: Use pip installation or one-click installer
-2. **For Developers**: Build new features in the root directory
-3. **Legacy Reference**: Explore the `legacy/` folder for previous implementation
-
-## Completed Features 
-
-## Coding Tools
-Code explanation generation: Added context-aware explanations for code completions that adapt to user's communication style and domain specialization
-Completion rationale display: Implemented detailed reasoning display showing confidence factors, pattern recognition, and decision logic behind AI suggestions
-Knowledge source attribution: Added comprehensive source tracking including user interaction history, domain knowledge, and model confidence factors
-
-Learning rate adjustment: Implemented 4-tier learning system (Conservative, Moderate, Adaptive, Aggressive) controlling how quickly AI adapts to user preferences
-Domain specialization settings: Added 8 specialized domains (Web Development, Data Science, DevOps, etc.) with tailored response patterns
-Style preference configuration: Implemented 5 communication styles (Concise, Detailed, Tutorial, Professional, Casual) affecting all AI interactions
-
-The implementation follows the documented Lang ecosystem approach:
-LangChain Memory: Created PersonalizationMemory class for persistent user learning and adaptation
-LangGraph workflows: Enhanced existing workflow with personalization initialization, explanation generation, and feedback processing nodes
-LangGraphUI visualization: Added interactive personalized workflow views with user context panels and quick feedback collection
-Enhanced Code Intelligence: Integrated personalization engine that generates contextually relevant suggestions
-
-#UI Enhancements
-learning_rate = st.selectbox("AI Learning Rate", ["Conservative", "Moderate", "Adaptive", "Aggressive"])
-domain = st.selectbox("Domain Specialization", ["General", "Web Development", "Data Science", ...])
-style = st.selectbox("Communication Style", ["Concise", "Detailed", "Tutorial", ...])
-
-## Contact
-
-For questions or support, please contact the repository owner.

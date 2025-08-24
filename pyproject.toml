@@ -30,7 +30,6 @@ classifiers = [
 
 dependencies = [
     # Core dependencies
-    "streamlit>=1.30.0",
     "requests>=2.31.0",
     "pyyaml>=6.0",
     "cryptography>=40.0.0",
@@ -39,6 +38,12 @@ dependencies = [
     "plotly>=5.14.0",
     "duckduckgo-search>=4.0.0",
     "pillow>=10.0.0",
+    "structlog>=23.1.0",
+    "graphviz>=0.20.1",
+    "chromadb>=0.5.0",
+    "python-dotenv>=1.0.0",
+      "keyring>=24.0.0",
+      "pyotp>=2.9.0",
     
     # Lang Family Tools for V2 Architecture
     "langchain>=0.1.0",
@@ -50,39 +55,23 @@ dependencies = [
     # API Framework for V2 Backend
     "fastapi>=0.100.0",
     "uvicorn>=0.22.0",
-    
-    # Testing Framework
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.6",
 ]
 
 [project.optional-dependencies]
+ui = [
+    "streamlit>=1.32.0",
+]
+orchestrator = [
+    "langgraphstudio>=0.0.1",
+]
 dev = [
     "black>=23.0.0",
     "flake8>=6.0.0",
     "mypy>=1.4.0",
-    "langgraphstudio>=0.0.1",
-]
-enhanced = [
-    "gitpython>=3.1.0",
-    "pandas>=2.0.0",
-    "numpy>=1.24.0",
-    "matplotlib>=3.7.0",
-    "seaborn>=0.12.0",
-    "notebook>=6.5.0",
-    "ipywidgets>=8.0.0",
-    "sqlalchemy>=2.0.0",
-    "spacy>=3.6.0",
-    "nltk>=3.8.0",
-    "opencv-python>=4.8.0",
-    "scikit-learn>=1.3.0",
-    "transformers>=4.30.0",
-    "playwright>=1.35.0",
-]
-cloud = [
-    "boto3>=1.28.0",
-    "azure-storage-blob>=12.17.0", 
-    "google-cloud-storage>=2.10.0",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
 ]
 
 [project.urls]
@@ -97,11 +86,12 @@ jarvis-setup = "jarvis_ai.setup:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["jarvis_ai*", "legacy*"]
+include = ["jarvis_ai*", "jarvis*", "jarvis_sdk*", "legacy*"]
 exclude = ["tests*", "docs*"]
 
 [tool.setuptools.package-data]
 jarvis_ai = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]
+jarvis = ["plugins/manifest.json"]
 legacy = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.txt"]
 
 [tool.black]
@@ -126,4 +116,3 @@ extend-exclude = '''
 python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = true

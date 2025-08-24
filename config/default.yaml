@@ -1,0 +1,14 @@
+# Default configuration toggles for Jarvis AI
+# Set ENABLE_RED_TEAM to true to enable the red team critic that reviews
+# specialist outputs for logical errors and conflicting assumptions.
+ENABLE_RED_TEAM: false
+
+
+orch:
+  min_novelty: 0.25
+  min_growth: 0.0
+  max_cost_per_gain: 3.0
+  prune_check_interval: 2
+  min_active_teams: 2
+  policy: balanced
+

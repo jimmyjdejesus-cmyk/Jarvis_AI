@@ -1,163 +1,313 @@
-"""
-Multi-Agent Orchestrator
+"""Multi-Agent Orchestrator
 Coordinates multiple specialist agents for complex tasks
-"""
+
+This module also provides lifecycle management for nested orchestrators,
+allowing complex missions to be decomposed into sub-missions with their own
+scoped tools and agents."""
+from __future__ import annotations
+
 import asyncio
+"""Orchestration Template
+==========================
+
+This module provides a light‑weight orchestration engine that builds
+LangGraph workflows dynamically from simple agent specifications.  The
+previous implementation contained a large, hand crafted orchestrator for a
+fixed set of specialist agents.  For testing and experimentation we now use a
+generic approach where each mission supplies a list of agent specs describing
+nodes and edges of an execution graph.
+
+The orchestrator focuses on three core ideas:
+
+* **Dynamic graph construction** – Nodes are created at runtime based on the
+  provided specification.  Edges can be linear or conditional allowing for
+  branching, looping and early termination.
+* **LangGraph integration** – `StateGraph` from the `langgraph` package is
+  used to compile a workflow that can be executed asynchronously.
+* **Minimal interface** – Only a small API is required for the tests.  The
+  orchestrator accepts agent specifications and exposes a ``run`` coroutine
+  which executes the compiled workflow and returns the final state.
+
+The intent of this module is to act as a reusable template that higher level
+systems (such as the ``MetaAgent``) can delegate to when constructing
+mission‑specific workflows.
+"""
+
 import logging
-from typing import Dict, List, Any, Optional, Set
+import warnings
 from datetime import datetime
-import json
+from dataclasses import dataclass
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+from collections import defaultdict
+
+from .recovery import load_state, save_state
+from .path_memory import PathMemory
+from jarvis.homeostasis.monitor import SystemMonitor
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
 
 from ..agents.specialists import (
-    CodeReviewAgent, 
-    SecurityAgent, 
-    ArchitectureAgent, 
-    TestingAgent, 
-    DevOpsAgent
+    CodeReviewAgent,
+    SecurityAgent,
+    ArchitectureAgent,
+    TestingAgent,
+    DevOpsAgent,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - for type hints only
+    from .sub_orchestrator import SubOrchestrator
+from langgraph.graph import END, StateGraph
 
 logger = logging.getLogger(__name__)
+
+
+class RequestClassifier:
+    """Classify user requests and suggest coordination strategy."""
+
+    def __init__(self) -> None:
+        self.complexity_indicators = {
+            "high": [
+                "architecture",
+                "design",
+                "system",
+                "migrate",
+                "refactor",
+                "enterprise",
+                "scale",
+                "production",
+                "deploy",
+                "infrastructure",
+                "security audit",
+                "comprehensive",
+                "full review",
+            ],
+            "medium": [
+                "review",
+                "improve",
+                "optimize",
+                "analyze",
+                "test",
+                "security",
+                "performance",
+                "best practices",
+                "refactor",
+                "debug",
+            ],
+            "low": [
+                "fix",
+                "simple",
+                "quick",
+                "basic",
+                "help",
+                "explain",
+                "what is",
+            ],
+        }
+
+        self.specialist_triggers = {
+            "code_review": [
+                "review",
+                "code",
+                "check",
+                "improve",
+                "quality",
+                "bugs",
+                "optimize",
+                "refactor",
+                "clean",
+            ],
+            "security": [
+                "security",
+                "secure",
+                "vulnerability",
+                "auth",
+                "permission",
+                "encrypt",
+                "protect",
+                "compliance",
+                "audit",
+                "threat",
+            ],
+            "architecture": [
+                "architecture",
+                "design",
+                "system",
+                "structure",
+                "pattern",
+                "scalability",
+                "integration",
+                "microservice",
+            ],
+            "testing": [
+                "test",
+                "testing",
+                "quality",
+                "qa",
+                "coverage",
+                "unit",
+                "integration",
+                "e2e",
+            ],
+            "devops": [
+                "deploy",
+                "deployment",
+                "infrastructure",
+                "ci/cd",
+                "pipeline",
+                "container",
+                "kubernetes",
+                "docker",
+            ],
+        }
+
+    def classify(self, request: str, code: str | None = None) -> Dict[str, Any]:
+        request_lower = request.lower()
+
+        complexity = "low"
+        for level, indicators in self.complexity_indicators.items():
+            if any(indicator in request_lower for indicator in indicators):
+                complexity = level
+                break
+
+        specialists_needed: List[str] = []
+        for name, triggers in self.specialist_triggers.items():
+            if any(trigger in request_lower for trigger in triggers):
+                specialists_needed.append(name)
+
+        coordination_type = self._determine_coordination_strategy(
+            complexity, specialists_needed
+        )
+
+        return {
+            "complexity": complexity,
+            "specialists_needed": specialists_needed,
+            "coordination_type": coordination_type,
+        }
+
+    def _determine_coordination_strategy(
+        self, complexity: str, specialists: List[str]
+    ) -> str:
+        if len(specialists) <= 1:
+            return "single"
+        if complexity == "high" or len(specialists) > 3:
+            return "sequential"
+        return "parallel"
+
 
 class MultiAgentOrchestrator:
     """Coordinates multiple specialist agents for complex analysis"""
     
-    def __init__(self, mcp_client):
-        """
-        Initialize multi-agent orchestrator
-        
+    def __init__(
+        self,
+        mcp_client,
+        child_specs: Optional[Dict[str, Dict[str, Any]]] = None,
+        monitor: SystemMonitor | None = None,
+        knowledge_graph: KnowledgeGraph | None = None,
+    ):
+        """Initialize multi-agent orchestrator.
+
         Args:
             mcp_client: MCP client for agent communication
+            child_specs: Optional mapping of sub-orchestrator names to their
+                initialization specs. Each spec is forwarded to
+                :class:`SubOrchestrator`.
         """
         self.mcp_client = mcp_client
-        
+        self.monitor = monitor
+        self.knowledge_graph = knowledge_graph
+
         # Initialize specialist agents
         self.specialists = {
-            "code_review": CodeReviewAgent(mcp_client),
+            "code_review": CodeReviewAgent(mcp_client, knowledge_graph=knowledge_graph),
             "security": SecurityAgent(mcp_client),
             "architecture": ArchitectureAgent(mcp_client),
             "testing": TestingAgent(mcp_client),
-            "devops": DevOpsAgent(mcp_client)
+            "devops": DevOpsAgent(mcp_client),
         }
-        
+
+        # Request classifier used to determine coordination strategy
+        self.request_classifier = RequestClassifier()
+
         self.task_history = []
         self.active_collaborations = {}
-        
+
+        # Lifecycle tracking for child orchestrators
+        from .sub_orchestrator import SubOrchestrator
+
+        self.child_orchestrators: Dict[str, 'SubOrchestrator'] = {}
+        if child_specs:
+            for name, spec in child_specs.items():
+                self.child_orchestrators[name] = SubOrchestrator(
+                    self.mcp_client,
+                    knowledge_graph=self.knowledge_graph,
+                    **spec,
+                )
+
         # Agent collaboration rules
         self.collaboration_patterns = {
             "code_review": {
                 "always_collaborate": ["security"],
                 "often_collaborate": ["testing"],
-                "sometimes_collaborate": ["architecture", "devops"]
+                "sometimes_collaborate": ["architecture", "devops"],
             },
             "security": {
                 "always_collaborate": ["code_review"],
                 "often_collaborate": ["architecture"],
-                "sometimes_collaborate": ["testing", "devops"]
+                "sometimes_collaborate": ["testing", "devops"],
             },
             "architecture": {
                 "always_collaborate": ["security"],
                 "often_collaborate": ["devops"],
-                "sometimes_collaborate": ["code_review", "testing"]
+                "sometimes_collaborate": ["code_review", "testing"],
             },
             "testing": {
                 "often_collaborate": ["code_review"],
-                "sometimes_collaborate": ["security", "architecture", "devops"]
+                "sometimes_collaborate": ["security", "architecture", "devops"],
             },
             "devops": {
                 "often_collaborate": ["architecture", "security"],
-                "sometimes_collaborate": ["code_review", "testing"]
-            }
+                "sometimes_collaborate": ["code_review", "testing"],
+            },
         }
+
+    # ------------------------------------------------------------------
+    # Child orchestrator lifecycle management
+    # ------------------------------------------------------------------
+
+    def create_child_orchestrator(
+        self, name: str, spec: Dict[str, Any]
+    ) -> 'SubOrchestrator':
+        """Create and register a child :class:`SubOrchestrator`.
+
+        Args:
+            name: Identifier for the sub-orchestrator.
+            spec: Initialization specification forwarded to
+                :class:`SubOrchestrator`.
+
+        Returns:
+            The created :class:`SubOrchestrator` instance.
+        """
+        from .sub_orchestrator import SubOrchestrator
+
+        orchestrator = SubOrchestrator(
+            self.mcp_client,
+            knowledge_graph=self.knowledge_graph,
+            **spec,
+        )
+        self.child_orchestrators[name] = orchestrator
+        return orchestrator
+
+    def remove_child_orchestrator(self, name: str) -> bool:
+        """Remove a previously registered child orchestrator."""
+        return self.child_orchestrators.pop(name, None) is not None
+
+    def list_child_orchestrators(self) -> List[str]:
+        """List identifiers of active child orchestrators."""
+        return list(self.child_orchestrators.keys())
     
     async def analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
-        """
-        Analyze request to determine complexity and required specialists
-        
-        Args:
-            request: User request description
-            code: Optional code to analyze
-            
-        Returns:
-            Analysis of complexity and required specialists
-        """
-        request_lower = request.lower()
-        
-        # Complexity indicators
-        complexity_indicators = {
-            "high": [
-                "architecture", "design", "system", "migrate", "refactor", 
-                "enterprise", "scale", "production", "deploy", "infrastructure",
-                "security audit", "comprehensive", "full review"
-            ],
-            "medium": [
-                "review", "improve", "optimize", "analyze", "test", "security",
-                "performance", "best practices", "refactor", "debug"
-            ],
-            "low": [
-                "fix", "simple", "quick", "basic", "help", "explain", "what is"
-            ]
-        }
-        
-        # Determine complexity
-        complexity = "low"
-        for level, indicators in complexity_indicators.items():
-            if any(indicator in request_lower for indicator in indicators):
-                complexity = level
-                break
-        
-        # Identify needed specialists
-        specialist_triggers = {
-            "code_review": [
-                "review", "code", "check", "improve", "quality", "best practices",
-                "bugs", "optimize", "refactor", "clean"
-            ],
-            "security": [
-                "security", "secure", "vulnerability", "auth", "permission",
-                "encrypt", "protect", "compliance", "audit", "threat"
-            ],
-            "architecture": [
-                "architecture", "design", "system", "pattern", "structure",
-                "scalable", "microservices", "api", "database", "integration"
-            ],
-            "testing": [
-                "test", "testing", "coverage", "quality", "qa", "validation",
-                "unit test", "integration", "e2e", "automated"
-            ],
-            "devops": [
-                "deploy", "deployment", "ci/cd", "pipeline", "infrastructure",
-                "docker", "kubernetes", "cloud", "monitoring", "automation"
-            ]
-        }
-        
-        needed_specialists = []
-        specialist_scores = {}
-        
-        for specialist, triggers in specialist_triggers.items():
-            score = sum(1 for trigger in triggers if trigger in request_lower)
-            specialist_scores[specialist] = score
-            
-            if score > 0:
-                needed_specialists.append(specialist)
-        
-        # Always include code_review if code is provided
-        if code and "code_review" not in needed_specialists:
-            needed_specialists.append("code_review")
-            specialist_scores["code_review"] = 1
-        
-        # Sort specialists by relevance score
-        needed_specialists.sort(key=lambda x: specialist_scores.get(x, 0), reverse=True)
-        
-        # Determine coordination strategy
-        coordination_type = self._determine_coordination_type(needed_specialists, complexity)
-        
-        return {
-            "complexity": complexity,
-            "specialists_needed": needed_specialists,
-            "specialist_scores": specialist_scores,
-            "estimated_time": self._estimate_processing_time(complexity, len(needed_specialists)),
-            "coordination_type": coordination_type,
-            "collaboration_depth": self._determine_collaboration_depth(needed_specialists)
-        }
+        """Analyze a request using the :class:`RequestClassifier`."""
+        return self.request_classifier.classify(request, code)
     
     def _determine_coordination_type(self, specialists: List[str], complexity: str) -> str:
         """Determine how specialists should be coordinated"""
@@ -180,8 +330,21 @@ class MultiAgentOrchestrator:
             return "moderate"
         else:
             return "deep"
+
+    def _route_model_preferences(self, specialist, complexity: str) -> List[str]:
+        """Determine model order based on system resources and task complexity."""
+        models = list(specialist.preferred_models)
+        local = [m for m in models if specialist._get_server_for_model(m) == "ollama"]
+        cloud = [m for m in models if specialist._get_server_for_model(m) != "ollama"]
+
+        snapshot = self.monitor.snapshot() if self.monitor else None
+        if snapshot and snapshot.cpu > 80 and complexity != "high":
+            return local + cloud
+        if complexity == "high":
+            return cloud + local
+        return local + cloud
     
-    async def coordinate_specialists(self, request: str, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def coordinate_specialists(self, request: str, code: str = None, user_context: str = None, novelty_boost: float = 0.0) -> Dict[str, Any]:
         """
         Coordinate multiple specialists to handle complex request
         
@@ -195,6 +358,24 @@ class MultiAgentOrchestrator:
         """
         # Analyze request complexity
         analysis = await self.analyze_request_complexity(request, code)
+
+        # Adjust strategy based on system resources
+        if self.monitor:
+            snapshot = self.monitor.snapshot()
+            if snapshot.cpu > 80 or snapshot.memory > 80:
+                analysis["coordination_type"] = "sequential"
+
+        # Initialize path memory and record planned specialists
+        path_memory = PathMemory()
+        for spec in analysis["specialists_needed"]:
+            path_memory.add_step(spec)
+
+        # Avoid previously failed paths
+        avoid, similarity = (False, 0.0)
+        if analysis["specialists_needed"]:
+            avoid, similarity = path_memory.should_avoid()
+            if avoid and novelty_boost <= 0.0:
+                return self._create_error_response("Previously failed path detected - novelty boost required", request)
         
         if not analysis["specialists_needed"]:
             return self._create_simple_response(request)
@@ -203,23 +384,56 @@ class MultiAgentOrchestrator:
         
         # Execute coordination strategy
         if analysis["coordination_type"] == "single":
-            return await self._single_specialist_analysis(request, analysis, code, user_context)
+            result = await self._single_specialist_analysis(request, analysis, path_memory, code, user_context)
         elif analysis["coordination_type"] == "parallel":
-            return await self._parallel_specialist_analysis(request, analysis, code, user_context)
+            result = await self._parallel_specialist_analysis(request, analysis, path_memory, code, user_context)
         else:  # sequential
-            return await self._sequential_specialist_analysis(request, analysis, code, user_context)
-    
-    async def _single_specialist_analysis(self, request: str, analysis: Dict, code: str = None, user_context: str = None) -> Dict[str, Any]:
-        """Handle analysis with single specialist"""
+            result = await self._sequential_specialist_analysis(request, analysis, path_memory, code, user_context)
+
+        # Record outcome in path memory
+        score = result.get("oracle_score", 1.0 if result.get("type") != "error" else 0.0)
+        path_memory.record(score)
+        return result
+
+    # ------------------------------------------------------------------
+    async def dispatch_specialist(
+        self,
+        specialist_type: str,
+        task: str,
+        *,
+        context: Any | None = None,
+        user_context: str | None = None,
+    ) -> Dict[str, Any]:
+        """Execute a task with the requested specialist.
+
+        This helper provides a single interface for invoking specialists and
+        will be used by the different coordination strategies.  It makes
+        adding or replacing specialists during runtime straightforward and
+        keeps subtask/result passing consistent across strategies.
+        """
+
+        specialist = self.specialists[specialist_type]
+        return await specialist.process_task(
+            task, context=context, user_context=user_context
+        )
+
+    async def _single_specialist_analysis(
+        self,
+        request: str,
+        analysis: Dict,
+        path_memory: PathMemory,
+        code: str = None,
+        user_context: str = None,
+    ) -> Dict[str, Any]:
         specialist_type = analysis["specialists_needed"][0]
         specialist = self.specialists[specialist_type]
-        
-        # Create task with full context
         task = self._create_specialist_task(request, code, user_context)
-        
+        models = self._route_model_preferences(specialist, analysis["complexity"])
         try:
-            result = await specialist.process_task(task, context=None, user_context=user_context)
-            
+            result = await specialist.process_task(
+                task, context=None, user_context=user_context, models=models
+            )
+            path_memory.add_decisions(result.get("suggestions", [])[:3])
             return {
                 "type": "single_specialist",
                 "complexity": analysis["complexity"],
@@ -227,47 +441,95 @@ class MultiAgentOrchestrator:
                 "results": {specialist_type: result},
                 "synthesized_response": result["response"],
                 "confidence": result["confidence"],
-                "coordination_summary": f"Analysis completed by {specialist_type} specialist"
+                "coordination_summary": f"Analysis completed by {specialist_type} specialist",
             }
-            
         except Exception as e:
             logger.error(f"Single specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
     
-    async def _parallel_specialist_analysis(self, request: str, analysis: Dict, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    
+    async def _parallel_specialist_analysis(
+        self,
+        request: str,
+        analysis: Dict,
+        path_memory: PathMemory,
+        code: str = None,
+        user_context: str = None,
+    ) -> Dict[str, Any]:
         """Handle analysis with parallel specialist coordination"""
         specialists_needed = analysis["specialists_needed"]
-        
-        # Create tasks for all specialists
+
+        # Create tasks and group by model for batching
         task = self._create_specialist_task(request, code, user_context)
-        
-        # Run specialists in parallel
-        tasks = []
+
+        grouped: Dict[tuple, List[tuple]] = defaultdict(list)
         for specialist_type in specialists_needed:
             specialist = self.specialists[specialist_type]
-            tasks.append(specialist.process_task(task, context=None, user_context=user_context))
-        
+            models = self._route_model_preferences(specialist, analysis["complexity"])
+            prompt = specialist.build_prompt(task, None, user_context)
+            primary_model = models[0]
+            server = specialist._get_server_for_model(primary_model)
+            grouped[(server, primary_model)].append(
+                (specialist_type, specialist, prompt, models)
+            )
+    
         try:
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            # Process results
+            batch_tasks = []
+            group_info = []
+            for (server, model), items in grouped.items():
+                prompts = [it[2] for it in items]
+                batch_tasks.append(
+                    self.mcp_client.generate_response_batch(server, model, prompts)
+                )
+                group_info.append((server, model, items))
+
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+
             specialist_results = {}
             successful_results = []
-            
-            for i, result in enumerate(results):
-                specialist_type = specialists_needed[i]
-                
-                if isinstance(result, Exception):
-                    logger.error(f"Specialist {specialist_type} failed: {result}")
-                    specialist_results[specialist_type] = self._create_specialist_error(specialist_type, str(result))
-                else:
+
+            for (server, model, items), responses in zip(group_info, batch_results):
+                if isinstance(responses, Exception):
+                    logger.error(f"Batch {server}/{model} failed: {responses}")
+                    for specialist_type, specialist, _, models in items:
+                        try:
+                            result = await specialist.process_task(
+                                task,
+                                context=None,
+                                user_context=user_context,
+                                models=models,
+                            )
+                        except Exception as e:
+                            result = self._create_specialist_error(
+                                specialist_type, str(e)
+                            )
+                        specialist_results[specialist_type] = result
+                        if result.get("type") != "error":
+                            successful_results.append(result)
+                            path_memory.add_decisions(
+                                result.get("suggestions", [])[:3]
+                            )
+                    continue
+
+                for (specialist_type, specialist, _, _), response in zip(
+                    items, responses
+                ):
+                    result = specialist.process_model_response(
+                        response, model, task
+                    )
                     specialist_results[specialist_type] = result
                     successful_results.append(result)
-            
-            # Synthesize results
-            synthesized_response = await self._synthesize_parallel_results(request, successful_results)
-            overall_confidence = self._calculate_overall_confidence(successful_results)
-            
+                    path_memory.add_decisions(
+                        result.get("suggestions", [])[:3]
+                    )
+
+            synthesized_response = await self._synthesize_parallel_results(
+                request, successful_results
+            )
+            overall_confidence = self._calculate_overall_confidence(
+                successful_results
+            )
+
             return {
                 "type": "parallel_specialists",
                 "complexity": analysis["complexity"],
@@ -275,14 +537,14 @@ class MultiAgentOrchestrator:
                 "results": specialist_results,
                 "synthesized_response": synthesized_response,
                 "confidence": overall_confidence,
-                "coordination_summary": f"Parallel analysis by {len(successful_results)} specialists"
+                "coordination_summary": f"Parallel analysis by {len(successful_results)} specialists",
             }
-            
+
         except Exception as e:
             logger.error(f"Parallel specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
     
-    async def _sequential_specialist_analysis(self, request: str, analysis: Dict, code: str = None, user_context: str = None) -> Dict[str, Any]:
+    async def _sequential_specialist_analysis(self, request: str, analysis: Dict, path_memory: PathMemory, code: str = None, user_context: str = None) -> Dict[str, Any]:
         """Handle analysis with sequential specialist coordination"""
         specialists_needed = analysis["specialists_needed"]
         
@@ -291,23 +553,34 @@ class MultiAgentOrchestrator:
         specialist_results = {}
         
         task = self._create_specialist_task(request, code, user_context)
-        
+
         try:
             for specialist_type in specialists_needed:
                 specialist = self.specialists[specialist_type]
-                
+
+                models = self._route_model_preferences(
+                    specialist, analysis["complexity"]
+                )
+
                 # Process with accumulated context
-                result = await specialist.process_task(task, context=shared_context, user_context=user_context)
+                result = await specialist.process_task(
+                    task,
+                    context=shared_context,
+                    user_context=user_context,
+                    models=models,
+                )
                 specialist_results[specialist_type] = result
-                
+
                 # Add result to shared context for next specialists
+                decisions = result.get("suggestions", [])[:3]
                 shared_context.append({
                     "specialist": specialist_type,
-                    "key_points": result.get("suggestions", [])[:3],  # Top 3 suggestions
+                    "key_points": decisions,
                     "confidence": result.get("confidence", 0.7),
-                    "priority_issues": result.get("priority_issues", [])[:2]  # Top 2 issues
+                    "priority_issues": result.get("priority_issues", [])[:2] # Top 2 issues
                 })
-                
+                path_memory.add_decisions(decisions)
+
                 logger.info(f"Completed {specialist_type} analysis, passing context to next specialist")
             
             # Final synthesis with all results
@@ -554,3 +827,114 @@ class MultiAgentOrchestrator:
             "specialists": health_results,
             "timestamp": datetime.now().isoformat()
         }
+# ---------------------------------------------------------------------------
+# Agent specification model
+# ---------------------------------------------------------------------------
+
+
+AgentCallable = Callable[[Dict[str, Any]], Dict[str, Any]]
+
+
+@dataclass
+class AgentSpec:
+    """Specification for a single node in the workflow.
+
+    Attributes
+    ----------
+    name:
+        Identifier used inside the graph.
+    fn:
+        Callable executed when the node runs.  The callable receives and must
+        return the workflow state (a mutable ``dict``).
+    next:
+        Optional name of the next node for a simple linear transition.
+    condition:
+        Optional callable returning a key from ``branches``.  When provided the
+        orchestrator will create conditional edges using the mapping supplied
+        in ``branches``.
+    branches:
+        Mapping of condition outputs to the name of the next node or ``END`` to
+        finish the workflow.
+    entry:
+        Whether this node should be used as the entry point for the workflow.
+    """
+
+    name: str
+    fn: AgentCallable
+    next: Optional[str] = None
+    condition: Optional[Callable[[Dict[str, Any]], str]] = None
+    branches: Optional[Dict[str, Any]] = None
+    entry: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Dynamic orchestrator
+# ---------------------------------------------------------------------------
+
+
+class DynamicOrchestrator:
+    """Build and execute LangGraph workflows from :class:`AgentSpec` objects."""
+
+    def __init__(self, agent_specs: List[AgentSpec]):
+        self.agent_specs = agent_specs
+
+        # Build the StateGraph from the provided specifications
+        graph = StateGraph(dict)
+
+        for spec in agent_specs:
+            graph.add_node(spec.name, spec.fn)
+
+        # Determine entry point – default to the first spec if none marked
+        entry = next((s.name for s in agent_specs if s.entry), agent_specs[0].name)
+        graph.set_entry_point(entry)
+
+        # Wire up edges
+        for spec in agent_specs:
+            if spec.next:
+                graph.add_edge(spec.name, spec.next)
+
+            if spec.condition and spec.branches:
+                graph.add_conditional_edges(spec.name, spec.condition, spec.branches)
+
+        # Compile to a runnable workflow
+        self.workflow = graph.compile()
+
+    # ------------------------------------------------------------------
+    async def run(self, state: Dict[str, Any], resume: bool = True) -> Dict[str, Any]:
+        """Execute the compiled workflow.
+
+        Parameters
+        ----------
+        state:
+            Initial state passed to the workflow. The state is mutated by
+            nodes in the graph. The final state after execution is returned.
+        resume:
+            When ``True`` the orchestrator will attempt to load any previously
+            saved state before executing the workflow. The state is persisted
+            before and after execution to enable crash recovery.
+        """
+
+        if resume:
+            saved = load_state()
+            if saved is not None:
+                state = saved
+
+        logger.debug("Starting workflow with state: %s", state)
+        # Persist starting state so we can recover mid-execution if needed
+        save_state(state)
+        result: Dict[str, Any] = {}
+        try:
+            result = await self.workflow.ainvoke(state)
+            logger.debug("Workflow completed with state: %s", result)
+            return result
+        finally:
+            if result:
+                save_state(result)
+
+
+# The specialist based ``MultiAgentOrchestrator`` defined earlier remains the
+# primary export.  ``DynamicOrchestrator`` is provided for building simple
+# workflow graphs but no longer replaces the specialist orchestrator.
+
+__all__ = ["AgentSpec", "DynamicOrchestrator", "MultiAgentOrchestrator", "END"]
+

@@ -251,7 +251,45 @@ Workflow ID: {self.workflow_id}
 """
         return final_result
 
-# Example 3: API Integration Workflow
+# Example 3: Code Review Workflow
+class CodeReviewWorkflow(CustomWorkflowTemplate):
+    """Workflow that performs an automated code review loop."""
+
+    def __init__(self):
+        super().__init__("Code Review Workflow")
+
+    def planning_phase(self, input_data):
+        print("🔎 Code Review Planning")
+        repo = input_data.get('repository', 'local repo')
+        plan = [
+            f"Clone or open {repo}",
+            "Run static analysis",
+            "Execute tests",
+            "Generate review report",
+        ]
+        for i, step in enumerate(plan, 1):
+            print(f"   {i}. {step}")
+        return plan
+
+    def execution_phase(self, plan):
+        print("\n🧪 Running Review Steps")
+        results = {}
+        for step in plan:
+            results[step] = "completed"
+        return results
+
+    def analysis_phase(self, results):
+        print("\n📋 Summarising Findings")
+        issues = [
+            "PEP8 formatting", "Missing type hints", "Untested function"
+        ]
+        return {"issues": issues, "summary": "Review finished"}
+
+    def synthesis_phase(self, analysis):
+        report = "\n".join(f"• {item}" for item in analysis["issues"])
+        return f"Code Review Report:\n{report}"
+
+# Example 4: API Integration Workflow
 class APIIntegrationWorkflow(CustomWorkflowTemplate):
     """Custom workflow for API integrations and data fetching."""
     
@@ -315,10 +353,10 @@ class APIIntegrationWorkflow(CustomWorkflowTemplate):
 
 def create_custom_workflow_example():
     """Example of how to use custom workflows."""
-    
+
     print("🎯 Custom Workflow Examples")
     print("=" * 40)
-    
+
     # Example 1: Data Analysis
     print("\n1. Data Analysis Workflow:")
     data_workflow = DataAnalysisWorkflow()
@@ -326,9 +364,9 @@ def create_custom_workflow_example():
         'file_path': 'data/sample.csv',
         'analysis_type': 'statistical'
     })
-    
+
     print("\n" + "-" * 40)
-    
+
     # Example 2: Research
     print("\n2. Research Workflow:")
     research_workflow = ResearchWorkflow()
@@ -336,21 +374,27 @@ def create_custom_workflow_example():
         'topic': 'Artificial Intelligence Trends 2025',
         'sources': ['academic', 'web', 'industry']
     })
-    
+
     print("\n" + "-" * 40)
-    
-    # Example 3: API Integration
-    print("\n3. API Integration Workflow:")
+
+    # Example 3: Code Review
+    print("\n3. Code Review Workflow:")
+    review_workflow = CodeReviewWorkflow()
+    result3 = review_workflow.execute({'repository': 'example/repo'})
+
+    print("\n" + "-" * 40)
+
+    # Example 4: API Integration
+    print("\n4. API Integration Workflow:")
     api_workflow = APIIntegrationWorkflow()
     api_workflow.add_api_endpoint('weather', 'https://api.weather.com/v1/current')
     api_workflow.add_api_endpoint('news', 'https://newsapi.org/v2/top-headlines')
-    
-    result3 = api_workflow.execute({
+
+    result4 = api_workflow.execute({
         'endpoints': ['weather', 'news'],
         'operations': ['fetch', 'aggregate']
     })
-    
-    return [result1, result2, result3]
 
+    return [result1, result2, result3, result4]
 if __name__ == "__main__":
     create_custom_workflow_example()

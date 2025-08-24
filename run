@@ -1,0 +1,22 @@
+  [31morigin/HEAD[m -> origin/main
+  [31morigin/codex/add-docker-compose.yml-for-services[m
+  [31morigin/codex/add-graphviz-to-dependencies[m
+  [31morigin/codex/add-project-memory-management-system-gtlsuz[m
+  [31morigin/codex/create-migration-checklist-for-features[m
+  [31morigin/codex/draft-event-schema-and-json-file[m
+  [31morigin/codex/extend-agent.py-with-langgraph-support[m
+  [31morigin/codex/extend-agent.py-with-langgraph-support-rj794s[m
+  [31morigin/codex/extend-fastapi-with-streaming-endpoints[m
+  [31morigin/codex/extend-orchestrator-with-classifier-and-async-modes[m
+  [31morigin/codex/implement-repository-indexer-and-cli-command-cne6zt[m
+  [31morigin/codex/update-ci-badge-in-readme.md[m
+  [31morigin/codex/update-client-with-api-integrations[m
+  [31morigin/codex/update-imports-in-v2/run.py[m
+  [31morigin/copilot/fix-27[m
+  [31morigin/copilot/fix-29[m
+  [31morigin/copilot/fix-35-2[m
+  [31morigin/development[m
+  [31morigin/main[m
+  [31morigin/new-main[m
+  [31morigin/refactor-unified-agent[m
+  [31morigin/resolve-logging-conflict[m

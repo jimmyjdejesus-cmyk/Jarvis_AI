@@ -1,0 +1,10 @@
+langgraph
+beautifulsoup4
+requests
+langsmith
+ollama
+fastapi
+uvicorn
+redis
+neo4j
+pyotp

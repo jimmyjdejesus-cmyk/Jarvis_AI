@@ -6,12 +6,15 @@ Quick AI assistance for any task via command line
 
 import sys
 import argparse
+import asyncio
 from datetime import datetime
+
+from jarvis.core.autotune import AutotuneManager, PolicyType
 
 class JarvisCLI:
     """Command-line interface for Jarvis AI assistance"""
     
-    def __init__(self):
+    def __init__(self, policy: str = "balanced"):
         self.capabilities = {
             "code": "Generate, debug, and optimize code",
             "write": "Create content, documents, and communications",
@@ -20,6 +23,20 @@ class JarvisCLI:
             "analyze": "Examine data and extract insights",
             "solve": "Problem-solving and troubleshooting"
         }
+
+        # Initialize autotuning manager for resource policies
+        self.autotune = AutotuneManager(PolicyType(policy))
+
+    def _estimate_tokens(self, text: str) -> int:
+        """Rough token estimate based on word count."""
+        words = len(text.split())
+        return max(words * 10, 50)
+
+    def report_tokens(self, description: str) -> None:
+        """Print baseline vs optimized tokens using autotuning policy."""
+        baseline = self._estimate_tokens(description)
+        _, optimized = self.autotune.optimize_tokens(baseline)
+        print(f"🔧 Tokens: {baseline} → {optimized} ({self.autotune.policy.value})")
     
     def help_command(self, topic=None):
         """Show help information"""
@@ -255,12 +272,36 @@ def example_function():
 
 **Need revisions?** Run: python jarvis_cli.py write "revise [specific changes]" """
     
-    def research_command(self, topic):
-        """Handle research requests"""
+    def research_command(self, topic, *, deep: bool = False):
+        """Handle research requests.
+
+        When ``deep`` is True the request is routed through the
+        :class:`MultiAgentOrchestrator` which coordinates specialist agents
+        for a multi‑step analysis.  A lightweight dummy MCP client is used so
+        the feature works out of the box without external services.
+        """
+
         print("🔍 **Research Assistant**")
         print(f"📚 Topic: {topic}")
+
+        if deep:
+            from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
+
+            class _DummyMCP:
+                async def generate_response(self, server, model, prompt):  # pragma: no cover - simple stub
+                    return f"[{model}] {prompt[:50]}"
+
+            orchestrator = MultiAgentOrchestrator(_DummyMCP())
+            result = asyncio.run(
+                orchestrator.coordinate_specialists(topic)
+            )
+            return result.get(
+                "synthesized_response",
+                "No response from specialists",
+            )
+
         print("🧠 Gathering and analyzing information...")
-        
+
         return f"""
 📊 **Research Analysis Complete**
 
@@ -303,7 +344,8 @@ def example_function():
    ✅ Trend analysis and projection
    ✅ Practical application assessment
 
-**Need deeper analysis?** Run: python jarvis_cli.py research "[specific aspect] of {topic}" """
+**Need deeper analysis?** Run: python jarvis_cli.py research "[specific aspect] of {topic}" --deep
+"""
     
     def plan_command(self, description):
         """Handle planning requests"""
@@ -425,10 +467,21 @@ def main():
     parser = argparse.ArgumentParser(description='Jarvis AI Command Line Assistant')
     parser.add_argument('command', nargs='?', help='Command to execute')
     parser.add_argument('description', nargs='*', help='Description or question')
+    parser.add_argument(
+        '--policy',
+        choices=['aggressive', 'balanced', 'conservative'],
+        default='balanced',
+        help='Autotuning policy for resource optimization'
+    )
+    parser.add_argument(
+        '--deep',
+        action='store_true',
+        help='Enable orchestrated multi-step reasoning for research commands'
+    )
     
     args = parser.parse_args()
     
-    jarvis = JarvisCLI()
+    jarvis = JarvisCLI(args.policy)
     
     if not args.command:
         print(jarvis.help_command())
@@ -447,6 +500,7 @@ def main():
             print("   python jarvis_cli.py code 'create a function to calculate fibonacci'")
         else:
             print(jarvis.code_command(description))
+            jarvis.report_tokens(description)
     
     elif command == "write":
         if not description:
@@ -454,13 +508,15 @@ def main():
             print("   python jarvis_cli.py write 'draft an email about project completion'")
         else:
             print(jarvis.write_command(description))
+            jarvis.report_tokens(description)
     
     elif command == "research":
         if not description:
             print("❌ Please provide a research topic. Example:")
             print("   python jarvis_cli.py research 'artificial intelligence trends 2025'")
         else:
-            print(jarvis.research_command(description))
+            print(jarvis.research_command(description, deep=args.deep))
+            jarvis.report_tokens(description)
     
     elif command == "plan":
         if not description:
@@ -468,6 +524,7 @@ def main():
             print("   python jarvis_cli.py plan 'develop a mobile app for task management'")
         else:
             print(jarvis.plan_command(description))
+            jarvis.report_tokens(description)
     
     elif command == "ask":
         if not description:
@@ -475,6 +532,7 @@ def main():
             print("   python jarvis_cli.py ask 'how does machine learning work?'")
         else:
             print(jarvis.ask_command(description))
+            jarvis.report_tokens(description)
     
     elif command in ["analyze", "solve"]:
         if not description:
@@ -482,6 +540,7 @@ def main():
             print(f"   python jarvis_cli.py {command} 'analyze website performance issues'")
         else:
             print(jarvis.ask_command(f"{command}: {description}"))
+            jarvis.report_tokens(description)
     
     else:
         print(f"❌ Unknown command: {command}")
