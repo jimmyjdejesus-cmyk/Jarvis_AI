@@ -371,3 +371,9 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+## 2025-02-14
+- Implemented `ResearchAgent` with web scraping, summarization, and citation tracking utilities.
+- Added `WebSearchTool` and `WebReaderTool` helpers.
+- Created unit tests mocking HTTP responses for the research agent.
+- Ran `pytest tests/test_research_agent.py -q`.
+
