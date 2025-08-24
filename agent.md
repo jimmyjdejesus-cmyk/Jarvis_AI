@@ -371,3 +371,9 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+
+## 2025-08-24
+- Integrated JetBrains IDE commands for file opening and lint execution with prompts.
+- Added unit tests mocking IDE interface to verify dispatch.
+- Installed `psutil` to support JetBrains integration.
+- Ran `pytest legacy/tests/test_ide_commands.py -q`.

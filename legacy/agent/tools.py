@@ -7,6 +7,7 @@ import agent.features.code_search as code_search
 import agent.features.repo_context as repo_context
 from tools.code_intelligence import engine as code_intelligence
 import requests
+from agent.integrations.jetbrains_integration import JetBrainsIntegration
 
 def preview_tool_action(step):
     return f"Will run {step['tool']} with args {step['args']}"
@@ -67,8 +68,27 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
         return f"GitHub API action '{action}' requested but integration module not available yet"
     elif step['tool'] == "ide_command":
         command = step['args'].get("command", "")
-        # TODO: Implement proper IDE command integration
-        return f"IDE command '{command}' requested but jetbrains_integration module not available yet"
+        ide_type = step['args'].get("ide_type", "pycharm")
+        ide = JetBrainsIntegration(ide_type)
+
+        if command == "open_file":
+            file_path = step['args'].get("file_path", "")
+            line_number = step['args'].get("line_number")
+            confirm = input(f"Open {file_path} in {ide_type}? [y/N]: ").strip().lower()
+            if confirm == 'y':
+                return ide.open_file(file_path, line_number)
+            return {"cancelled": True}
+
+        elif command == "run_lint":
+            target = step['args'].get("target", "")
+            confirm = input(f"Run lint on {target} in {ide_type}? [y/N]: ").strip().lower()
+            if confirm == 'y':
+                # Use 'inspect' command for linting via CLI
+                return ide.run_ide_command("inspect", [target])
+            return {"cancelled": True}
+
+        else:
+            return {"error": f"Unsupported IDE command: {command}"}
     elif step['tool'] == "note_command":
         command = step['args'].get("command", "")
         # TODO: Implement proper note integration
