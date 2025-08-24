@@ -1,6 +1,10 @@
 # Agent Log
 
 
+## 2025-09-02
+- Added unit tests for `parse_natural_language` and `execute_plan` in `legacy/tests/tests/test_core.py` using mocks for approval and workflow parsing failures.
+- Ran `pytest legacy/tests/tests/test_core.py -q`.
+
 ## 2025-09-01
 - Added root cause failure analysis with `RootCauseAnalyzer` and negative pathway support in `PolicyOptimizer` and `HierarchicalHypergraph`.
 - Created unit test for negative pathway creation.
