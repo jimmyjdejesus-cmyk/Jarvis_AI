@@ -7,6 +7,7 @@ import zlib
 
 import numpy as np
 
+from jarvis.models.client import model_client
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
 
 try:
@@ -29,8 +30,7 @@ class RepositoryIndexer:
         self.meta_file = self.index_dir / f"index_{self.version}.json"
         self.index: Optional[Any] = None
         self.embeddings: Optional[np.ndarray] = None
-        self.files: List[str] = []
-        self.snippets: List[str] = []
+        self.chunk_info: List[Dict[str, str]] = []
         self._load_index()
 
     def _get_repo_version(self) -> str:
@@ -44,8 +44,7 @@ class RepositoryIndexer:
         """Load existing index and cached snippets if available."""
         if self.meta_file.exists():
             meta = json.loads(self.meta_file.read_text())
-            self.files = meta.get("files", [])
-            self.snippets = meta.get("snippets", [])
+            self.chunk_info = meta.get("chunk_info", [])
 
         if faiss and self.index_file.exists():
             self.index = faiss.read_index(str(self.index_file))
@@ -66,13 +65,40 @@ class RepositoryIndexer:
             vec /= norm
         return vec
 
+    def _agentic_chunker(self, file_path: str, text: str) -> List[Dict[str, str]]:
+        """Splits text into semantic chunks using an LLM."""
+        prompt = f'''
+Analyze the following file content from '{file_path}'. Your task is to split the text into semantically coherent chunks. Each chunk should represent a distinct concept, function, class, or section.
+
+Respond with ONLY a valid JSON array of objects. Each object must have two keys: "title" and "content".
+- "title": A short, descriptive title for the chunk (e.g., "Function: calculate_area", "Class: UserProfile").
+- "content": The actual text content of the chunk.
+
+Here is the file content:
+---
+{text}
+---
+'''
+        try:
+            response_str = model_client.generate_response(model="llama3.2", prompt=prompt)
+            if "```json" in response_str:
+                response_str = response_str.split("```json")[1].split("```")[0].strip()
+
+            chunks = json.loads(response_str)
+            if not isinstance(chunks, list) or not all(isinstance(c, dict) and "title" in c and "content" in c for c in chunks):
+                raise ValueError("Invalid chunk structure")
+            return chunks
+        except (json.JSONDecodeError, ValueError) as e:
+            # Fallback for failed chunking
+            return [{"title": Path(file_path).name, "content": text}]
+
     def _iter_files(self) -> List[Path]:
         """Yield repository files to index."""
         exts = {".py", ".md", ".txt", ".rst", ".json", ".yaml", ".yml"}
         return [p for p in self.repo_path.rglob("*") if p.is_file() and p.suffix in exts]
 
     def build_index(self, force_rebuild: bool = False) -> None:
-        """Build or rebuild the repository index and cache file snippets."""
+        """Build or rebuild the repository index using agentic chunking."""
         if (self.index is not None or self.embeddings is not None) and not force_rebuild:
             return
 
@@ -81,17 +107,25 @@ class RepositoryIndexer:
             return
 
         embeddings = []
-        self.files = []
-        self.snippets = []
+        self.chunk_info = []
         for p in files:
+            file_path_str = str(p.relative_to(self.repo_path))
             try:
                 text = p.read_text(encoding="utf-8", errors="ignore")
             except Exception:
                 continue
-            embeddings.append(self._embed(text))
-            self.files.append(str(p.relative_to(self.repo_path)))
-            snippet = text[:200].replace("\n", " ")
-            self.snippets.append(snippet)
+
+            chunks = self._agentic_chunker(file_path_str, text)
+            for chunk in chunks:
+                embeddings.append(self._embed(chunk["content"]))
+                self.chunk_info.append({
+                    "path": file_path_str,
+                    "title": chunk["title"],
+                    "content": chunk["content"]
+                })
+
+        if not embeddings:
+            return
 
         vectors = np.vstack(embeddings)
         if faiss:
@@ -103,35 +137,43 @@ class RepositoryIndexer:
             np.save(self.embeddings_file, vectors)
 
         self.meta_file.write_text(json.dumps({
-            "files": self.files,
-            "snippets": self.snippets,
+            "chunk_info": self.chunk_info,
             "version": self.version
         }, indent=2))
 
-    def search(self, query: str, k: int = 5) -> List[Dict[str, str]]:
-        """Search the repository for relevant files using cached snippets."""
-        if self.index is None and self.embeddings is None:
+    def search(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Search the repository for relevant chunks."""
+        if (self.index is None and self.embeddings is None) or not hasattr(self, 'chunk_info') or not self.chunk_info:
             self.build_index()
+
+        if (self.index is None and self.embeddings is None) or not hasattr(self, 'chunk_info') or not self.chunk_info:
+            return []
+
+        q_vec = self._embed(query)
+
         if faiss and self.index is not None:
-            q_vec = self._embed(query)
-            D, I = self.index.search(np.expand_dims(q_vec, 0), k)
-            indices = I[0]
-            scores = D[0]
+            scores, indices = self.index.search(np.expand_dims(q_vec, 0), k)
+            scores, indices = scores[0], indices[0]
         elif self.embeddings is not None:
-            q_vec = self._embed(query)
-            scores = self.embeddings @ q_vec
-            indices = np.argsort(scores)[::-1][:k]
+            sims = self.embeddings @ q_vec
+            indices = np.argsort(sims)[::-1][:k]
+            scores = sims[indices]
         else:
             return []
 
         results = []
-        top_scores = scores[indices] if not (faiss and self.index is not None) else scores
-        score_iter = scores if (faiss and self.index is not None) else top_scores
-        for idx, score in zip(indices, score_iter):
-            if idx < 0 or idx >= len(self.files):
+        for idx, score in zip(indices, scores):
+            idx = int(idx)
+            if idx < 0 or idx >= len(self.chunk_info):
                 continue
-            snippet = self.snippets[int(idx)] if hasattr(self, "snippets") and int(idx) < len(self.snippets) else ""
-            results.append({"path": self.files[int(idx)], "score": float(score), "snippet": snippet})
+
+            chunk = self.chunk_info[idx]
+            results.append({
+                "path": chunk["path"],
+                "title": chunk["title"],
+                "content": chunk["content"],
+                "score": float(score)
+            })
         return results
 
     # ------------------------------------------------------------------

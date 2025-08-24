@@ -8,7 +8,12 @@ run with its own focused set of tools and agents.
 from typing import Dict, List, Optional, Any
 
 from jarvis.homeostasis.monitor import SystemMonitor
-from jarvis.world_model.knowledge_graph import KnowledgeGraph
+try:  # pragma: no cover - optional dependency
+    from jarvis.world_model.knowledge_graph import KnowledgeGraph
+except Exception:  # pragma: no cover
+    from typing import Any
+
+    KnowledgeGraph = Any  # type: ignore
 from .orchestrator import MultiAgentOrchestrator
 
 

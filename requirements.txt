@@ -10,3 +10,6 @@ neo4j
 pyotp
 networkx
 websockets
+bcrypt
+streamlit
+
