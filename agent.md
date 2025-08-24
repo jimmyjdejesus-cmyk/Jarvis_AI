@@ -502,3 +502,9 @@
 - Hardened plugin installation utilities and added comprehensive tests.
 - Ran `pytest tests/test_plugin_hub.py -q`.
 
+
+## 2025-08-24
+- Added SelfRAGGate module with precision/latency gating and metrics tracking.
+- Exposed retrieval gating configuration in `config/config.yaml`.
+- Added unit tests for gating logic and metrics.
+- Ran `pytest tests/test_self_rag_gate.py -q`.
