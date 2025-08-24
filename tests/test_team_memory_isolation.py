@@ -1,9 +1,17 @@
 import os
 from pathlib import Path
+import importlib.util
 import sys
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from jarvis.orchestration.agents import MetaAgent
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT))
+spec_agents = importlib.util.spec_from_file_location(
+    "jarvis.orchestration.agents", ROOT / "jarvis" / "orchestration" / "agents.py"
+)
+agents = importlib.util.module_from_spec(spec_agents)
+sys.modules["jarvis.orchestration.agents"] = agents
+spec_agents.loader.exec_module(agents)
+MetaAgent = agents.MetaAgent
 
 
 def test_team_memory_isolated(tmp_path):

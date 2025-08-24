@@ -7,6 +7,57 @@ import agent.features.code_search as code_search
 import agent.features.repo_context as repo_context
 from tools.code_intelligence import engine as code_intelligence
 import requests
+import os
+import shlex
+import subprocess
+import re
+from agent.integrations.jetbrains_integration import JetBrainsIntegration
+
+ALLOWED_GIT_COMMANDS = {"status", "log", "branch"}
+
+
+def run_git_command(repository_path: str, command: str) -> str:
+    """Execute a restricted git command in the specified repository.
+
+    Args:
+        repository_path: Path to the git repository.
+        command: Git command string (e.g., "status").
+
+    Returns:
+        Output from the git command.
+
+    Raises:
+        FileNotFoundError: If the repository path is missing or invalid.
+        ValueError: If the command is not allowed or contains unsafe characters.
+        RuntimeError: If the git command fails to execute.
+    """
+    if not repository_path:
+        raise FileNotFoundError("Repository path is required")
+    repo_git = os.path.join(repository_path, ".git")
+    if not os.path.isdir(repository_path) or not os.path.isdir(repo_git):
+        raise FileNotFoundError(f"Repository not found: {repository_path}")
+
+    tokens = shlex.split(command)
+    if not tokens or tokens[0] not in ALLOWED_GIT_COMMANDS:
+        raise ValueError("Unsupported git command")
+
+    token_re = re.compile(r"^[\w./-]+$")
+    for token in tokens:
+        if not token_re.match(token):
+            raise ValueError("Invalid characters in command")
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", repository_path] + tokens,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.strip()
+        raise RuntimeError(stderr or "Git command failed") from e
+
 
 def preview_tool_action(step):
     return f"Will run {step['tool']} with args {step['args']}"
@@ -35,8 +86,7 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
     elif step['tool'] == "git_command":
         command = step['args'].get("command", "")
         repository_path = step['args'].get("repository_path")
-        # TODO: Implement proper git command handling
-        return f"Git command '{command}' requested but github_integration module not available yet"
+        return run_git_command(repository_path, command)
     elif step['tool'] == "code_review":
         file_path = step['args'].get("file_path", "")
         check_types = step['args'].get("check_types")
@@ -67,8 +117,27 @@ def run_tool(step, expert_model=None, draft_model=None, user=None):
         return f"GitHub API action '{action}' requested but integration module not available yet"
     elif step['tool'] == "ide_command":
         command = step['args'].get("command", "")
-        # TODO: Implement proper IDE command integration
-        return f"IDE command '{command}' requested but jetbrains_integration module not available yet"
+        ide_type = step['args'].get("ide_type", "pycharm")
+        ide = JetBrainsIntegration(ide_type)
+
+        if command == "open_file":
+            file_path = step['args'].get("file_path", "")
+            line_number = step['args'].get("line_number")
+            confirm = input(f"Open {file_path} in {ide_type}? [y/N]: ").strip().lower()
+            if confirm == 'y':
+                return ide.open_file(file_path, line_number)
+            return {"cancelled": True}
+
+        elif command == "run_lint":
+            target = step['args'].get("target", "")
+            confirm = input(f"Run lint on {target} in {ide_type}? [y/N]: ").strip().lower()
+            if confirm == 'y':
+                # Use 'inspect' command for linting via CLI
+                return ide.run_ide_command("inspect", [target])
+            return {"cancelled": True}
+
+        else:
+            return {"error": f"Unsupported IDE command: {command}"}
     elif step['tool'] == "note_command":
         command = step['args'].get("command", "")
         # TODO: Implement proper note integration
@@ -92,7 +161,7 @@ def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint
     # Build a more comprehensive prompt with context
     system_prompt = """You are Jarvis, an advanced AI assistant. Your areas of expertise include:
 - Software development and coding assistance
-- File analysis and document processing  
+- File analysis and document processing
 - Git repository management
 - Code review and quality analysis
 - IDE integration and development tools
@@ -103,14 +172,14 @@ def llm_api_call(prompt, expert_model, draft_model, chat_history, user, endpoint
 When answering complex questions, show your reasoning process using <think>...</think> tags before providing your final answer.
 
 Always provide helpful, detailed responses. If asked about your capabilities, list the specific areas above."""
-    
+
     # For debugging, let's simplify the prompt first
     simple_prompt = f"""{system_prompt}
 
 User question: {prompt}
 
 Please think through this step by step and provide a detailed response. Use <think>...</think> tags to show your reasoning process if this is a complex question."""
-    
+
     # If endpoint is Ollama, use /api/generate and correct payload
     if "11434" in str(endpoint):
         # Use expert_model as the model name
@@ -124,17 +193,17 @@ Please think through this step by step and provide a detailed response. Use <thi
                 "top_p": 0.9
             }
         }
-        
+
         # Add speculative decoding if draft model is provided
         if draft_model and draft_model != model:
             payload["draft_model"] = draft_model
-        
+
         try:
             res = requests.post(f"http://localhost:11434/api/generate", json=payload, timeout=120)
-            
+
             if res.ok:
                 data = res.json()
-                
+
                 # Ollama returns 'response' for some models, 'output' for others
                 response = data.get("response", "").strip()
                 if not response:
@@ -142,46 +211,33 @@ Please think through this step by step and provide a detailed response. Use <thi
                 if not response:
                     # Try other possible fields
                     response = data.get("text", "").strip()
-                
+
                 # Extract and separate reasoning tokens from various models
                 chain_of_thought = ""
                 final_response = response
-                
+
                 if response:
                     import re
-                    
+
                     # Extract <think>...</think> blocks from DeepSeek models
                     think_matches = re.findall(r'<think>(.*?)</think>', response, flags=re.DOTALL)
-                    
+
                     # Extract <reasoning>...</reasoning> blocks from other models
                     if not think_matches:
                         think_matches = re.findall(r'<reasoning>(.*?)</reasoning>', response, flags=re.DOTALL)
-                    
+
                     # Extract **Thinking:** sections from models like Claude
                     if not think_matches:
                         think_matches = re.findall(r'\*\*Thinking:\*\*(.*?)(?=\*\*[A-Z]|$)', response, flags=re.DOTALL)
-                    
+
                     # Extract Chain of Thought: sections
                     if not think_matches:
                         think_matches = re.findall(r'Chain of Thought:(.*?)(?=Answer:|Final Answer:|$)', response, flags=re.DOTALL)
-                    
+
                     # Extract Let me think... patterns
                     if not think_matches:
                         think_matches = re.findall(r'Let me think[^.]*\.(.*?)(?=(?:So|Therefore|In conclusion|Final answer))', response, flags=re.DOTALL)
-                    
-                    if think_matches:
-                        chain_of_thought = "\n\n".join(think_matches).strip()
-                        # Remove all reasoning blocks from final response
-                        patterns_to_remove = [
-                            r'<think>.*?</think>',
-                            r'<reasoning>.*?</reasoning>',
-                            r'\*\*Thinking:\*\*.*?(?=\*\*[A-Z]|$)',
-                            r'Chain of Thought:.*?(?=Answer:|Final Answer:|$)',
-                            r'Let me think[^.]*\..*?(?=(?:So|Therefore|In conclusion|Final answer))'
-                        ]
-                        for pattern in patterns_to_remove:
-                            final_response = re.sub(pattern, '', final_response, flags=re.DOTALL).strip()
-                    
+
                     if think_matches:
                         chain_of_thought = "\n\n".join(think_matches).strip()
                         # Remove all reasoning blocks from final response
@@ -203,11 +259,11 @@ Please think through this step by step and provide a detailed response. Use <thi
                             "raw_response": response
                         }
                         return result
-                
+
                 # No CoT found, return simple response
                 if not final_response:
                     final_response = "I apologize, but I wasn't able to generate a proper response. Please try rephrasing your request."
-                
+
                 return final_response
             else:
                 return f"LLM API error: {res.status_code} - Please check your Ollama connection and model availability."

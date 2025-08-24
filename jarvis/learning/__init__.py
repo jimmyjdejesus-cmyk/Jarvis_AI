@@ -2,5 +2,6 @@
 
 from .policy_optimizer import PolicyOptimizer
 from .root_cause_analyzer import RootCauseAnalyzer
+from .ctde_critic import CTDECritic
 
-__all__ = ["PolicyOptimizer", "RootCauseAnalyzer"]
+__all__ = ["PolicyOptimizer", "RootCauseAnalyzer", "CTDECritic"]

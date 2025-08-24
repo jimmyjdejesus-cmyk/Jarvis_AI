@@ -43,6 +43,10 @@ rag:
   similarity_threshold: 0.7
   cache_enabled: true
   fallback_enabled: true
+  gating:
+    enabled: true
+    precision_threshold: 0.8
+    max_latency_ms: 500
 
 # External Integrations
 integrations:
