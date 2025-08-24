@@ -529,3 +529,7 @@ ax=======
 - Added unit tests for gating logic and metrics.
 - Ran `pytest tests/test_self_rag_gate.py -q`.
 
+
+## 2025-08-24
+- Added anomaly detection with `SystemMonitor`, enhanced `RootCauseAnalyzer` with failure history, introduced `RemediationAgent`, and logged MTTR/manual interventions.
+- Ran `pytest tests/test_system_monitor_agent.py -q` (pass) and attempted `tests/test_routing_cache_batch.py` (syntax error in existing code).

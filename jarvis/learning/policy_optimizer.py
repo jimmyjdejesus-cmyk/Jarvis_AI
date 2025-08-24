@@ -6,6 +6,7 @@ from typing import Dict, Any
 
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
 from .root_cause_analyzer import RootCauseAnalyzer
+from .remediation_agent import RemediationAgent
 
 
 class PolicyOptimizer:
@@ -16,11 +17,13 @@ class PolicyOptimizer:
         hypergraph: HierarchicalHypergraph,
         learning_rate: float = 0.1,
         root_cause_analyzer: RootCauseAnalyzer | None = None,
+        remediation_agent: RemediationAgent | None = None,
     ) -> None:
         self.hypergraph = hypergraph
         self.learning_rate = learning_rate
         self.history: list[Dict[str, Any]] = []
         self.root_cause_analyzer = root_cause_analyzer or RootCauseAnalyzer()
+        self.remediation_agent = remediation_agent or RemediationAgent()
 
     def update_strategy(self, strategy_key: str, reward: float) -> None:
         """Adjust the confidence of a strategy node using REX-RAG update rule."""
@@ -37,3 +40,4 @@ class PolicyOptimizer:
             dependencies = node.get("dependencies", [])
             root_cause = self.root_cause_analyzer.analyze(trajectory, dependencies)
             self.hypergraph.add_negative_pathway(strategy_key, root_cause)
+            self.remediation_agent.remediate(root_cause["component"])
