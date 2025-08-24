@@ -371,3 +371,8 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+
+## 2025-08-24
+- Added predictive simulation model and integrated with SimulationAgent and MissionPlanner.
+- Created unit tests for predictive evaluations and adaptive mission planning.
+- Ran `pytest tests/test_simulation_agent.py tests/test_mission_planner.py -q`.

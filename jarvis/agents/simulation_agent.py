@@ -18,14 +18,21 @@ import random
 
 from jarvis.agents.base_specialist import BaseSpecialist
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
+from jarvis.world_model.predictive_simulation import PredictiveSimulator
 
 
 class SimulationAgent(BaseSpecialist):
     """Runs counterfactual simulations based on an altered world state."""
 
-    def __init__(self, mcp_client: Any, hypergraph: HierarchicalHypergraph | None = None) -> None:
+    def __init__(
+        self,
+        mcp_client: Any,
+        hypergraph: HierarchicalHypergraph | None = None,
+        simulator: PredictiveSimulator | None = None,
+    ) -> None:
         self.mcp_client = mcp_client
         self.hypergraph = hypergraph
+        self.simulator = simulator
         self.specialization = (
             "Runs counterfactual simulations based on an altered world state."
         )
@@ -33,23 +40,34 @@ class SimulationAgent(BaseSpecialist):
     async def quick_simulate(self, state: Any, move: str) -> float:
         """Estimate outcome score for a potential move.
 
-        This helper method performs a lightweight simulation by asking the
-        underlying model to rate the desirability of applying ``move`` to the
-        provided ``state``.  It returns a floating point score in the range
-        ``[0, 1]``.  If the model fails to respond with a valid number the
-        method falls back to a random score, allowing Monte Carlo search to
-        continue exploring.
+        The evaluation blends heuristic predictions from ``PredictiveSimulator``
+        with a numeric judgment from the LLM.  If either component is
+        unavailable, the remaining signal is used.  A random score is returned
+        only when no evaluation could be produced.
         """
 
+        model_score: float | None = None
         prompt = (
             "Rate from 0 to 1 how promising the following move is in the given "
             f"state. Only return the numeric score.\nSTATE: {state}\nMOVE: {move}"
         )
         try:
             response = await self.mcp_client.generate_response(prompt=prompt)
-            return float(response.strip())
+            model_score = float(response.strip())
         except Exception:
-            return random.random()
+            model_score = None
+
+        sim_score: float | None = None
+        if self.simulator:
+            sim_score = self.simulator.evaluate(state, move)
+
+        if model_score is not None and sim_score is not None:
+            return (model_score + sim_score) / 2
+        if model_score is not None:
+            return model_score
+        if sim_score is not None:
+            return sim_score
+        return random.random()
 
     async def run_counterfactual(
         self,

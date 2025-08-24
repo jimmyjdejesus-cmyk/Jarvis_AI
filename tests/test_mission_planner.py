@@ -21,6 +21,33 @@ class _DefaultClient:
 
 client_mod.model_client = _DefaultClient()
 
+world_pkg = types.ModuleType("jarvis.world_model")
+predictive_mod = types.ModuleType("jarvis.world_model.predictive_simulation")
+
+class _StubPredictor:
+    def rank_actions(self, state, actions):
+        return actions
+
+predictive_mod.PredictiveSimulator = _StubPredictor
+world_pkg.predictive_simulation = predictive_mod
+jarvis_pkg.world_model = world_pkg
+sys.modules["jarvis.world_model"] = world_pkg
+sys.modules["jarvis.world_model.predictive_simulation"] = predictive_mod
+
+memory_pkg = types.ModuleType("jarvis.memory")
+
+class _DummyMemoryManager:
+    pass
+
+
+class _DummyProjectMemory:
+    pass
+
+memory_pkg.MemoryManager = _DummyMemoryManager
+memory_pkg.ProjectMemory = _DummyProjectMemory
+jarvis_pkg.memory = memory_pkg
+sys.modules["jarvis.memory"] = memory_pkg
+
 spec = importlib.util.spec_from_file_location(
     "jarvis.agents.mission_planner", ROOT / "jarvis" / "agents" / "mission_planner.py"
 )
@@ -29,6 +56,32 @@ spec.loader.exec_module(mission_planner)
 sys.modules["jarvis.agents.mission_planner"] = mission_planner
 agents_pkg = types.ModuleType("jarvis.agents")
 agents_pkg.mission_planner = mission_planner
+critics_mod = types.ModuleType("jarvis.agents.critics")
+
+class _DummyCritic:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def review(self, *args, **kwargs):
+        return {}
+
+critics_mod.BlueTeamCritic = _DummyCritic
+critics_mod.ConstitutionalCritic = _DummyCritic
+agents_pkg.critics = critics_mod
+sys.modules["jarvis.agents.critics"] = critics_mod
+
+curiosity_mod = types.ModuleType("jarvis.agents.curiosity_agent")
+
+class _DummyCuriosity:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def explore(self, *args, **kwargs):
+        return {}
+
+curiosity_mod.CuriosityAgent = _DummyCuriosity
+agents_pkg.curiosity_agent = curiosity_mod
+sys.modules["jarvis.agents.curiosity_agent"] = curiosity_mod
 sys.modules["jarvis.agents"] = agents_pkg
 
 spec2 = importlib.util.spec_from_file_location(
@@ -132,6 +185,17 @@ def test_mission_planner_decomposes_goal():
         "Design architecture",
         "Implement features",
     ]
+
+
+def test_mission_planner_uses_predictions():
+    class DummyPredictor:
+        def rank_actions(self, state, actions):
+            return list(reversed(actions))
+
+    client = DummyClient("1. Do A\n2. Do B")
+    planner = MissionPlanner(client, predictor=DummyPredictor())
+    tasks = planner.plan("Goal")
+    assert tasks == ["Do B", "Do A"]
 
 
 def test_executive_agent_manage_directive_builds_graph(tmp_path):
