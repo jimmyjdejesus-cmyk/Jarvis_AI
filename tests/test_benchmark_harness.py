@@ -24,3 +24,5 @@ def test_runner_collects_metrics():
     table = benchmark_table(balanced, no_prune)
     assert table[0]["scenario"] == "dummy"
     assert 0 <= table[0]["token_savings"] <= 1
+    assert table[0]["success_balanced"] == 1.0
+    assert table[0]["token_cost_no_prune"] >= 0

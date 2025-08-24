@@ -293,6 +293,10 @@
 
 =======
 ## 2025-08-24
+- Implemented MCTS-based mission planner and planning package.
+- Added success, token cost, and latency metrics to benchmarking harness.
+- Created unit tests for MCTS planner and updated benchmark harness tests.
+- Ran `pytest tests/test_mcts_planner.py tests/test_benchmark_harness.py -q`.
 - Implemented dynamic model routing with resource-aware model selection.
 - Added Redis-backed caching and request batching in MCP client and orchestrator.
 - Created tests for routing, caching, and batching.

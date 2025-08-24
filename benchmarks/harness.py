@@ -20,6 +20,8 @@ class Metric:
     time_to_first_token: float
     total_latency: float
     token_count: int
+    token_cost: float
+    success_rate: float
     prune_rate: float
     bq_score: float
 
@@ -79,13 +81,16 @@ class BenchmarkRunner:
                     await asyncio.sleep(0)
                 return result
 
-            await token_stream()
+            result = await token_stream()
             end = time.perf_counter()
 
+        success = 1.0 if result.strip() else 0.0
         return Metric(
             time_to_first_token=(first_token_time or start) - start,
             total_latency=end - start,
             token_count=token_counter,
+            token_cost=float(token_counter),
+            success_rate=success,
             prune_rate=0.0 if policy == "no-prune" else 0.3,
             bq_score=1.0,
         )
@@ -108,6 +113,12 @@ def benchmark_table(balanced: Dict[str, Metric], no_prune: Dict[str, Metric]) ->
         table.append(
             {
                 "scenario": name,
+                "success_balanced": b.success_rate,
+                "success_no_prune": n.success_rate,
+                "token_cost_balanced": b.token_cost,
+                "token_cost_no_prune": n.token_cost,
+                "latency_balanced": b.total_latency,
+                "latency_no_prune": n.total_latency,
                 "token_savings": token_savings,
                 "latency_increase": latency_increase,
                 "bq_balanced": b.bq_score,
