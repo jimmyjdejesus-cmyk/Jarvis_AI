@@ -67,9 +67,6 @@ dependencies = [
 ui = [
     "streamlit>=1.32.0",
 ]
-orchestrator = [
-    "langgraphstudio>=0.0.1",
-]
 dev = [
     "black>=23.0.0",
     "flake8>=6.0.0",
@@ -91,8 +88,10 @@ jarvis-setup = "jarvis_ai.setup:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["jarvis_ai*", "jarvis*", "jarvis_sdk*", "legacy*"]
-exclude = ["tests*", "docs*"]
+# Let setuptools discover packages automatically.
+# This is more robust than maintaining a manual include list.
+# include = ["jarvis_ai*", "jarvis*", "jarvis_sdk*", "legacy*"]
+# exclude = ["tests*", "docs*"]
 
 [tool.setuptools.package-data]
 jarvis_ai = ["*.yaml", "*.yml", "*.json", "*.txt", "*.md"]

@@ -1,5 +1,4 @@
-"""Pruning utilities and evaluators for orchestrator optimization."""
-
+"""Pruning utilities."""
 from .evaluator import PruningEvaluator
 from .utils import path_signature
 

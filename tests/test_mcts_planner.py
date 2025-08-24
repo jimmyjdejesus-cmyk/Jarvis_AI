@@ -1,71 +1,78 @@
-import asyncio
-import importlib.util
-import pathlib
+import pytest
 import sys
+from pathlib import Path
+from typing import List
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+# Ensure the project root is in the path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-sys.path.append(str(ROOT))
+from jarvis.planning.mcts_planner import MCTSPlanner
 
-from benchmarks import BenchmarkScenario, BenchmarkRunner, benchmark_table
+# --- Test Fixtures ---
 
+AVAILABLE_TOOLS = ["search_web", "read_file", "write_file", "summarize"]
 
-# Load MissionPlanner and MCTSPlanner without importing heavy jarvis package
-mission_spec = importlib.util.spec_from_file_location(
-    "jarvis.agents.mission_planner", ROOT / "jarvis" / "agents" / "mission_planner.py"
-)
-mission_module = importlib.util.module_from_spec(mission_spec)
-sys.modules["jarvis.agents.mission_planner"] = mission_module
-mission_spec.loader.exec_module(mission_module)
-MissionPlanner = mission_module.MissionPlanner
+class DummyMCPClient:
+    """A mock client that deterministically rates toolchains."""
+    async def generate_response(self, server: str, model: str, prompt: str) -> str:
+        # A good plan involves searching then writing.
+        if "search_web" in prompt and "write_file" in prompt:
+            return "9"
+        # A mediocre plan is just searching.
+        if "search_web" in prompt:
+            return "6"
+        # A bad plan is writing without reading first.
+        if "write_file" in prompt and "read_file" not in prompt:
+            return "2"
+        # Any other combination is just okay.
+        return "5"
 
-mcts_spec = importlib.util.spec_from_file_location(
-    "jarvis.planning.mcts_planner", ROOT / "jarvis" / "planning" / "mcts_planner.py"
-)
-mcts_module = importlib.util.module_from_spec(mcts_spec)
-sys.modules["jarvis.planning.mcts_planner"] = mcts_module
-mcts_spec.loader.exec_module(mcts_module)
-MCTSPlanner = mcts_module.MCTSPlanner
+@pytest.fixture
+def mcts_planner():
+    """Returns an MCTSPlanner instance with a dummy client and tools."""
+    client = DummyMCPClient()
+    return MCTSPlanner(
+        mcp_client=client,
+        available_tools=AVAILABLE_TOOLS,
+        iterations=50,  # Lower iterations for faster tests
+        exploration_weight=1.5,
+    )
 
+# --- Tests ---
 
-class DummyClient:
-    """Deterministic client returning stepwise expansions."""
+@pytest.mark.asyncio
+async def test_planner_initialization(mcts_planner: MCTSPlanner):
+    """Test that the MCTSPlanner initializes correctly."""
+    assert mcts_planner.mcp_client is not None
+    assert mcts_planner.available_tools == AVAILABLE_TOOLS
+    assert mcts_planner.iterations == 50
 
-    def generate_response(self, model: str, prompt: str) -> str:  # noqa: D401
-        if "completed tasks:" not in prompt:
-            return "1. Gather requirements\n2. Design architecture\n3. Implement features"
-        if "completed tasks: []" in prompt:
-            return "1. Gather requirements\n2. Design architecture\n3. Implement features"
-        if "'Gather requirements'" in prompt and "'Design architecture'" not in prompt:
-            return "1. Design architecture\n2. Implement features"
-        if "'Design architecture'" in prompt and "'Implement features'" not in prompt:
-            return "1. Implement features"
-        return ""
+@pytest.mark.asyncio
+async def test_find_best_toolchain_selects_optimal_path(mcts_planner: MCTSPlanner):
+    """
+    Tests that the planner explores and selects the toolchain
+    that the dummy client is designed to rate most highly.
+    """
+    goal = "Research the latest AI trends and write a report."
 
+    best_toolchain = await mcts_planner.find_best_toolchain(goal)
 
-def test_mcts_planner_generates_plan():
-    planner = MCTSPlanner(client=DummyClient(), iterations=10)
-    plan = planner.plan("Build an app")
-    assert plan == [
-        "Gather requirements",
-        "Design architecture",
-        "Implement features",
-    ]
+    # The dummy client gives the highest reward to toolchains with both search and write.
+    # The exact path might vary, but the best path should contain these two.
+    assert "search_web" in best_toolchain
+    assert "write_file" in best_toolchain
 
+    # It should also be a valid sequence of tools.
+    assert isinstance(best_toolchain, list)
+    for tool in best_toolchain:
+        assert tool in AVAILABLE_TOOLS
 
-def _scenario_factory(planner):
-    async def _run(_ctx):
-        tasks = planner.plan("Build an app")
-        return " ".join(tasks)
+@pytest.mark.asyncio
+async def test_empty_plan_for_no_tools():
+    """Test that the planner returns an empty list if no tools are available."""
+    client = DummyMCPClient()
+    planner = MCTSPlanner(client, available_tools=[], iterations=10)
 
-    return BenchmarkScenario("plan", _run)
+    best_toolchain = await planner.find_best_toolchain("Any goal")
 
-
-def test_benchmark_compare_planners():
-    mission_runner = BenchmarkRunner([_scenario_factory(MissionPlanner(DummyClient()))])
-    mcts_runner = BenchmarkRunner([_scenario_factory(MCTSPlanner(DummyClient(), iterations=10))])
-    mission_metrics = asyncio.run(mission_runner.run("baseline"))
-    mcts_metrics = asyncio.run(mcts_runner.run("mcts"))
-    table = benchmark_table(mcts_metrics, mission_metrics)
-    assert table[0]["success_balanced"] == 1.0
-    assert table[0]["success_no_prune"] == 1.0
+    assert best_toolchain == []

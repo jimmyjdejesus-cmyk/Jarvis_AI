@@ -181,12 +181,9 @@ Here is the file content:
             })
         return results
 
-    # ------------------------------------------------------------------
-def _build_cfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple[int, int]]:
+    def _build_cfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple[int, int]]:
         """Generate a rudimentary control-flow graph as line-number pairs."""
-
         edges: List[Tuple[int, int]] = []
-
         prev_line: Optional[int] = None
         for stmt in node.body:
             line = getattr(stmt, "lineno", None)
@@ -209,18 +206,16 @@ def _build_cfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple
                         edges.append((last, line))
                 if stmt.orelse:
                     edges.append((line, stmt.orelse[0].lineno))
-
         return edges
 
     def _build_dfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple[int, int, str]]:
         """Generate a simple data-flow graph as (def_line, use_line, variable)."""
-
         class _Visitor(ast.NodeVisitor):
             def __init__(self) -> None:
                 self.last_def: Dict[str, int] = {}
                 self.edges: List[Tuple[int, int, str]] = []
 
-            def visit_Assign(self, assign: ast.Assign) -> None:  # type: ignore[override]
+            def visit_Assign(self, assign: ast.Assign) -> None:
                 lineno = assign.lineno
                 self.visit(assign.value)
                 for target in assign.targets:
@@ -228,7 +223,7 @@ def _build_cfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple
                         self.last_def[target.id] = lineno
                 self.generic_visit(assign)
 
-            def visit_AugAssign(self, assign: ast.AugAssign) -> None:  # type: ignore[override]
+            def visit_AugAssign(self, assign: ast.AugAssign) -> None:
                 self.visit(assign.value)
                 if isinstance(assign.target, ast.Name):
                     def_line = self.last_def.get(assign.target.id)
@@ -237,7 +232,7 @@ def _build_cfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple
                     self.last_def[assign.target.id] = assign.lineno
                 self.generic_visit(assign)
 
-            def visit_Name(self, name: ast.Name) -> None:  # type: ignore[override]
+            def visit_Name(self, name: ast.Name) -> None:
                 if isinstance(name.ctx, ast.Load):
                     def_line = self.last_def.get(name.id)
                     if def_line is not None:
@@ -250,7 +245,6 @@ def _build_cfg(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> List[Tuple
 
     def index_repository(self, graph: Any) -> None:
         """Populate ``graph`` with code entities and flow information."""
-
         for file_path in self.repo_path.rglob("*.py"):
             rel = str(file_path.relative_to(self.repo_path))
             graph.add_node(rel, "file", {"path": rel})

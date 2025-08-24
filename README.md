@@ -1,187 +1,88 @@
-# Jarvis AI
-[![CI](https://github.com/jimmyjdejesus-cmyk/Jarvis_AI/actions/workflows/ci.yml/badge.svg)](https://github.com/jimmyjdejesus-cmyk/Jarvis_AI/actions/workflows/ci.yml)
+# J.A.R.V.I.S. Desktop Application
 
-A privacy-first modular AI development assistant with comprehensive deployment and distribution capabilities.
+This repository contains the source code for the J.A.R.V.I.S. desktop application, providing a modern and intuitive graphical user interface for interacting with the J.A.R.V.I.S. agentic system.
 
+## Architecture
 
-> **Deprecated:** The legacy Streamlit application in `deprecated_legacy/` has reached feature parity with V2 and is no longer maintained.
-=======
-> **Deprecated:** The legacy Streamlit application in `legacy/` has reached feature parity with V2 and is no longer maintained.
+The application is built using a hybrid architecture that combines a Python backend with a web-based frontend, packaged in a native desktop shell using Tauri.
 
-> See `docs/migration_checklist.md` for mapping of legacy components.
+-   **Backend:** A Python application using **FastAPI** provides a robust API and a **WebSocket** server for real-time communication. It is located in the `app/` directory.
+-   **Frontend:** A **React** single-page application provides the user interface. The source code is in the `src-tauri/src/` directory.
+-   **Desktop Shell:** **Tauri** is used to wrap the frontend and backend into a single, cross-platform desktop executable. Tauri configuration is in `src-tauri/tauri.conf.json`.
 
-## 🚀 Quick Start
+The Python backend is packaged into an executable using **PyInstaller** and launched by the Tauri application as a **sidecar** process. This creates a fully self-contained application with no need for the user to install Python or other dependencies separately.
 
-### Install from PyPI
+## Features
 
+-   **Multi-Pane UI:** A comprehensive layout for managing all aspects of J.A.R.V.I.S.
+    -   **Chat Pane:** For direct interaction with the agent system.
+    -   **Project Sidebar:** To organize conversations by project.
+    -   **Workflow Visualization:** A real-time graph of the agent teams' workflow.
+    -   **Log Viewer:** Direct view of the `agent.md` log file.
+    -   **HITL Oracle:** A pane for viewing and responding to Human-in-the-Loop prompts.
+-   **Real-Time Communication:** WebSockets ensure a responsive and interactive user experience.
+-   **Cross-Platform:** Packaged to run on Windows, macOS, and Linux.
+
+## Development Setup
+
+To run the application in a development environment, you will need **Python 3.8+** with `pip`, and **Node.js** with `npm`.
+
+### 1. Backend Setup
+
+Clone the repository and navigate to the root directory.
+
+Install the required Python packages:
 ```bash
-pip install "jarvis-ai[ui]"
-jarvis run
+pip install -r requirements.txt
 ```
 
-### Docker
+### 2. Frontend Setup
 
+Navigate to the frontend directory and install the required Node.js packages:
 ```bash
-docker compose --profile dev up -d
+cd src-tauri
+npm install
+cd ..
 ```
 
-The included `docker-compose.yml` launches five services:
+### 3. Running in Development Mode
 
-- `api` – main Jarvis API
-- `orchestrator` – coordination service with crash recovery
-- `memory-service` – Redis instance for conversation memory
-- `vector-db` – Qdrant vector database
-- `ollama` – local model runtime (dev/local-prod profiles)
+You will need two separate terminals to run the backend and frontend servers concurrently.
 
-Each service exposes a basic health check so `docker compose` can wait
-for dependencies before starting `api`.
-
-Services are grouped using Docker Compose profiles. Use `dev`, `local-prod`,
-or `hybrid` (cloud LLMs) depending on your environment:
-
+**Terminal 1: Run the Backend**
 ```bash
-docker compose --profile hybrid up -d
+python app/main.py
 ```
+The backend server will start on `http://127.0.0.1:8000`.
 
-### One-Click Installer
-
+**Terminal 2: Run the Frontend**
 ```bash
-curl -sSL https://raw.githubusercontent.com/jimmyjdejesus-cmyk/Jarvis_AI/main/scripts/installers/install-unix.sh | bash
+cd src-tauri
+npm run dev
 ```
+This will start the Tauri development server, which will open a native window with the application running and connected to your local backend server. The window supports hot-reloading for both the frontend and backend.
 
-### Configuration
+## Building the Application
 
+To build the final, self-contained executable for distribution, you can use the provided build script. This script automates the process of packaging the backend and bundling the full application.
+
+**Prerequisites:**
+- Ensure all development dependencies are installed (Python and Node packages).
+- Ensure `pyinstaller` is installed (`pip install pyinstaller`).
+- Ensure you have the Tauri CLI and its prerequisites installed (see the [official Tauri guide](https://tauri.app/v1/guides/getting-started/prerequisites/)).
+
+**Run the build script:**
 ```bash
-jarvis config --init
-jarvis config --validate
-jarvis config --show
+chmod +x build.sh
+./build.sh
 ```
 
-desktop build and configuration wizard:
-Configuration profiles live under `config/profiles`. Select a profile by
-setting the `CONFIG_PROFILE` environment variable (defaults to
-`development`). Any setting can be overridden by environment variables
-using double underscores for nesting. For example:
+This script will:
+1.  Package the Python backend into an executable using `build_backend.sh`.
+2.  (Simulate) building the React frontend for production.
+3.  (Simulate) bundling the application using Tauri.
 
-```bash
-export JARVIS__ORCH__MIN_NOVELTY=0.25
-```
+The final packaged application will be located in `src-tauri/target/release/bundle/`.
 
-### Remote Model Setup
-
-The MCP client can route requests to remote services such as OpenAI and
-Anthropic. Provide API credentials via environment variables:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-Keys may be stored in a local `.env` file or managed through the
-`setup_api_keys.py` helper. When no keys are present the system falls back
-to local models.
-
-### Deep Research Mode
-
-The command-line interface exposes a **deep research** mode that leverages
-the multi-agent orchestrator. Enable it with the `--deep` flag on the
-`research` command:
-
-```bash
-python jarvis_cli.py research "scaling microservices" --deep
-```
-
-In this mode the orchestrator spawns specialist agents and synthesizes
-their findings into a comprehensive answer.
-
-### Desktop App Packaging
-
-Use [PyInstaller](https://pyinstaller.org/) to create a standalone
-desktop build and configuration wizard:
-
-```bash
-pip install pyinstaller
-pyinstaller desktop_app.py --onefile --distpath dist
-pyinstaller setup_api_keys.py --onefile --distpath dist/config_wizard
-```
-
-Packaged binaries will be placed in the `dist/` directory.
-
-### Troubleshooting
-
-- **Docker services fail health checks** – ensure required ports are
-  free and rerun `docker compose up`.
-- **Missing configuration** – run the config wizard in `dist/config_wizard`
-  or create a `.env` file with required keys.
-- **PyInstaller build is large** – use the `--exclude-module` flag to
-  omit optional dependencies when packaging.
-
-
-## 🧭 Workflow Visualizer and Dead-End Shelf
-
-Jarvis now exposes its internal reasoning through a Streamlit DAG panel and a
-dead-end shelf for pruned branches. The DAG view supports DOT/JSON/PNG export
-while the shelf allows operators to override pruned paths when necessary.
-
-![Workflow DAG](docs/images/dag_panel.png)
-![Dead-End Shelf](docs/images/dead_end_shelf.png)
-
-## 📈 Graphviz
-
-Some features use the [`graphviz`](https://pypi.org/project/graphviz/) package to render diagrams.
-Install the Graphviz system binaries to enable visualization:
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install graphviz
-
-# macOS
-brew install graphviz
-```
-
-If Graphviz is not installed, these features will be skipped or fall back to text-based output.
-
-## 🗂️ Logging
-
-Jarvis uses [structlog](https://www.structlog.org/) for structured logging.
-
-```python
-from jarvis.logging import configure, get_logger
-
-configure()  # writes to logs/jarvis.log
-logger = get_logger()
-logger.info("startup complete")
-```
-
-Pass a ``remote_url`` to ``configure`` to forward log events to an HTTP service.
-
-### Viewing Logs
-
-A Grafana Loki stack is provided for local development:
-
-```bash
-docker compose -f docker-compose.logging.yml up -d
-```
-
-Then open [http://localhost:3000](http://localhost:3000) and add Loki at `http://loki:3100` as a data source to explore logs.
-
-## 📋 Features
-
-- Modular agent framework
-- Lang ecosystem integration (LangChain, LangGraph, LangSmith)
-- YAML configuration with environment overrides
-- Docker support and one-click installers
-
-## 🔧 Development
-
-```bash
-git clone https://github.com/jimmyjdejesus-cmyk/Jarvis_AI.git
-cd Jarvis_AI
-pip install -e .[dev]
-pytest
-```
-
-## 📄 License
-
-MIT
-
+---
+*This project is under active development.*

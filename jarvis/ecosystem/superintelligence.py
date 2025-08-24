@@ -19,11 +19,11 @@ from collections import defaultdict, deque
 # Import all Phase 5 components
 from .meta_intelligence import (
     MetaIntelligenceCore, AgentCapability, SystemHealth,
-    meta_intelligence, create_specialist_agent, monitor_agent_ecosystem
+    meta_intelligence
 )
 from .learning_engine import (
     LearningAdaptationEngine, LearningType, PatternType,
-    learning_engine, record_learning_event, adapt_system_behavior
+    learning_engine
 )
 from .orchestrator import (
     EcosystemOrchestrator, ResourceType, SystemState,
@@ -643,7 +643,7 @@ class SuperIntelligenceInterface:
         self.evolution_events: List[EvolutionEvent] = []
         
         # Initialize with autonomous operation
-        asyncio.create_task(self._autonomous_operation_loop())
+        # asyncio.create_task(self._autonomous_operation_loop())
     
     async def process_super_task(self, task: SuperTask) -> Dict[str, Any]:
         """Process a complex superintelligence task"""

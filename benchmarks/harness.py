@@ -93,8 +93,7 @@ class BenchmarkRunner:
             start = time.perf_counter()
             first_token_time: Optional[float] = None
             token_counter = 0
-
-relevance = 0.0
+            relevance = 0.0
             citations = []
 
             async def token_stream() -> str:

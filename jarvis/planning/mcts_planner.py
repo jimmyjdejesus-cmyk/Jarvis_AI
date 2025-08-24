@@ -1,40 +1,41 @@
-"""Monte Carlo Tree Search based mission planner."""
+"""Monte Carlo Tree Search based planner for toolchains."""
 
 from __future__ import annotations
 
 import math
+import random
 from dataclasses import dataclass, field
-from typing import List, Optional, Sequence
-
-from jarvis.models.client import model_client
+from typing import List, Optional, Sequence, Dict, Any
 
 
 @dataclass
 class _Node:
     """Node used in the MCTS search tree."""
 
-    tasks: List[str]
+    toolchain: List[str]
     parent: Optional["_Node"] = None
     children: List["_Node"] = field(default_factory=list)
-    untried_actions: List[str] = field(default_factory=list)
+    untried_tools: List[str] = field(default_factory=list)
     visits: int = 0
-    value: float = 0.0
-
-    def is_terminal(self) -> bool:
-        return not self.untried_actions and not self.children
+    value: float = 0.0  # Sum of simulation rewards
 
     def is_fully_expanded(self) -> bool:
-        return not self.untried_actions
+        return not self.untried_tools
 
     def select_child(self, exploration: float) -> "_Node":
+        """Select a child node using the UCB1 formula."""
         assert self.children, "No children to select from"
-        log_total = math.log(self.visits)
+        log_total_visits = math.log(self.visits)
+
         return max(
             self.children,
-            key=lambda c: (c.value / c.visits) + exploration * math.sqrt(log_total / c.visits),
+            key=lambda c: (c.value / c.visits) + exploration * math.sqrt(log_total_visits / c.visits),
         )
 
     def best_child(self) -> "_Node":
+        """Select the child with the highest number of visits (most robust path)."""
+        if not self.children:
+            return self
         return max(self.children, key=lambda c: c.visits)
 
     def update(self, reward: float) -> None:
@@ -43,72 +44,128 @@ class _Node:
 
 
 class MCTSPlanner:
-    """Plan missions using Monte Carlo Tree Search."""
+    """Plan toolchains using Monte Carlo Tree Search."""
 
     def __init__(
         self,
-        client=model_client,
-        model: str = "llama3.2",
-        iterations: int = 50,
+        mcp_client: Any,
+        available_tools: List[str],
+        iterations: int = 100,
         exploration_weight: float = 1.4,
     ) -> None:
-        self.client = client
-        self.model = model
+        self.mcp_client = mcp_client
+        self.available_tools = available_tools
         self.iterations = iterations
         self.exploration_weight = exploration_weight
+        self.tree_root: Optional[_Node] = None
 
-    def _expand_state(self, goal: str, tasks: Sequence[str]) -> List[str]:
-        prompt = (
-            "You are an expert mission planner. Given the goal: "
-            f"'{goal}' and completed tasks: {list(tasks)}, provide the next steps "
-            "as a numbered list. If the mission is complete, return an empty response."
-        )
-        response = self.client.generate_response(self.model, prompt)
-        actions: List[str] = []
-        for line in response.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            if line[0].isdigit():
-                parts = line.split(".", 1)
-                action = parts[1].strip() if len(parts) == 2 else line
-            else:
-                action = line
-            if action:
-                actions.append(action)
-        return actions
+    async def _simulate(self, toolchain: List[str], goal: str) -> float:
+        """
+        Simulate the utility of a toolchain by asking an LLM to rate it.
+        Returns a score between 0.0 and 1.0.
+        """
+        if not toolchain:
+            return 0.0
 
-    def plan(self, goal: str) -> List[str]:
-        """Compute a plan for the given goal."""
-        root = _Node(tasks=[], untried_actions=self._expand_state(goal, []))
-        target_length = len(root.untried_actions)
+        prompt = f"""
+Given a goal and a sequence of tools (a toolchain), rate how effective this toolchain would be for accomplishing the goal.
+Respond with a single integer score from 1 (not effective at all) to 10 (perfectly effective).
+
+**Goal:** "{goal}"
+**Toolchain:** {', '.join(toolchain)}
+
+**Your Rating (1-10):**
+"""
+        try:
+            response = await self.mcp_client.generate_response("ollama", "llama3.2", prompt)
+            score = int(response.strip())
+            return max(0.0, min(10.0, float(score))) / 10.0  # Normalize to 0-1
+        except (ValueError, TypeError):
+            return 0.1  # Default low score on parsing failure
+
+    def build_tree(self, goal: str):
+        """Build the MCTS search tree for a given goal."""
+        self.tree_root = _Node(toolchain=[], untried_tools=list(self.available_tools))
 
         for _ in range(self.iterations):
-            node = root
-            # Selection
+            node = self.tree_root
+
+            # 1. Selection: Traverse the tree to find a leaf or expandable node
             while node.is_fully_expanded() and node.children:
                 node = node.select_child(self.exploration_weight)
-            # Expansion
-            if node.untried_actions:
-                action = node.untried_actions.pop(0)
-                new_tasks = node.tasks + [action]
+
+            # 2. Expansion: If the node is not fully expanded, create a new child
+            if not node.is_fully_expanded():
+                tool = node.untried_tools.pop(0)
+                new_toolchain = node.toolchain + [tool]
+
+                # Prevent using the same tool twice in a row
+                remaining_tools = [t for t in self.available_tools if t != tool]
+
                 child = _Node(
-                    tasks=new_tasks,
+                    toolchain=new_toolchain,
                     parent=node,
-                    untried_actions=self._expand_state(goal, new_tasks),
+                    untried_tools=remaining_tools,
                 )
                 node.children.append(child)
                 node = child
-            # Simulation (1 if terminal else 0)
-            reward = 1.0 if node.is_terminal() and len(node.tasks) == target_length else 0.0
-            # Backpropagation
+
+            # 3. Simulation: Estimate the value of the new node's state
+            # In a real scenario, this would be an async call.
+            # For simplicity in this structure, we'll assume the mcp_client can be called synchronously
+            # or this whole loop is run in an async context.
+            # Let's assume the caller will handle the async loop.
+            # **NOTE**: For the test, we'll need an async runner.
+            reward = asyncio.run(self._simulate(node.toolchain, goal))
+
+            # 4. Backpropagation: Update the value and visit counts up the tree
             while node:
                 node.update(reward)
                 node = node.parent
 
-        best = root
-        plan: List[str] = []
-        while best.children:
-            best = best.best_child()
-            plan = best.tasks
-        return plan
+    async def build_tree_async(self, goal: str):
+        """Asynchronously build the MCTS search tree for a given goal."""
+        self.tree_root = _Node(toolchain=[], untried_tools=list(self.available_tools))
+
+        for _ in range(self.iterations):
+            node = self.tree_root
+
+            while node.is_fully_expanded() and node.children:
+                node = node.select_child(self.exploration_weight)
+
+            if not node.is_fully_expanded():
+                tool = node.untried_tools.pop(0)
+                new_toolchain = node.toolchain + [tool]
+                remaining_tools = [t for t in self.available_tools if t != tool]
+
+                child = _Node(
+                    toolchain=new_toolchain,
+                    parent=node,
+                    untried_tools=remaining_tools,
+                )
+                node.children.append(child)
+                node = child
+
+            reward = await self._simulate(node.toolchain, goal)
+
+            while node:
+                node.update(reward)
+                node = node.parent
+
+    async def find_best_toolchain(self, goal: str) -> List[str]:
+        """
+        Builds the search tree and finds the best toolchain for the given goal.
+        """
+        await self.build_tree_async(goal)
+
+        if not self.tree_root:
+            return []
+
+        best_node = self.tree_root
+        path = []
+        while best_node.children:
+            best_node = best_node.best_child()
+            # The toolchain is cumulative, we want the final one.
+            path = best_node.toolchain
+
+        return path

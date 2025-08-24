@@ -1,7 +1,4 @@
 """World model components for persistent repository understanding."""
-
-"""World model components for persistent repository understanding."""
-
 from __future__ import annotations
 
 # KnowledgeGraph requires heavy optional dependencies (e.g. ``networkx``). The

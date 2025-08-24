@@ -1,18 +1,12 @@
-"""Reusable orchestration templates.
+"""
+This module provides orchestration templates for coordinating AI agents.
 
-This module provides two lightweight orchestration helpers used throughout the
-test-suite:
+This module provides two lightweight orchestration helpers:
 
-``MultiAgentOrchestrator``
-    Coordinates a dictionary of specialist agents and records the reasoning
-    path of each run.  It exposes a small API focused on the needs of the unit
-    tests – coordinating specialists, tracking path memory and managing child
-    orchestrators.
-
-``DynamicOrchestrator``
-    Builds LangGraph workflows from simple ``AgentSpec`` definitions.  It is a
-    minimal wrapper that compiles an execution graph at runtime allowing tests
-    to define arbitrary workflows.
+- ``MultiAgentOrchestrator``: Coordinates a dictionary of specialist agents,
+  records the reasoning path, and manages specialist coordination.
+- ``DynamicOrchestrator``: Builds and runs LangGraph workflows from simple
+  ``AgentSpec`` definitions, primarily for testing arbitrary workflows.
 """
 
 from __future__ import annotations
@@ -24,66 +18,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
-# Orchestration Package
-"""
-Multi-agent orchestration system for coordinating specialist AI agents
-
-This package provides:
-- MultiAgentOrchestrator: Coordinates multiple specialists for complex tasks
-- SubOrchestrator: Scoped orchestrator used for nested missions
-- Workflow management and task delegation
-- Result synthesis and conflict resolution
-This package provides building blocks for creating LangGraph based
-orchestration workflows.  The previous specialised orchestrator has been
-replaced by a small, generic template which can dynamically assemble graphs
-from ``AgentSpec`` definitions.
-"""
-
-from importlib import import_module
-from types import ModuleType
-from typing import Any
-
-__all__ = [
-    "AgentSpec",
-    "DynamicOrchestrator",
-    "MultiAgentOrchestrator",
-    "SubOrchestrator",
-    "PathMemory",
-    "MessageBus",
-    "HierarchicalMessageBus",
-    "Event",
-    "BandwidthLimitedChannel",
-    "MissionPlanner",
-    "RedisTaskQueue",
-    "END",
-]
-
-
-def __getattr__(name: str) -> Any:  # pragma: no cover - thin wrapper
-    mapping = {
-        "AgentSpec": (".orchestrator", "AgentSpec"),
-        "DynamicOrchestrator": (".orchestrator", "DynamicOrchestrator"),
-        "MultiAgentOrchestrator": (".orchestrator", "MultiAgentOrchestrator"),
-        "END": (".orchestrator", "END"),
-        "SubOrchestrator": (".sub_orchestrator", "SubOrchestrator"),
-        "PruningManager": (".pruning", "PruningManager"),
-        "PathMemory": (".path_memory", "PathMemory"),
-        "MessageBus": (".message_bus", "MessageBus"),
-        "HierarchicalMessageBus": (".message_bus", "HierarchicalMessageBus"),
-        "Event": (".message_bus", "Event"),
-        "BandwidthLimitedChannel": (".bandwidth_channel", "BandwidthLimitedChannel"),
-        "MissionPlanner": (".mission_planner", "MissionPlanner"),
-        "RedisTaskQueue": (".task_queue", "RedisTaskQueue"),
-    }
-    if name not in mapping:
-        raise AttributeError(f"module 'jarvis.orchestration' has no attribute {name}")
-    module_name, attr = mapping[name]
-    module: ModuleType = import_module(module_name, __name__)
-    value = getattr(module, attr)
-    globals()[name] = value
-    return value
 from langgraph.graph import END, StateGraph
 
+from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
 
 logger = logging.getLogger(__name__)
@@ -95,16 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class MultiAgentOrchestrator:
-    """Coordinate a collection of specialist agents.
-
-    Parameters
-    ----------
-    mcp_client:
-        Client used by specialists.
-    specialists:
-        Optional mapping of specialist name to the object implementing
-        ``process_task``.
-    """
+    """Coordinate a collection of specialist agents."""
 
     def __init__(
         self,
@@ -113,15 +41,15 @@ class MultiAgentOrchestrator:
         knowledge_graph: Any | None = None,
         specialists: Optional[Dict[str, Any]] = None,
     ) -> None:
-        from jarvis.agents.request_classifier import RequestClassifier  # Local import
-
         self.mcp_client = mcp_client
         self.monitor = monitor
         self.knowledge_graph = knowledge_graph
         self.specialists: Dict[str, Any] = specialists or {}
         self.child_orchestrators: Dict[str, "SubOrchestrator"] = {}
-        self.request_classifier = RequestClassifier(list(self.specialists.keys()))
         self.collaboration_patterns = defaultdict(int)
+        self.task_history = []
+        self.active_collaborations = {}
+        self.exploration_stats: List[Dict[str, float]] = []
 
     def list_child_orchestrators(self) -> List[str]:
         """List identifiers of active child orchestrators."""
@@ -146,13 +74,43 @@ class MultiAgentOrchestrator:
             user_context=user_context,
         )
 
-self.task_history = []
-        self.active_collaborations = {}
-        self.exploration_stats: List[Dict[str, float]] = []
+    async def _analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
+        """Analyze a request to determine complexity and specialists needed."""
+        import json
 
-    async def analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
-        """Analyze a request using the :class:`RequestClassifier`."""
-        return self.request_classifier.classify(request, code)
+        prompt = f"""
+Analyze the following user request to determine the required specialists and the task complexity.
+
+**Available Specialists:** {', '.join(self.specialists.keys())}
+
+**User Request:**
+{request}
+
+**Code Context (if any):**
+{code or "N/A"}
+
+Respond with a JSON object containing two keys:
+1. "specialists_needed": A list of specialist names from the available list.
+2. "complexity": A string, one of "low", "medium", or "high".
+
+Example:
+{{
+  "specialists_needed": ["coder", "security"],
+  "complexity": "medium"
+}}
+
+JSON Response:
+"""
+        try:
+            response_str = await self.mcp_client.generate_response("ollama", "llama3.2", prompt)
+            analysis = json.loads(response_str)
+            if not isinstance(analysis.get("specialists_needed"), list) or not isinstance(analysis.get("complexity"), str):
+                raise ValueError("Invalid JSON structure from analysis model")
+            return analysis
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to analyze request complexity: {e}")
+            return {"specialists_needed": [], "complexity": "unknown"}
+
 
     async def coordinate_specialists(
         self,
@@ -163,9 +121,9 @@ self.task_history = []
         novelty_boost: float = 0.0,
     ) -> Dict[str, Any]:
         """Coordinate multiple specialists to handle complex request."""
-        analysis = await self.analyze_request_complexity(request, code)
+        analysis = await self._analyze_request_complexity(request, code)
         analysis["coordination_type"] = self._determine_coordination_type(
-            analysis["specialists_needed"], analysis["complexity"]
+            analysis.get("specialists_needed", []), analysis.get("complexity", "unknown")
         )
         analysis["collaboration_depth"] = self._determine_collaboration_depth(
             analysis["specialists_needed"]
@@ -297,12 +255,12 @@ self.task_history = []
             auction = run_vickrey_auction([candidate])
             self.exploration_stats.append(auction.metrics)
 
-           return {
-                "type": "parallel_specialists",
+            return {
+                "type": "single_specialist",
                 "complexity": analysis["complexity"],
-                "specialists_used": specialists_needed,
-                "results": specialist_results,
-                "synthesized_response": merged,
+                "specialists_used": [specialist_type],
+                "results": {specialist_type: result},
+                "synthesized_response": result.get("response", ""),
                 "confidence": auction.winner.bid,
                 "coordination_summary": f"Auction won by {auction.winner.agent}",
                 "auction": {"winner": auction.winner.agent, "price": auction.price},
@@ -352,17 +310,12 @@ self.task_history = []
                             path_memory.add_decisions(res.get("suggestions", [])[:3])
                     continue
 
-for (specialist_type, specialist, _, _), response in zip(
-                    items, responses
-                ):
-                    result = specialist.process_model_response(
-                        response, model, task
-                    )
+                for (specialist_type, specialist, _, _), response in zip(items, responses):
+                    result = specialist.process_model_response(response, model, task)
                     specialist_results[specialist_type] = result
-                    successful_results.append(result)
-                    path_memory.add_decisions(
-                        result.get("suggestions", [])[:3]
-                    )
+                    if result.get("type") != "error":
+                        successful_results.append(result)
+                        path_memory.add_decisions(result.get("suggestions", [])[:3])
 
             candidates = [
                 Candidate(
@@ -372,25 +325,21 @@ for (specialist_type, specialist, _, _), response in zip(
                 )
                 for res in successful_results
             ]
-            auction = run_vickrey_auction(candidates)
-            self.exploration_stats.append(auction.metrics)
-            merged = "\n\n".join(
-                f"{c.agent}: {c.content}" for c in auction.rankings
-            )
+            auction = run_vickrey_auction(candidates) if candidates else None
+            if auction:
+                self.exploration_stats.append(auction.metrics)
 
             synthesized_response = await self._synthesize_parallel_results(request, successful_results)
-            overall_confidence = self._calculate_overall_confidence(successful_results)
             return {
-return {
                 "type": "parallel_specialists",
                 "complexity": analysis["complexity"],
                 "specialists_used": specialists_needed,
                 "results": specialist_results,
-                "synthesized_response": merged,
-                "confidence": auction.winner.bid,
-                "coordination_summary": f"Auction won by {auction.winner.agent}",
-                "auction": {"winner": auction.winner.agent, "price": auction.price},
-                "exploration_metrics": auction.metrics,
+                "synthesized_response": synthesized_response,
+                "confidence": auction.winner.bid if auction else 0.0,
+                "coordination_summary": f"Auction won by {auction.winner.agent}" if auction else "No winner",
+                "auction": {"winner": auction.winner.agent, "price": auction.price} if auction else {},
+                "exploration_metrics": auction.metrics if auction else {},
             }
         except Exception as e:
             logger.error(f"Parallel specialist analysis failed: {e}")
@@ -425,17 +374,32 @@ return {
                 logger.info(f"Completed {specialist_type} analysis, passing context to next specialist")
 
             synthesized_response = await self._synthesize_sequential_results(request, specialist_results)
-return {
+
+            candidates = [
+                Candidate(
+                    agent=res.get("specialist", stype),
+                    bid=float(res.get("confidence", 0.0)),
+                    content=res.get("response", ""),
+                )
+                for stype, res in specialist_results.items()
+            ]
+            auction = run_vickrey_auction(candidates) if candidates else None
+            winner_agent = auction.winner.agent if auction else "N/A"
+            winner_bid = auction.winner.bid if auction else 0.0
+            auction_price = auction.price if auction else 0.0
+            if auction:
+                self.exploration_stats.append(auction.metrics)
+
+            return {
                 "type": "sequential_specialists",
                 "complexity": analysis["complexity"],
                 "specialists_used": specialists_needed,
                 "results": specialist_results,
                 "synthesized_response": synthesized_response,
-                "confidence": auction.winner.bid,
-                "coordination_summary": f"Auction won by {auction.winner.agent} after sequential analysis",
-                "auction": {"winner": auction.winner.agent, "price": auction.price},
-                "exploration_metrics": auction.metrics,
-            }
+                "confidence": winner_bid,
+                "coordination_summary": f"Auction won by {winner_agent} after sequential analysis",
+                "auction": {"winner": winner_agent, "price": auction_price},
+                "exploration_metrics": auction.metrics if auction else {},
             }
         except Exception as e:
             logger.error(f"Sequential specialist analysis failed: {e}")
@@ -544,6 +508,7 @@ return {
         overall_health = "healthy" if all(h["status"] == "healthy" for h in health_results.values()) else "degraded"
         return {"overall_status": overall_health, "specialists": health_results, "timestamp": datetime.now().isoformat()}
 
+
 # ---------------------------------------------------------------------------
 # Dynamic execution graphs
 # ---------------------------------------------------------------------------
@@ -585,5 +550,6 @@ class DynamicOrchestrator:
         result = await self.workflow.ainvoke(state)
         logger.debug("Workflow completed with state: %s", result)
         return result
+
 
 __all__ = ["AgentSpec", "DynamicOrchestrator", "MultiAgentOrchestrator", "END"]

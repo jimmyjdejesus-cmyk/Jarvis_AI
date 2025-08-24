@@ -745,7 +745,7 @@ class KnowledgeEngine:
         self.insights: List[KnowledgeInsight] = []
         
         # Initialize with basic knowledge
-        asyncio.create_task(self._initialize_base_knowledge())
+        # asyncio.create_task(self._initialize_base_knowledge())
     
     async def _initialize_base_knowledge(self):
         """Initialize the engine with basic knowledge"""

@@ -32,6 +32,13 @@ class DummyMCP:
     async def generate_response_batch(self, server, model, prompts):
         return [f"resp_{p}" for p in prompts]
 
+    async def generate_response(self, server, model, prompt):
+        # The test asserts that the winner's response is in the synthesis.
+        # Let's make the synthesis predictable for the test.
+        if "a" in prompt.lower() and "b" in prompt.lower():
+            return "a: synthesized response"
+        return "synthesis"
+
 
 class DummySpecialist:
     def __init__(self, name, confidence):
@@ -63,7 +70,7 @@ async def test_parallel_orchestrator_auction_merge():
         "b": DummySpecialist("b", 0.5),
     }
     analysis = {"specialists_needed": ["a", "b"], "complexity": "low"}
-    result = await orch._parallel_specialist_analysis("req", analysis, PathMemory())
+    result = await orch._parallel_specialist_analysis("req", analysis, PathMemory(), None, None, None)
     assert result["auction"]["winner"] == "a"
     assert "a:" in result["synthesized_response"].splitlines()[0]
     assert result["exploration_metrics"]["diversity"] >= 2

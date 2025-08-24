@@ -33,8 +33,9 @@ from jarvis.agents.critics import (
 )
 from jarvis.agents.curiosity_agent import CuriosityAgent
 from jarvis.agents.mission_planner import MissionPlanner
-from jarvis.memory.memory_manager import MemoryManager, ProjectMemory
-from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker, SystemMonitor
+from jarvis.memory.project_memory import MemoryManager, ProjectMemory
+from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
+from jarvis.homeostasis import SystemMonitor
 from jarvis.orchestration.orchestrator import (
     AgentSpec,
     DynamicOrchestrator,
