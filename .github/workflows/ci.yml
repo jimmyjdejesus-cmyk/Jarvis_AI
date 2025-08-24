@@ -25,6 +25,8 @@ jobs:
           black --check jarvis/logging
       - name: Test
         run: pytest
+      - name: Benchmark harness
+        run: python benchmarks/harness.py --ci
       - name: Packaging
         run: python -m build --sdist --wheel
 

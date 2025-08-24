@@ -49,6 +49,13 @@
 - Created tests for mission planning and queue integration.
 - Ran `PYTHONPATH=. pytest tests/test_mission_planner.py -q`.
 
+## 2025-08-24
+- Added standardized benchmarking harness with coding, repo reasoning and Q&A scenarios.
+- Generated result cards with summaries and latency plot.
+- Hooked harness into CI and created unit test.
+- Ran `flake8 benchmarks/harness.py tests/test_benchmark_harness.py`, `black benchmarks/harness.py tests/test_benchmark_harness.py --config /dev/null`, `pytest tests/test_benchmark_harness.py -q` and `python benchmarks/harness.py`.
+
+
 ## 2025-09-01
 - Added root cause failure analysis with `RootCauseAnalyzer` and negative pathway support in `PolicyOptimizer` and `HierarchicalHypergraph`.
 - Created unit test for negative pathway creation.

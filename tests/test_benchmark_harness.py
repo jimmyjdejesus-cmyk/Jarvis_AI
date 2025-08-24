@@ -1,26 +1,15 @@
 import asyncio
-import pathlib
 import sys
+from pathlib import Path
 
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
+# Ensure repository root on path for direct test invocation
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from benchmarks import BenchmarkScenario, BenchmarkRunner, benchmark_table
-
-
-async def dummy_scenario(context):
-    # Simulate some response; using caching to test functionality
-    cached = context.get_cached("prompt")
-    if cached:
-        return cached
-    context.set_cached("prompt", "ok")
-    await asyncio.sleep(0)
-    return "ok"
+from benchmarks.harness import run_standard_benchmarks  # noqa: E402
 
 
-def test_runner_collects_metrics():
-    runner = BenchmarkRunner([BenchmarkScenario("dummy", dummy_scenario)])
-    balanced = asyncio.run(runner.run("balanced"))
-    no_prune = asyncio.run(runner.run("no-prune"))
-    table = benchmark_table(balanced, no_prune)
-    assert table[0]["scenario"] == "dummy"
-    assert 0 <= table[0]["token_savings"] <= 1
+def test_run_standard_benchmarks(tmp_path: Path) -> None:
+    results = asyncio.run(run_standard_benchmarks(tmp_path))
+    assert {"coding", "repo_reasoning", "q_and_a"} <= set(results.keys())
+    metrics_files = list(tmp_path.glob("*_metrics.json"))
+    assert metrics_files, "metrics file not written"
