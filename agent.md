@@ -397,6 +397,13 @@
 
 
 
+## 2025-02-14
+- Implemented `ResearchAgent` with web scraping, summarization, and citation tracking utilities.
+- Added `WebSearchTool` and `WebReaderTool` helpers.
+- Created unit tests mocking HTTP responses for the research agent.
+- Ran `pytest tests/test_research_agent.py -q`.
+=======
+
 
 ## 2025-08-24
 - Moved VS Code integration into `integrations/vscode` with repository indexer suggestions and debugging.
@@ -416,4 +423,5 @@
 - Added tests verifying generated suites run and invalid code handling.
 - Ran `ruff check jarvis/workflows/integrations.py tests/test_workflow_test_generation.py --fix` (TOML parse error).
 - Ran `pytest tests/test_workflow_test_generation.py -q`.
+
 
