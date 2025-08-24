@@ -371,3 +371,10 @@
 - Ran `pytest tests/test_competitive_oracle.py -q`.
 
 
+
+## 2025-08-24
+- Added specialized agent and tool registries in `jarvis_sdk` with dedicated decorators.
+- Updated documentation with examples for `jarvis_tool` and `jarvis_agent`.
+- Added unit tests for SDK registration.
+- Created separate `pyproject.toml` for SDK packaging and attempted build & TestPyPI upload.
+- Ran `pytest tests/test_sdk_registration.py -q` and `python -m build` in `jarvis_sdk/`.
