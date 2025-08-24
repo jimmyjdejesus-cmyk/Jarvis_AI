@@ -4,10 +4,16 @@ from pathlib import Path
 PLUGIN_TEMPLATE = '''from jarvis_sdk import jarvis_plugin
 
 @jarvis_plugin(plugin_type="{plugin_type}", description="{description}")
-def {name}():
-    """{description}"""
-    # TODO: implement plugin logic
-    return None
+def {name}(text: str) -> str:
+    """{description}
+
+    Args:
+        text: Text to echo back.
+
+    Returns:
+        The same text that was provided.
+    """
+    return text
 '''
 
 
