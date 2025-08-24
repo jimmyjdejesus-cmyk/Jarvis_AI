@@ -6,10 +6,13 @@ import uuid
 import os
 import asyncio
 from typing import List, Dict, Any, Callable
+
 from jarvis.memory.memory_bus import MemoryBus
 from jarvis.tools.web_tools import search_web
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
+from jarvis.orchestration.mission_planner import MissionPlanner
+from jarvis.ecosystem import superintelligence
 
 class TeamMemberAgent:
     """Base class for all team member agents."""
@@ -186,18 +189,105 @@ class MetaAgent:
         self.orchestrators: List[OrchestratorAgent] = []
         # The MetaAgent manages the shared bus for all its orchestrators
         self.shared_memory_bus = MemoryBus(os.path.join(directory, "shared_orchestrator_bus"))
+        missions_dir = os.path.join(directory, "config", "missions")
+        self.mission_planner = MissionPlanner(missions_dir)
+        # Internal metrics for evaluating emergent behavior
+        self._metrics: Dict[str, List[Dict[str, Any]]] = {
+            "plans": [],
+            "critic_feedback": [],
+        }
         self.log("Meta-Agent initialized and shared memory bus is active.")
 
     def log(self, message: str, data: Dict[str, Any] = None):
         """Logs a message from the Meta-Agent to the shared bus."""
         self.shared_memory_bus.log_interaction(self.agent_id, "Meta", message, data)
 
+    def plan_mission(self, mission_name: str) -> List[Dict[str, Any]]:
+        """Break a mission into sub-tasks and enqueue them.
+
+        Parameters
+        ----------
+        mission_name: str
+            Name of the mission file (without extension) located in ``config/missions``.
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            The tasks that were enqueued.
+        """
+        tasks = self.mission_planner.plan(mission_name)
+        self.log(f"Planned mission '{mission_name}' with {len(tasks)} tasks.")
+        return tasks
+
+    def next_task(self) -> Dict[str, Any] | None:
+        """Retrieve the next task from the mission queue."""
+        task = self.mission_planner.queue.dequeue()
+        if task:
+            self.log(f"Dequeued task {task.get('id', '')}.")
+        return task
+
     def spawn_orchestrator(self, objective: str, directory: str = ".") -> OrchestratorAgent:
-        """Dynamically creates and deploys an OrchestratorAgent for a new objective."""
-        self.log(f"Spawning new orchestrator for objective: '{objective}' in directory '{directory}'.")
+        """Dynamically creates and deploys an OrchestratorAgent for a new objective.
+
+        Uses a simple heuristic to score the objective and records the plan quality
+        for later analysis of emergent behavior.
+        """
+        score = self._evaluate_objective(objective)
+        self._metrics["plans"].append({"objective": objective, "score": score})
+        self.log(
+            f"Spawning new orchestrator for objective: '{objective}' in directory '{directory}'.",
+            data={"planning_score": score},
+        )
         orchestrator = OrchestratorAgent(self, objective, directory, shared_bus=self.shared_memory_bus)
         self.orchestrators.append(orchestrator)
         return orchestrator
+
+    def register_result(self, orchestrator: OrchestratorAgent, result: Any) -> Dict[str, Any]:
+        """Record the result of an orchestrator run and gather critic feedback.
+
+        Parameters
+        ----------
+        orchestrator:
+            The orchestrator that produced the result.
+        result:
+            The final result from the orchestrator's run.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The critic feedback for the result.
+        """
+        feedback = self._critic_feedback(result)
+        self._metrics["critic_feedback"].append(feedback)
+        self.log(
+            "Critic feedback recorded",
+            data={"orchestrator": orchestrator.agent_id, "feedback": feedback},
+        )
+        try:
+            superintelligence.record_meta_output(orchestrator.agent_id, result, feedback)
+        except Exception as exc:  # pragma: no cover - defensive
+            self.log("Failed to record meta output", data={"error": str(exc)})
+        return feedback
+
+    def get_metrics(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Return a copy of collected metrics for analysis."""
+        return {k: list(v) for k, v in self._metrics.items()}
+
+    def _evaluate_objective(self, objective: str) -> float:
+        """Basic heuristic to estimate objective complexity.
+
+        The heuristic scores objectives based on word count, capped at 1.0.
+        """
+        words = objective.split()
+        return min(1.0, len(words) / 20)
+
+    def _critic_feedback(self, result: Any) -> Dict[str, Any]:
+        """Generate a simple critic assessment for a result."""
+        success = bool(result)
+        feedback = {"success": success, "issues": []}
+        if not success:
+            feedback["issues"].append("empty_result")
+        return feedback
 
 # Example usage:
 if __name__ == "__main__":

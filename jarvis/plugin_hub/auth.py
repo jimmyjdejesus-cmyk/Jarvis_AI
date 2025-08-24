@@ -1,7 +1,7 @@
 """Simple authentication and RBAC utilities for the plugin hub."""
 
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 from fastapi import Depends, HTTPException, status
@@ -14,6 +14,10 @@ _users: Dict[str, Dict[str, object]] = {
     "admin": {
         "password_hash": security_manager.hash_password("admin"),
         "roles": ["admin"],
+    },
+    "publisher": {
+        "password_hash": security_manager.hash_password("publisher"),
+        "roles": ["publisher"],
     },
     "user": {
         "password_hash": security_manager.hash_password("user"),
@@ -53,9 +57,13 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
     return token_data
 
 
-def require_role(role: str):
+def require_role(role: Union[str, List[str]]):
+    """Dependency that ensures the current user has one of the required roles."""
+
+    roles = [role] if isinstance(role, str) else role
+
     def _role_dependency(user: Dict[str, object] = Depends(get_current_user)):
-        if role not in user.get("roles", []):
+        if not any(r in user.get("roles", []) for r in roles):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
         return user
 
