@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import re
 import time
+import shutil
 
 __all__ = ["ScopedLogWriter"]
 
@@ -51,6 +52,8 @@ class ScopedLogWriter:
     project_id: str
     run_id: str = field(default_factory=lambda: str(int(time.time())))
     base_dir: Path = Path("logs")
+    max_bytes: int = 1_000_000
+    backups: int = 5
 
     def __post_init__(self) -> None:
         self.run_dir = self.base_dir / "projects" / self.project_id / "runs" / self.run_id
@@ -61,8 +64,24 @@ class ScopedLogWriter:
     # ------------------------------------------------------------------
     # Logging helpers
     # ------------------------------------------------------------------
+    def _maybe_rotate(self, path: Path) -> None:
+        """Rotate ``path`` if it exceeds ``max_bytes``."""
+
+        if not path.exists() or path.stat().st_size < self.max_bytes:
+            return
+        for i in range(self.backups, 0, -1):
+            src = path.with_suffix(path.suffix + f".{i}")
+            dst = path.with_suffix(path.suffix + f".{i+1}")
+            if src.exists():
+                if i == self.backups:
+                    src.unlink()
+                else:
+                    src.rename(dst)
+        path.rename(path.with_suffix(path.suffix + ".1"))
+
     def _write(self, path: Path, text: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        self._maybe_rotate(path)
         cleaned = _redact_secrets(text)
         with path.open("a", encoding="utf-8") as f:
             f.write(cleaned + "\n")
@@ -101,24 +120,53 @@ class ScopedLogWriter:
     # Query & export helpers
     # ------------------------------------------------------------------
     def search(self, query: str, path: Optional[Path] = None) -> List[str]:
-        """Return log lines that contain ``query``.
+        """Return log lines containing ``query``.
 
         Parameters
         ----------
         query:
-            Case-insensitive substring to look for.
+            Case-insensitive substring to search for.
         path:
-            Optional specific log file to restrict the search to.
+            Restrict search to a specific log file.
         """
 
-        targets = [str(path)] if path else list(self._index.keys())
+        query = query.lower()
+        if path is None:
+            files = list(self.run_dir.rglob("*.md*"))
+        else:
+            files = [path]
         results: List[str] = []
-        for p in targets:
-            for line in self._index.get(p, []):
-                if query.lower() in line.lower():
-                    results.append(line)
+        for f in files:
+            if not f.exists():
+                continue
+            try:
+                with f.open("r", encoding="utf-8") as fh:
+                    for line in fh:
+                        if query in line.lower():
+                            results.append(line.rstrip())
+            except OSError:
+                continue
         return results
 
     def export_transcript(self) -> Path:
-        """Return the path to the project transcript for download."""
+        """Return path to the project transcript."""
         return self.project_log
+
+    def export_run(self, dest: Optional[Path] = None) -> Path:
+        """Create a zipped archive of the current run directory.
+
+        Parameters
+        ----------
+        dest:
+            Destination path without extension.  Defaults to ``run_id``
+            inside ``run_dir``'s parent.
+
+        Returns
+        -------
+        Path
+            Path to the created archive.
+        """
+
+        dest = dest or (self.run_dir.parent / self.run_id)
+        archive = shutil.make_archive(str(dest), "zip", root_dir=self.run_dir)
+        return Path(archive)
