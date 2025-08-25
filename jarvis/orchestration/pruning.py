@@ -13,7 +13,8 @@ import os
 from typing import Any, Dict, List, Optional
 
 from memory_service import PathRecord, PathSignature, record_path
-from .message_bus import MessageBus # Assuming MessageBus is in a .message_bus module
+from .message_bus import MessageBus  # Assuming MessageBus is in a .message_bus module
+from agent.hitl.policy import HITLPolicy, ApprovalCallback
 
 
 @dataclass
@@ -173,9 +174,10 @@ class PruningManager:
     active_teams: List[str] = field(default_factory=list)
     lineage: List[PruneRecord] = field(default_factory=list)
     bq_approved: bool = False
-    
+
     # PruningEvaluator instance for scoring
     evaluator: Optional[PruningEvaluator] = None
+    hitl_policy: HITLPolicy | None = None
 
     def __post_init__(self) -> None:
         os.makedirs(self.snapshots_dir, exist_ok=True)
@@ -201,9 +203,26 @@ class PruningManager:
             "snapshot_required": True,
         }
 
-    def commit(self, team: str, reason: str, actor: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def commit(
+        self,
+        team: str,
+        reason: str,
+        actor: str,
+        context: Optional[Dict[str, Any]] = None,
+        modal: ApprovalCallback | None = None,
+    ) -> Dict[str, Any]:
         """Execute prune after a successful dry run."""
+
         plan = self.dry_run(team, reason, actor, context)
+        if self.hitl_policy and self.hitl_policy.requires_approval("state_prune"):
+            if modal is None:
+                raise ValueError("Approval modal required for prune commit")
+            approved = self.hitl_policy.request_approval_sync(
+                "state_prune", f"Prune team {team}: {reason}", modal, user=actor
+            )
+            if not approved:
+                raise PermissionError("Prune operation denied")
+
         snapshot = self.snapshot_before_prune(team)
         state = self.state_store.pop(team, None)
         if team in self.active_teams:
