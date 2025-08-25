@@ -44,7 +44,6 @@ sec_pkg.SecurityManager = _DummySecurityManager
 sec_pkg.get_security_manager = get_security_manager
 sys.modules["jarvis.auth.security_manager"] = sec_pkg
 
-# Stub knowledge graph to avoid networkx dependency
 # Stub knowledge graph and hypergraph to avoid networkx dependency
 kg_pkg = types.ModuleType("jarvis.world_model.knowledge_graph")
 hg_pkg = types.ModuleType("jarvis.world_model.hypergraph")
@@ -104,17 +103,31 @@ mem_pkg.ProjectMemory = _DummyProjectMemory
 sys.modules["jarvis.memory.project_memory"] = mem_pkg
 
 from jarvis.ecosystem.meta_intelligence import ExecutiveAgent
+from jarvis.agents.critics import CriticVerdict, WhiteGate
 
 
-def test_critic_toggle() -> None:
-    agent = ExecutiveAgent("meta", enable_red_team=False, enable_blue_team=False)
+class DummyRedCritic:
+    def __init__(self):
+        self.calls = 0
+
+    async def review(self, artifact, trace):
+        self.calls += 1
+        if self.calls == 1:
+            return CriticVerdict(False, ["fix issue"], 0.0, "needs fix")
+        return CriticVerdict(True, [], 0.0, "ok")
+
+
+class DummyBlueCritic:
+    def review(self, artifact, trace):
+        return CriticVerdict(True, [], 0.6, "risky")
+
+
+def test_fix_loop_and_hitl():
+    agent = ExecutiveAgent("meta", enable_red_team=True, enable_blue_team=True)
+    agent.red_team = DummyRedCritic()
+    agent.blue_team = DummyBlueCritic()
+    agent.white_gate = WhiteGate(risk_threshold=0.5)
     result = asyncio.run(agent.execute_task({"type": "unknown"}))
-    assert "critic" in result
-    assert "red" not in result["critic"]
-    assert "blue" not in result["critic"]
-
-    agent2 = ExecutiveAgent("meta2", enable_red_team=True, enable_blue_team=True)
-    result2 = asyncio.run(agent2.execute_task({"type": "unknown"}))
-    assert "critic" in result2
-    assert "red" in result2["critic"]
-    assert "blue" in result2["critic"]
+    assert agent.red_team.calls == 2
+    assert result["critic"]["white"]["approved"] is False
+    assert "HITL" in result["critic"]["white"]["notes"]
