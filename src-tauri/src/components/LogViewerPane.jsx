@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { http } from '@tauri-apps/api';
+import { socket } from '../socket';
 
-// DEV-COMMENT: This component displays the development logs from the agent.md file.
-// It fetches the content from the backend and provides a simple way to view it.
-// A manual refresh button is included to allow the user to fetch the latest logs.
+// DEV-COMMENT: This component displays run-scoped logs produced by the
+// `ScopedLogWriter`.  It queries the backend for the latest run transcript
+// and provides a manual refresh button.
 
 const LogViewerPane = () => {
   const [logs, setLogs] = useState('');
@@ -14,7 +15,10 @@ const LogViewerPane = () => {
   // especially if this component were to become more complex.
   const fetchLogs = useCallback(async () => {
     try {
-      const response = await http.fetch('http://127.0.0.1:8000/api/logs');
+      const response = await http.fetch('http://127.0.0.1:8000/logs/latest', {
+        method: 'GET',
+        responseType: http.ResponseType.Text,
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -34,10 +38,19 @@ const LogViewerPane = () => {
     fetchLogs();
   }, [fetchLogs]);
 
+  // DEV-COMMENT: Subscribe to live log updates via WebSocket.
+  useEffect(() => {
+    const handler = (entry) => {
+      setLogs((prev) => `${prev}\n${entry}`.trim());
+    };
+    socket.on('log_update', handler);
+    return () => socket.off('log_update', handler);
+  }, []);
+
   return (
     <div className="pane">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>agent.md Log</h2>
+        <h2>Run Log</h2>
         <button onClick={fetchLogs}>Refresh</button>
       </div>
       <div className="pane-content log-viewer">

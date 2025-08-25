@@ -15,3 +15,11 @@ orch:
   min_active_teams: 2
   policy: balanced
 
+hitl:
+  destructive_ops:
+    - git_write
+    - file_write
+    - file_delete
+    - external_post
+    - state_prune
+
