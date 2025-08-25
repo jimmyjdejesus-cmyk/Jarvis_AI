@@ -13,6 +13,9 @@ import types
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import requests
+import pytest
+
 # Stub out the jarvis package to avoid importing heavy optional dependencies
 root = Path(__file__).resolve().parents[1]
 jarvis_pkg = types.ModuleType("jarvis")
@@ -28,6 +31,7 @@ tools_pkg.__path__ = [str(root / "jarvis" / "tools")]
 sys.modules.setdefault("jarvis.tools", tools_pkg)
 
 from jarvis.agents.research_agent import ResearchAgent
+from jarvis.tools.web_tools import WebReaderTool
 
 
 def _make_response(text: str) -> Mock:
@@ -38,38 +42,77 @@ def _make_response(text: str) -> Mock:
     return resp
 
 
-def test_recursive_search_and_citations_with_mocked_http() -> None:
-    """Verify iterative search and citation tracking."""
+def test_structured_report_and_artifact_saving(tmp_path: Path) -> None:
+    """Verify structured report generation and artifact persistence."""
 
-    # HTML snippets for search results and page contents.  Each call to
-    # ``requests.get`` will yield the next response in this list.
-    search_html_1 = "<a class='result__a' href='http://a.com'>First</a>"
-    read_html_1 = "<p>follow-up query</p>"
-    search_html_2 = "<a class='result__a' href='http://b.com'>Second</a>"
-    read_html_2 = "<p>final content</p>"
+    search_html = "<a class='result__a' href='http://example.com'>France</a>"
+    read_html = "<p>The capital of France is Paris.</p>"
 
     side_effects = [
-        _make_response(search_html_1),
-        _make_response(read_html_1),
-        _make_response(search_html_2),
-        _make_response(read_html_2),
+        _make_response(search_html),
+        _make_response(read_html),
     ]
 
     with patch("jarvis.tools.web_tools.requests.get", side_effect=side_effects) as mock_get:
         agent = ResearchAgent()
-        report = agent.research("initial query", depth=2)
+        report = agent.research("What is the capital of France?", save_dir=tmp_path)
 
-    # Ensure the underlying HTTP client was invoked for each request
-    assert mock_get.call_count == 4
+    assert mock_get.call_count == 2
+    assert report["question"] == "What is the capital of France?"
+    assert report["sources"][0]["url"] == "http://example.com"
+    assert report["claim_evidence"][0]["claim"] == "The capital of France is Paris."
+    assert report["gaps"] == []
+    assert report["confidence"] == 1.0
 
-    # The report should contain two iterations and two citations
-    assert len(report["iterations"]) == 2
-    assert len(report["citations"]) == 2
-    assert report["citations"][0]["url"] == "http://a.com"
+    md_path = tmp_path / "research_what_is_the_capital_of_france.md"
+    json_path = tmp_path / "research_what_is_the_capital_of_france.json"
+    assert md_path.exists() and json_path.exists()
 
-    # Ensure markdown/json export includes citations
-    md = agent.get_report_markdown()
-    js = json.loads(agent.get_report_json())
-    assert "http://a.com" in md
-    assert js["citations"][1]["url"] == "http://b.com"
+    # Ensure markdown/json export includes citation
+    md_text = md_path.read_text()
+    js = json.loads(json_path.read_text())
+    assert "http://example.com" in md_text
+    assert js["sources"][0]["url"] == "http://example.com"
 
+
+def test_research_handles_no_search_results() -> None:
+    """ResearchAgent records gaps and low confidence when search is empty."""
+
+    empty_search_html = "<html></html>"
+
+    with patch(
+        "jarvis.tools.web_tools.requests.get",
+        side_effect=[_make_response(empty_search_html)],
+    ):
+        agent = ResearchAgent()
+        report = agent.research("Unfindable question")
+
+    assert report["sources"] == []
+    assert "No sources found" in report["gaps"]
+    assert "No claims generated" in report["gaps"]
+    assert report["confidence"] == 0.5
+
+
+def test_research_handles_read_failure() -> None:
+    """A failed fetch results in gaps and reduced confidence."""
+
+    search_html = "<a class='result__a' href='http://example.com'>Title</a>"
+
+    with patch(
+        "jarvis.tools.web_tools.requests.get",
+        side_effect=[_make_response(search_html), requests.exceptions.HTTPError("boom")],
+    ):
+        agent = ResearchAgent()
+        report = agent.research("Question")
+
+    assert report["sources"] == []
+    assert "No sources found" in report["gaps"]
+    assert report["confidence"] == 0.5
+
+
+def test_web_reader_tool_rejects_invalid_url() -> None:
+    """WebReaderTool refuses to fetch non-http(s) URLs."""
+
+    reader = WebReaderTool()
+    with pytest.raises(ValueError):
+        reader.read("javascript:alert('xss')")

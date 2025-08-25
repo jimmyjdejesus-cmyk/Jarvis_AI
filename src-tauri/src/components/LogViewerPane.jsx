@@ -8,7 +8,6 @@ import { socket } from '../socket';
  * validating incoming payloads to guard against malformed or malicious
  * messages and surfaces a badge for pending human-in-the-loop actions.
  */
-
 // The log viewer now exposes a connection status indicator, simple
 // text filtering for log lines, and a badge showing pending
 // human-in-the-loop (HITL) actions. These additions aim to make the
@@ -82,7 +81,7 @@ const LogViewerPane = () => {
   useEffect(() => {
     const handler = (data) => {
       if (Array.isArray(data)) {
-        setHitlCount(data.filter(() => true).length);
+        setHitlCount(data.length);
       }
     };
     socket.on('hitl_update', handler);

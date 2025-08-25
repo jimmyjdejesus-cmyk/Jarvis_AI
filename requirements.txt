@@ -14,6 +14,9 @@ langgraph>=0.0.40
 langsmith>=0.0.80
 langgraphstudio>=0.0.1
 
+# --- Graph Utilities ---
+networkx>=3.0
+
 # --- Real-time Communication ---
 # For the desktop application's interactive features
 python-socketio>=5.13.0
@@ -22,8 +25,9 @@ websockets>=15.0.1
 # --- Database Clients ---
 # Clients for the services defined in docker-compose.yml
 qdrant-client>=1.7.0
-neo4j>=5.14.0
+neo4j==5.14.0
 redis>=5.0.0
+networkx>=3.0
 
 # --- UI & Data Visualization ---
 # Streamlit for internal UIs, Plotly for charts
@@ -35,7 +39,9 @@ plotly>=5.14.0
 requests>=2.31.0
 pyyaml>=6.0
 duckduckgo-search>=4.0.0
+beautifulsoup4>=4.12.0
 pydantic
+beautifulsoup4>=4.12.0
 
 # --- Security & System ---
 # Cryptography, password hashing, system monitoring
