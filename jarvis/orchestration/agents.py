@@ -8,7 +8,7 @@ import asyncio
 from typing import List, Dict, Any, Callable
 
 from jarvis.memory.memory_bus import MemoryBus
-from jarvis.tools.web_tools import search_web
+from jarvis.agents.research_agent import ResearchAgent
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
 from jarvis.orchestration.mission_planner import MissionPlanner
@@ -49,13 +49,15 @@ class BlueAdversaryAgent(TeamMemberAgent):
 class YellowCompetitiveAgent(TeamMemberAgent):
     def __init__(self, orchestrator: 'OrchestratorAgent'):
         super().__init__(orchestrator, "Yellow")
-        self.tools["web_search"] = search_web
+        self.research_agent = ResearchAgent(memory_bus=self.local_bus)
 
     def run(self, objective: str, context: Dict[str, Any]) -> Dict[str, Any]:
         self.log("Starting web research to generate competitive ideas.")
-        search_results = self.tools["web_search"](f"innovative ideas for {objective}")
-        self.log("Web search complete.", data={"results": search_results})
-        return {"research_summary": search_results}
+        report = self.research_agent.research(
+            f"innovative ideas for {objective}", save_dir=self.local_bus.log_file.parent
+        )
+        self.log("Web research complete.", data=report)
+        return {"research_summary": report}
 
 class GreenCompetitiveAgent(TeamMemberAgent):
     def __init__(self, orchestrator: 'OrchestratorAgent'):
