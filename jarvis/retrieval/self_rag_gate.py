@@ -18,6 +18,7 @@ class RetrievalMetrics:
 
     precision: float
     latency_ms: float
+    decision: bool
 
 
 class SelfRAGGate:
@@ -79,12 +80,14 @@ class SelfRAGGate:
         start = perf_counter()
         precision = self._compute_precision(results)
         latency_ms = (perf_counter() - start) * 1000.0
-        self.events.append(RetrievalMetrics(precision, latency_ms))
 
+        decision = True
         if not self.enabled:
-            return False
-        if precision < self.precision_threshold:
-            return False
-        if latency_ms > self.max_latency_ms:
-            return False
-        return True
+            decision = False
+        elif precision < self.precision_threshold:
+            decision = False
+        elif latency_ms > self.max_latency_ms:
+            decision = False
+
+        self.events.append(RetrievalMetrics(precision, latency_ms, decision))
+        return decision

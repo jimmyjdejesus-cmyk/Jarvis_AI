@@ -28,6 +28,9 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-24T22:22:49+00:00]** Completed log enhancements, server integration, and UI updates with tests.
 
 
+*   **[2025-08-25]** Added project memory hypergraph with provenance tracking and recorded retrieval decisions in SelfRAGGate with tests.
+=======
+
 * [2025-08-25] Added scout/scholar simulation hooks, reward oracle, and Monte Carlo regularized policy updates with tests.
 =======
 *   **[2025-08-25]** Added unified critic API with red, blue, and white gate integration. Implemented fix-loop retry pipeline and tests for dual-critic flow.
