@@ -2,7 +2,10 @@ import socketio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from typing import List, Dict, Any
+from pydantic import BaseModel
+from typing import Any, Dict, List
+
+from jarvis.orchestration.mission import load_mission
 
 # Create a FastAPI app instance
 app = FastAPI()
@@ -21,6 +24,11 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+
+def broadcast_workflow_update(update: Dict[str, Any]) -> None:
+    """Background task to emit workflow updates over Socket.IO."""
+    sio.start_background_task(sio.emit, "workflow:update", update)
 
 @app.get("/")
 async def read_root():
@@ -43,6 +51,17 @@ async def get_workflow_data() -> Dict[str, List[Dict[str, Any]]]:
         status_code=501,
         detail="Workflow endpoint is not yet implemented."
     )
+
+
+@app.get("/api/workflow/{mission_id}")
+async def get_mission_workflow(mission_id: str) -> Dict[str, Any]:
+    """Serve the persisted DAG for the given mission."""
+    try:
+        mission = load_mission(mission_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="mission not found")
+    return mission.dag.to_dict()
+
 
 @app.get("/api/logs")
 async def get_agent_logs() -> str:
@@ -75,6 +94,36 @@ async def get_hitl_recommendations() -> List[Dict[str, Any]]:
         status_code=501,
         detail="HITL endpoint is not yet implemented."
     )
+
+class HitlDecision(BaseModel):
+    action: str
+
+
+hitl_gates: Dict[str, bool] = {}
+
+
+@app.post("/api/hitl/approve")
+async def approve(decision: HitlDecision) -> Dict[str, str]:
+    """Approve a high-risk operation.
+
+    The frontend or HITL reviewer calls this endpoint to unblock an action
+    previously flagged as high risk. The decision is recorded in the
+    ``hitl_gates`` map which other components consult before executing.
+    """
+    hitl_gates[decision.action] = True
+    return {"status": "approved"}
+
+
+@app.post("/api/hitl/deny")
+async def deny(decision: HitlDecision) -> Dict[str, str]:
+    """Deny a high-risk operation.
+
+    A denial keeps the action blocked and is similarly tracked in
+    ``hitl_gates`` for auditability.
+    """
+    hitl_gates[decision.action] = False
+    return {"status": "denied"}
+
 
 
 # Mount the Socket.IO application to the FastAPI app

@@ -12,6 +12,8 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from jarvis.security.vault import Vault
+
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -100,8 +102,9 @@ class PathSignature(BaseModel):
 # Principal -> collection -> List[PathSignature]
 _paths: Dict[str, Dict[str, List[PathSignature]]] = {}
 
-# File to track project-wide path signatures
-_PROJECT_LOG = Path(__file__).resolve().parent.parent / "agent_project.md"
+# File to track project-wide path signatures (encrypted at rest)
+_PROJECT_LOG = Path(__file__).resolve().parent.parent / "agent_project.log.enc"
+_VAULT = Vault()
 
 
 def generate_hash(signature: PathSignature) -> str:
@@ -113,10 +116,11 @@ def generate_hash(signature: PathSignature) -> str:
 
 
 def _log_project(signature: PathSignature) -> None:
-    """Append the path hash and outcome to ``agent_project.md``."""
-    line = f"- {signature.hash} {signature.outcome.result}\n"
-    with _PROJECT_LOG.open("a", encoding="utf-8") as fh:
-        fh.write(line)
+    """Append the path hash and outcome to encrypted project log."""
+    line = f"- {signature.hash} {signature.outcome.result}\n".encode("utf-8")
+    token = _VAULT.encrypt(line)
+    with _PROJECT_LOG.open("ab") as fh:
+        fh.write(token)
 
 
 def _check_acl(actor: str, target: str, kind: str, op: str) -> None:

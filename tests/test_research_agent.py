@@ -152,4 +152,3 @@ def test_citation_normalization_dedupes_variations() -> None:
         report = agent.research("Question")
 
     assert len(report["sources"]) == 1
-
