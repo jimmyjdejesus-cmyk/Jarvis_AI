@@ -114,5 +114,8 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 =======
 *   **[2025-08-25]** Added mission DAG schema with persistence, planner, UI workflow endpoint, and resume tests.
 
+
 *   **[2025-08-26]** Integrated benchmark metrics envelope, flags, CI perf gate, and baseline dashboard.
 *   [2025-08-26] Cleaned benchmark artifacts, updated CI for targeted linting, and ignored generated results.
+=======
+*   **[2025-08-25]** Added crew and critic registries with permission-aware descriptors, sample crew plugin, docs, and tests.
