@@ -14,6 +14,9 @@ langgraph>=0.0.40
 langsmith>=0.0.80
 langgraphstudio>=0.0.1
 
+# --- Graph Utilities ---
+networkx>=3.0
+
 # --- Real-time Communication ---
 # For the desktop application's interactive features
 python-socketio>=5.13.0
