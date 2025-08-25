@@ -45,11 +45,14 @@ class SubOrchestrator(MultiAgentOrchestrator):
         """
         super().__init__(
             mcp_client,
-            child_specs=child_specs,
             monitor=monitor,
             knowledge_graph=knowledge_graph,
         )
         self.mission_name = mission_name
+
+        if child_specs:
+            for name, spec in child_specs.items():
+                self.create_child_orchestrator(name, spec)
 
         if custom_specialists is not None:
             self.specialists = custom_specialists

@@ -260,7 +260,7 @@ JSON Response:
                 "complexity": analysis["complexity"],
                 "specialists_used": [specialist_type],
                 "results": {specialist_type: result},
-                "synthesized_response": result.get("response", ""),
+                "synthesized_response": await self._synthesize_parallel_results(request, [result]),
                 "confidence": auction.winner.bid,
                 "coordination_summary": f"Auction won by {auction.winner.agent}",
                 "auction": {"winner": auction.winner.agent, "price": auction.price},

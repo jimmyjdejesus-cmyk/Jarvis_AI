@@ -10,8 +10,27 @@ orch_pkg = types.ModuleType("jarvis.orchestration")
 
 
 class _DummyOrchestrator:
+    def __init__(self, *args, **kwargs):
+        self.child_orchestrators = {}
+
     async def coordinate_specialists(self, *args, **kwargs):
         return {}
+
+    def create_child_orchestrator(self, name, spec):
+        self.child_orchestrators[name] = _DummyOrchestrator()
+        return self.child_orchestrators[name]
+
+    def list_child_orchestrators(self):
+        return list(self.child_orchestrators.keys())
+
+    def remove_child_orchestrator(self, name):
+        if name in self.child_orchestrators:
+            del self.child_orchestrators[name]
+            return True
+        return False
+
+    async def _parallel_specialist_analysis(self, *args, **kwargs):
+        return {"synthesized_response": "a: dummy", "auction": {"winner": "a"}, "exploration_metrics": {"diversity": 2}}
 
 
 orch_pkg.MultiAgentOrchestrator = _DummyOrchestrator
