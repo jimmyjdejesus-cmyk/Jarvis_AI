@@ -28,8 +28,10 @@ from jarvis.agents.agent_resources import (
 from jarvis.agents.critics import (
     BlueTeamCritic,
     ConstitutionalCritic,
-    RedTeamCritic,
     CriticFeedback,
+    CriticVerdict,
+    RedTeamCritic,
+    WhiteGate,
 )
 from jarvis.agents.curiosity_agent import CuriosityAgent
 from jarvis.agents.mission_planner import MissionPlanner
@@ -145,12 +147,15 @@ class ExecutiveAgent(AIAgent):
             if self.enable_blue_team
             else None
         )
+        self.white_gate = WhiteGate()
         self.system_monitor = SystemMonitor()
         if self.mcp_client:
             self.mcp_client.monitor = self.system_monitor
         self._initialize_knowledge_graph()
         self.learning_history: List[Dict[str, Any]] = []
         self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
+        self.critic_merger = CriticInsightMerger()
+        self.performance_tracker = PerformanceTracker()
 
     def _initialize_knowledge_graph(self):
         # Placeholder for KG initialization
@@ -200,25 +205,39 @@ class ExecutiveAgent(AIAgent):
             result = {"success": False, "error": f"Unknown meta-task: {task_type}"}
 
         critics: List[Dict[str, Any]] = []
+        result["critic"] = {}
+        red_verdict: CriticVerdict = CriticVerdict(True, [], 0.0, "")
         if self.red_team:
             try:
-                red_review = await self.red_team.review(self.agent_id, json.dumps(result))
+                red_verdict = await self.red_team.review(json.dumps(result), {})
             except Exception as exc:
                 logger.error("Red team review failed: %s", exc)
-                red_review = {"approved": True, "feedback": "Critic error"}
-            result["red_team_review"] = red_review
-            if not red_review.get("approved", True):
+                red_verdict = CriticVerdict(True, [], 0.0, "Critic error")
+            result["critic"]["red"] = red_verdict.to_dict()
+            if not red_verdict.approved:
                 critics.append({
-                    "critic_id": "red_team", "message": red_review.get("feedback", ""),
+                    "critic_id": "red_team",
+                    "message": "; ".join(red_verdict.fixes) or red_verdict.notes,
                     "severity": "high",
                 })
 
         if critics:
-            result["critic_synthesis"] = await self.integrate_critic_feedback(critics)
+            async def _retry() -> Dict[str, Any]:
+                return await self.execute_task({**task, "_retry": True})
 
+            synthesis = await self.integrate_critic_feedback(critics, retry_task=_retry)
+            result["critic_synthesis"] = synthesis
+            if "retry_result" in synthesis:
+                return synthesis["retry_result"]
+
+        blue_verdict: CriticVerdict
         if self.blue_team:
-            result["blue_team_evaluation"] = self.blue_team.evaluate(result)
+            blue_verdict = self.blue_team.review(result, {})
+            result["critic"]["blue"] = blue_verdict.to_dict()
+        else:
+            blue_verdict = CriticVerdict(True, [], 0.0, "")
 
+        result["critic"]["white"] = self.white_gate.merge(red_verdict, blue_verdict).to_dict()
         return result
 
     async def learn_from_feedback(self, feedback: Dict[str, Any]) -> bool:
@@ -349,6 +368,63 @@ class ExecutiveAgent(AIAgent):
     def _record_strategy_from_trace(self, trace: List[str], confidence: float = 1.0) -> str:
         """Store a successful reasoning trace as a strategy node."""
         return self.hypergraph.add_strategy(trace, confidence)
+
+    async def integrate_critic_feedback(
+        self,
+        feedback_items: List[Dict[str, Any]],
+        retry_task: Optional[Callable[[], Awaitable[Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Merge critic feedback and optionally retry a task."""
+        feedback_objs = []
+        for idx, item in enumerate(feedback_items):
+            try:
+                feedback_obj = CriticFeedback(**item)
+                feedback_objs.append(feedback_obj)
+            except TypeError as e:
+                logger.error(
+                    "Failed to construct CriticFeedback from feedback_items[%d]: %s. Item: %s",
+                    idx,
+                    e,
+                    item,
+                )
+        if not feedback_objs:
+            logger.warning(
+                "No valid CriticFeedback objects could be constructed from feedback_items."
+            )
+
+        weighted = self.critic_merger.weight_feedback(feedback_objs)
+        synthesis = self.critic_merger.synthesize_arguments(weighted)
+        logger.info("Critic synthesis: %s", synthesis["combined_argument"])
+
+        result: Dict[str, Any] = {"synthesis": synthesis}
+        if retry_task and synthesis["max_severity"] in ("high", "critical"):
+            try:
+                retry_result = await self._adaptive_retry(
+                    retry_task, synthesis["max_severity"]
+                )
+                result["retry_result"] = retry_result
+            except Exception as e:
+                result["retry_error"] = str(e)
+        return result
+
+    async def _adaptive_retry(
+        self, task: Callable[[], Awaitable[Any]], severity: str, base_delay: float = 0.1
+    ) -> Any:
+        """Retry a task with backoff based on severity."""
+        max_attempts = 3 if severity in ("high", "critical") else 1
+        attempt = 0
+        while attempt < max_attempts:
+            attempt += 1
+            try:
+                result = await task()
+                self.performance_tracker.record_event("retry", True, attempt)
+                return result
+            except Exception as e:
+                self.performance_tracker.metrics["retry_attempts"] += 1
+                logger.warning("Retry %s/%s failed: %s", attempt, max_attempts, e)
+                if attempt >= max_attempts:
+                    self.performance_tracker.record_event("retry", False, attempt)
+                    raise
 
 
 # This class seems to be a dependency for ExecutiveAgent, adding a placeholder

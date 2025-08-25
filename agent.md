@@ -27,8 +27,10 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-24T22:19:48+00:00]** Started implementing log enhancements: extending scoped writer, logging orchestration events, FastAPI endpoint, and UI log viewer.
 *   **[2025-08-24T22:22:49+00:00]** Completed log enhancements, server integration, and UI updates with tests.
 
+*   **[2025-08-25]** Added unified critic API with red, blue, and white gate integration. Implemented fix-loop retry pipeline and tests for dual-critic flow.
+=======
+
 
 *   **[2025-08-26]** Added hierarchical orchestrator template with step context/results, child orchestrator spawning with event bubbling, crew presets, and tests verifying log aggregation and crew swapping.
 =======
 *   **[2025-08-25]** Added mission DAG schema with persistence, planner, UI workflow endpoint, and resume tests.
-
