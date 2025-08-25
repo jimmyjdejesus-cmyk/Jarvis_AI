@@ -1,8 +1,11 @@
-"""Self-RAG gating logic.
+"""Self-RAG gating logic with decision metrics.
 
-This module decides whether a retrieval step should be triggered based on
-precision and latency metrics. It also records these metrics for
-observability.
+The gate analyses retrieval results to determine whether an additional
+retrieval step should be performed. Decisions are guided by precision and
+latency thresholds. Each evaluation is logged via :class:`RetrievalMetrics`
+for later inspection. Future GraphRAG and REX-RAG components will feed their
+vector, neighbourhood and code-aware retrieval scores into this gate to keep
+the decision pipeline consistent.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ class RetrievalMetrics:
 
     precision: float
     latency_ms: float
+    decision: bool
 
 
 class SelfRAGGate:
@@ -59,7 +63,9 @@ class SelfRAGGate:
         relevant = sum(1 for r in results if r.get("relevant"))
         return relevant / len(results)
 
-    def should_retrieve(self, query: str, results: Sequence[Dict[str, Any]]) -> bool:
+    def should_retrieve(
+        self, query: str, results: Sequence[Dict[str, Any]]
+    ) -> bool:
         """Determine whether retrieval should be triggered.
 
         Parameters
@@ -79,12 +85,14 @@ class SelfRAGGate:
         start = perf_counter()
         precision = self._compute_precision(results)
         latency_ms = (perf_counter() - start) * 1000.0
-        self.events.append(RetrievalMetrics(precision, latency_ms))
 
+        decision = True
         if not self.enabled:
-            return False
-        if precision < self.precision_threshold:
-            return False
-        if latency_ms > self.max_latency_ms:
-            return False
-        return True
+            decision = False
+        elif precision < self.precision_threshold:
+            decision = False
+        elif latency_ms > self.max_latency_ms:
+            decision = False
+
+        self.events.append(RetrievalMetrics(precision, latency_ms, decision))
+        return decision
