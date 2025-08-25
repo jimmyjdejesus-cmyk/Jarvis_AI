@@ -26,7 +26,11 @@
     "onCommand:jarvis.generateTests",
     "onCommand:jarvis.explainCode",
     "onCommand:jarvis.debugError",
-    "onCommand:jarvis.analyzeWorkspace"
+    "onCommand:jarvis.analyzeWorkspace",
+    "onCommand:jarvis.planMission",
+    "onCommand:jarvis.runStep",
+    "onCommand:jarvis.approveHitl",
+    "onCommand:jarvis.openDagHere"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -60,6 +64,26 @@
         "command": "jarvis.analyzeWorkspace",
         "title": "Analyze Workspace",
         "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.planMission",
+        "title": "Plan Mission",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.runStep",
+        "title": "Run Step",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.approveHitl",
+        "title": "Approve HITL",
+        "category": "Jarvis AI"
+      },
+      {
+        "command": "jarvis.openDagHere",
+        "title": "Open DAG Here",
+        "category": "Jarvis AI"
       }
     ],
     "menus": {
@@ -71,6 +95,10 @@
         },
         {
           "command": "jarvis.reviewCode",
+          "group": "jarvis"
+        },
+        {
+          "command": "jarvis.openDagHere",
           "group": "jarvis"
         }
       ],
@@ -119,6 +147,11 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically analyze files when opened"
+        },
+        "jarvis.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Base URL for Jarvis backend services"
         }
       }
     }
@@ -126,11 +159,25 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext .ts",
+    "test": "mocha -r ts-node/register src/test/**/*.ts",
+    "test:coverage": "nyc mocha -r ts-node/register src/test/**/*.ts"
   },
   "devDependencies": {
-    "@types/vscode": "^1.60.0",
+    "@types/mocha": "^10.0.1",
     "@types/node": "14.x",
-    "typescript": "^4.4.4"
+    "@types/proxyquire": "^1.3.28",
+    "@types/sinon": "^10.0.13",
+    "@types/vscode": "^1.60.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "mocha": "^10.2.0",
+    "proxyquire": "^2.1.3",
+    "sinon": "^17.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^4.4.4",
+    "nyc": "^15.1.0"
   }
 }

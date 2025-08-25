@@ -1,0 +1,11 @@
+{
+  "extension": [".ts"],
+  "require": ["ts-node/register"],
+  "reporter": ["text", "lcov"],
+  "exclude": ["src/test"],
+  "check-coverage": true,
+  "lines": 50,
+  "statements": 50,
+  "branches": 50,
+  "functions": 20
+}
