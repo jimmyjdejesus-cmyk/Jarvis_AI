@@ -16,12 +16,16 @@ import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, TYPE_CHECKING
 
 from langgraph.graph import END, StateGraph
 
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
+from .semantic_cache import SemanticCache
+
+if TYPE_CHECKING:  # pragma: no cover - used only for type hints
+    from .sub_orchestrator import SubOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,7 @@ class MultiAgentOrchestrator:
         self.monitor = monitor
         self.knowledge_graph = knowledge_graph
         self.specialists: Dict[str, Any] = specialists or {}
+        self.semantic_cache = SemanticCache()
         self.child_orchestrators: Dict[str, "SubOrchestrator"] = {}
         self.collaboration_patterns = defaultdict(int)
         self.task_history = []
@@ -176,16 +181,24 @@ JSON Response:
         models: List[str] | None = None,
     ) -> Dict[str, Any]:
         """Execute a task with the requested specialist."""
+        cache_key = f"{specialist_type}:{task}"
+        cached = self.semantic_cache.get(cache_key)
+        if cached is not None:
+            return cached
         if specialist_type in self.specialists:
             specialist = self.specialists[specialist_type]
             kwargs = {"context": context, "user_context": user_context}
             if models is not None:
                 kwargs["models"] = models
-            return await specialist.process_task(task, **kwargs)
+            result = await specialist.process_task(task, **kwargs)
+            self.semantic_cache.add(cache_key, result)
+            return result
         if specialist_type in self.child_orchestrators:
-            return await self.run_child_orchestrator(
+            result = await self.run_child_orchestrator(
                 specialist_type, task, context=context, user_context=user_context
             )
+            self.semantic_cache.add(cache_key, result)
+            return result
         raise ValueError(f"Unknown specialist or orchestrator: {specialist_type}")
 
     def create_child_orchestrator(self, name: str, spec: Dict[str, Any]):

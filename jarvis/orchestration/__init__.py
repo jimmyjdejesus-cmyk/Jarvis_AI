@@ -9,6 +9,7 @@ from .bandwidth_channel import BandwidthLimitedChannel
 from .mission_planner import MissionPlanner
 from .task_queue import RedisTaskQueue
 from .pruning import PruningManager
+from .semantic_cache import SemanticCache
 from .server import app, bus
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "MissionPlanner",
     "RedisTaskQueue",
     "PruningManager",
+    "SemanticCache",
     "END",
     "app",
     "bus",
