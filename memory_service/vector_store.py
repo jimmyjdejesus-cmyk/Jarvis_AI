@@ -29,6 +29,7 @@ if chromadb:
     def delete_text(principal: str, scope: str, key: str) -> None:
         """Remove a document from the vector store."""
         _collection.delete(ids=[f"{principal}:{scope}:{key}"])
+
 else:  # Fallback minimal implementations for environments without chromadb
     _store: Dict[str, str] = {}
 
@@ -37,10 +38,11 @@ else:  # Fallback minimal implementations for environments without chromadb
 
     def query_text(query: str, n_results: int = 5) -> Dict[str, Any]:
         # Naive substring search for compatibility
-        matches = [
-            text for text in _store.values() if query.lower() in text.lower()
-        ][:n_results]
-        return {"documents": [matches]}
+        matches: list[str] = []
+        for text in _store.values():
+            if query.lower() in text.lower():
+                matches.append(text)
+        return {"documents": [matches[:n_results]]}
 
     def delete_text(principal: str, scope: str, key: str) -> None:
         _store.pop(f"{principal}:{scope}:{key}", None)
