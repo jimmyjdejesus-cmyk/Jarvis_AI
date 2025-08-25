@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { http } from '@tauri-apps/api';
+import { socket } from '../socket';
 
 // DEV-COMMENT: This component displays the development logs from the agent.md file.
 // It fetches the content from the backend and provides a simple way to view it.
@@ -33,6 +34,15 @@ const LogViewerPane = () => {
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
+
+  // DEV-COMMENT: Subscribe to live log updates via WebSocket.
+  useEffect(() => {
+    const handler = (entry) => {
+      setLogs((prev) => `${prev}\n${entry}`.trim());
+    };
+    socket.on('log_update', handler);
+    return () => socket.off('log_update', handler);
+  }, []);
 
   return (
     <div className="pane">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { http } from '@tauri-apps/api';
+import { socket } from '../socket';
 
 // DEV-COMMENT: This component displays Human-in-the-Loop (HITL) recommendations.
 // These are decision points where the system requires user input to proceed.
@@ -26,6 +27,15 @@ const HitlOraclePane = () => {
   useEffect(() => {
     fetchRecommendations();
   }, [fetchRecommendations]);
+
+  // DEV-COMMENT: Receive HITL updates in real time via WebSocket.
+  useEffect(() => {
+    const handler = (data) => {
+      setRecommendations(data);
+    };
+    socket.on('hitl_update', handler);
+    return () => socket.off('hitl_update', handler);
+  }, []);
 
   return (
     <div className="pane">
