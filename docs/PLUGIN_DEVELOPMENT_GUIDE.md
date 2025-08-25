@@ -1,8 +1,8 @@
 # Jarvis SDK Plugin Development Tutorial
 
-The `jarvis_sdk` package (version 0.1.1) makes it easy to build and share
+The `jarvis_sdk` package (version 0.1.2) makes it easy to build and share
 plugins for the Jarvis AI system. This tutorial covers creating plugins,
-auto-registration, and the included examples for tools and agents.
+auto-registration, and the included examples for tools, agents, crews and critics.
 
 ## Installing
 
@@ -34,6 +34,8 @@ The SDK exposes specialised decorators for the most common plugin categories:
 
 - `jarvis_sdk.jarvis_tool` – register a simple callable as a tool
 - `jarvis_sdk.jarvis_agent` – register a class implementing an agent
+- `jarvis_sdk.jarvis_crew` – register a class that coordinates agents
+- `jarvis_sdk.jarvis_critic` – register a callable for quality checks
 
 For advanced scenarios, `jarvis_sdk.jarvis_plugin` allows registration under a
 custom `plugin_type` value.
@@ -59,21 +61,34 @@ class MathAgent:
         return str(eval(expression))
 ```
 
+### Crew Example
+
+```python
+from jarvis_sdk import jarvis_crew
+
+@jarvis_crew(description="Echo crew")
+class EchoCrew:
+    def run(self, text: str) -> str:
+        return text
+```
+
 ## Discovery and Auto‑registration
 
 Plugin modules are listed in `jarvis/plugins/manifest.json` and imported when
 `jarvis.plugins` is loaded. Importing the package automatically registers all
-listed plugins with the global registry, as well as the dedicated agent and tool
-registries.
+listed plugins with the global registry, as well as the dedicated agent, crew,
+tool and critic registries.
 
 To load the bundled examples and view what is registered:
 
 ```python
 import jarvis.plugins  # triggers discovery
-from jarvis_sdk import agent_registry, tool_registry
+from jarvis_sdk import agent_registry, crew_registry, tool_registry, critic_registry
 
 print(agent_registry.all())
+print(crew_registry.all())
 print(tool_registry.all())
+print(critic_registry.all())
 ```
 
 ## Next Steps

@@ -43,6 +43,8 @@ extensions/**/node_modules/
 extensions/**/out/
 
 
-# Deprecated code
-=======
-main
+
+# Benchmark outputs
+benchmarks/candidate_metrics.json
+results/*
+!results/README.md
