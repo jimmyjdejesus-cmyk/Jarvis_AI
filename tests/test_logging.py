@@ -1,20 +1,13 @@
 import json
-import importlib.util
+import sys
 from pathlib import Path
 
-logger_path = (
-    Path(__file__).resolve().parent.parent / "jarvis" / "logging" / "logger.py"
-)
-spec = importlib.util.spec_from_file_location(
-    "jarvis.logging.logger",
-    logger_path,
-)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-configure = module.configure
-get_logger = module.get_logger
+import pytest
 
-from jarvis.logging.logger import configure, get_logger
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from jarvis.logging.logger import configure, get_logger  # noqa: E402
+
+
 def test_configure_creates_json_log(tmp_path):
     log_file = tmp_path / "jarvis.log"
     configure(log_file=str(log_file))
@@ -29,7 +22,14 @@ def test_configure_creates_json_log(tmp_path):
 
 def test_remote_sink_is_optional(tmp_path):
     log_file = tmp_path / "jarvis.log"
-    configure(log_file=str(log_file), remote_url="http://localhost:1")
+    configure(log_file=str(log_file), remote_url="https://localhost:1")
     logger = get_logger("test")
     logger.info("remote test")
     assert log_file.exists()
+
+
+def test_reject_insecure_remote_url(tmp_path):
+    """``remote_url`` must use HTTPS for security."""
+    log_file = tmp_path / "jarvis.log"
+    with pytest.raises(ValueError):
+        configure(log_file=str(log_file), remote_url="http://insecure")

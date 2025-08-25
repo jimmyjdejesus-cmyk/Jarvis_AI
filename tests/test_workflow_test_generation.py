@@ -3,7 +3,6 @@ from pathlib import Path
 import importlib.util
 
 import asyncio
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -36,3 +35,10 @@ def test_generate_tests_invalid_code() -> None:
     assert not result["success"]
     assert "Invalid Python code" in result["error"]
 
+
+def test_generate_tests_missing_code() -> None:
+    """Adapter should return error when code is missing."""
+    adapter = TestingAdapter()
+    result = asyncio.run(adapter._generate_tests({}))
+    assert not result["success"]
+    assert "code" in result["error"].lower()
