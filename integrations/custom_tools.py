@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Callable
 from abc import ABC, abstractmethod
 from datetime import datetime
+from urllib.parse import urlparse
 
 class ToolBase(ABC):
     """Base class for all custom tools."""
@@ -199,6 +200,9 @@ class WebScraperTool(ToolBase):
     
     def execute(self, url: str, selector: str = None, extract_type: str = "text") -> Dict:
         """Scrape content from a web page."""
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("url must include http or https scheme")
         try:
             import requests
             from bs4 import BeautifulSoup
@@ -370,12 +374,15 @@ class NotificationTool(ToolBase):
     
     def _webhook_notification(self, message: str, webhook_url: str) -> Dict:
         """Send webhook notification."""
+        parsed = urlparse(webhook_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("webhook_url must include http or https scheme")
         try:
             import requests
-            
+
             payload = {"message": message, "timestamp": str(datetime.now())}
             response = requests.post(webhook_url, json=payload, timeout=10)
-            
+
             return {
                 "status": "sent",
                 "channel": "webhook",

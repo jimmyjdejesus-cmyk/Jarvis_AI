@@ -8,6 +8,7 @@ import json
 import logging
 from typing import List, Optional, Generator
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Import legacy model client
 import sys
@@ -26,6 +27,9 @@ class ModelClient:
     """Modern model client with clean interface"""
     
     def __init__(self, base_url: str = "http://localhost:11434"):
+        parsed = urlparse(base_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("base_url must include http or https scheme")
         self.base_url = base_url
         self.timeout = 30
     
