@@ -5,8 +5,15 @@ from typing import Dict, List, Any
 class CriticInsightMerger:
     def weight_feedback(self, feedback_items):
         return feedback_items
+
     def synthesize_arguments(self, weighted_feedback):
-        return {"combined_argument": "synthesized", "max_severity": "low"}
+        max_sev = "low"
+        for item in weighted_feedback:
+            sev = getattr(item, "severity", "low")
+            if sev in ("high", "critical"):
+                max_sev = "high"
+                break
+        return {"combined_argument": "synthesized", "max_severity": max_sev}
 
 @dataclass
 class PerformanceTracker:

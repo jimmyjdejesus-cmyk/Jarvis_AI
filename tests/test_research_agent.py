@@ -134,4 +134,3 @@ def test_citation_deduplication() -> None:
         report = agent.research("Question")
 
     assert len(report["sources"]) == 1
-

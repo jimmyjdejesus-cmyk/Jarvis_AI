@@ -14,6 +14,7 @@ def test_gate_allows_when_metrics_good(monkeypatch):
     event = gate.events[-1]
     assert event.precision == pytest.approx(0.5)
     assert event.latency_ms == pytest.approx(100.0)
+    assert event.decision is True
 
 
 def test_gate_respects_disable():
@@ -21,13 +22,16 @@ def test_gate_respects_disable():
     assert gate.should_retrieve("q", []) is False
     event = gate.events[-1]
     assert event.precision == 0.0
+    assert event.decision is False
 
 
 def test_gate_blocks_on_precision():
     gate = SelfRAGGate(enabled=True, precision_threshold=0.6)
     results = [{"relevant": False}, {"relevant": False}]
     assert gate.should_retrieve("q", results) is False
-    assert gate.events[-1].precision == 0.0
+    event = gate.events[-1]
+    assert event.precision == 0.0
+    assert event.decision is False
 
 
 def test_gate_blocks_on_latency(monkeypatch):
@@ -37,4 +41,6 @@ def test_gate_blocks_on_latency(monkeypatch):
     monkeypatch.setattr("jarvis.retrieval.self_rag_gate.perf_counter", lambda: next(timings))
 
     assert gate.should_retrieve("q", []) is False
-    assert gate.events[-1].latency_ms == pytest.approx(200.0)
+    event = gate.events[-1]
+    assert event.latency_ms == pytest.approx(200.0)
+    assert event.decision is False

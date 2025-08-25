@@ -233,4 +233,3 @@ class ResearchAgent:
             json.dump(self.last_report, f, indent=2)
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(self.get_report_markdown())
-

@@ -5,6 +5,7 @@ from typing import Any, Dict
 from .blue_team import BlueTeamCritic
 from .constitutional_critic import ConstitutionalCritic
 from .red_team import RedTeamCritic
+from jarvis.critics import CriticVerdict, WhiteGate
 
 
 @dataclass
@@ -20,5 +21,7 @@ __all__ = [
     "RedTeamCritic",
     "BlueTeamCritic",
     "ConstitutionalCritic",
+    "CriticVerdict",
+    "WhiteGate",
     "CriticFeedback",
 ]
