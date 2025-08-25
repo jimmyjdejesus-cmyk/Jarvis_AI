@@ -82,6 +82,41 @@ body {
   overflow-y: auto;
 }
 
+/* Shared header container for pane controls */
+.pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.log-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-indicator {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+.status-indicator.connected {
+  background-color: #22c55e; /* green */
+}
+
+.status-indicator.disconnected {
+  background-color: #ef4444; /* red */
+}
+
+.hitl-badge {
+  background-color: #ef4444;
+  color: #fff;
+  border-radius: 9999px;
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+}
+
 /* Component-specific styles */
 
 /* Chat Pane */

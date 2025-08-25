@@ -51,21 +51,26 @@ class WorkflowEngine:
         self,
         storage_dir: str = "logs/workflows",
         event_handler: Optional[Callable[[StepEvent], None]] = None,
+        state_handler: Optional[Callable[[str, str, str, Dict[str, Any] | None], None]] = None,
     ) -> None:
         self.storage_dir = storage_dir
         os.makedirs(storage_dir, exist_ok=True)
         self.event_handler = event_handler or (lambda e: None)
+        self.state_handler = state_handler or (lambda _m, _s, _st, _p: None)
         self.active_workflows: Dict[str, Workflow] = {}
 
     # ------------------------------------------------------------------
     # Workflow creation & persistence
     # ------------------------------------------------------------------
     def create_workflow(
-        self, tasks: List[Task], metadata: Optional[Dict[str, Any]] = None
+        self,
+        tasks: List[Task],
+        metadata: Optional[Dict[str, Any]] = None,
+        run_id: Optional[str] = None,
     ) -> Workflow:
         """Register a new workflow and persist its definition."""
 
-        run_id = uuid.uuid4().hex
+        run_id = run_id or uuid.uuid4().hex
         workflow = Workflow(id=run_id, tasks={t.id: t for t in tasks}, metadata=metadata or {})
         self.active_workflows[run_id] = workflow
         self._persist_definition(workflow)
@@ -128,6 +133,7 @@ class WorkflowEngine:
                                 status="failed",
                             )
                         )
+                        self.state_handler(workflow.id, task.id, "failed", {"error": task.error})
                     break
 
             for task in [t for t in workflow.tasks.values() if t.state is TaskState.READY]:
@@ -147,6 +153,7 @@ class WorkflowEngine:
                 status="active",
             )
         )
+        self.state_handler(workflow.id, task.id, "running", None)
         task.state = TaskState.RUNNING
         start = time.time()
         try:
@@ -164,6 +171,7 @@ class WorkflowEngine:
                     status="completed",
                 )
             )
+            self.state_handler(workflow.id, task.id, "succeeded", {"result": result})
         except Exception as exc:  # pragma: no cover - safety net
             task.error = str(exc)
             task.state = TaskState.FAILED
@@ -178,6 +186,7 @@ class WorkflowEngine:
                     status="failed",
                 )
             )
+            self.state_handler(workflow.id, task.id, "failed", {"error": task.error})
 
     # ------------------------------------------------------------------
     # Recovery helpers

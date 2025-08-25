@@ -3,10 +3,29 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Dict
+from typing import Any, Callable, Dict, List, Optional
 
 from jarvis.models.client import model_client
 from jarvis.world_model.predictive_simulation import PredictiveSimulator
+try:  # pragma: no cover - optional dependency
+    from jarvis.memory.project_memory import MemoryManager, ProjectMemory
+except Exception:  # pragma: no cover - fallback for tests
+    class MemoryManager:  # type: ignore[misc]
+        def add(self, *args: Any, **kwargs: Any) -> None:  # pragma: no cover - stub
+            raise NotImplementedError
+
+        def query(self, *args: Any, **kwargs: Any) -> list[dict]:  # pragma: no cover - stub
+            return []
+
+    ProjectMemory = None  # type: ignore
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.orchestration.mission import (
+    Mission,
+    MissionDAG,
+    MissionNode,
+    save_mission,
+)
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -19,50 +38,94 @@ class MissionPlanner:
         client=model_client,
         model: str = "llama3.2",
         predictor: PredictiveSimulator | None = None,
+        memory: Optional[MemoryManager] = None,
+        knowledge_graph: Optional[KnowledgeGraph] = None,
+        event_handler: Optional[Callable[[str, Dict[str, Any]], None]] = None,
     ) -> None:
         self.client = client
         self.model = model
         self.predictor = predictor
+        self.memory = memory
+        self.knowledge_graph = knowledge_graph
+        self.event_handler = event_handler or (lambda _name, _payload: None)
 
-    def plan(self, goal: str) -> List[str]:
-        """Break a high-level goal into tasks using the LLM.
+    def plan(self, goal: str, context: Dict[str, Any]) -> MissionDAG:
+        """Create and persist a mission plan for ``goal``.
 
-        Args:
-            goal: The mission goal to decompose.
-
-        Returns:
-            List of task descriptions.
+        The planner consults project memory and the knowledge graph to propose
+        initial steps and records a rationale. A ``Mission_Planned`` event is
+        emitted with the DAG payload.
         """
-        prompt = (
-            "You are an expert mission planner. Break the following goal into a "
-            "numbered list of concise tasks.\nGoal: " + goal
-        )
-        try:
-            response = self.client.generate_response(self.model, prompt)
-        except Exception as exc:  # pragma: no cover - network failure
-            logger.error("Mission planning failed: %s", exc)
-            return []
 
-        tasks = []
-        for line in response.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            if line[0].isdigit():
-                # strip leading number and punctuation
-                parts = line.split(".", 1)
-                if len(parts) == 2:
-                    task = parts[1].strip()
-                else:
-                    task = line
-            else:
-                task = line
-            if task:
-                tasks.append(task)
-        if self.predictor:
-            tasks = self.predictor.rank_actions({}, tasks)
-        logger.debug("Planned tasks: %s", tasks)
-        return tasks
+        project = context.get("project", "default")
+        session = context.get("session", "default")
+
+        memory_hits: List[Dict[str, Any]] = []
+        if self.memory:
+            try:
+                memory_hits = self.memory.query(project, session, goal) or []
+            except Exception:  # pragma: no cover - optional memory
+                memory_hits = []
+
+        kg_neighbors: List[str] = []
+        if self.knowledge_graph:
+            try:
+                kg_neighbors = self.knowledge_graph.get_files()
+            except Exception:  # pragma: no cover - optional KG
+                kg_neighbors = []
+
+        nodes: Dict[str, MissionNode] = {}
+        edges: List[tuple[str, str]] = []
+        rationale: List[str] = []
+
+        if memory_hits:
+            nodes["memory_recall"] = MissionNode(
+                step_id="memory_recall",
+                capability="memory_lookup",
+                team_scope="memory",
+            )
+            rationale.append("project memory")
+
+        if kg_neighbors:
+            nodes["kg_scan"] = MissionNode(
+                step_id="kg_scan",
+                capability="kg_lookup",
+                team_scope="knowledge",
+                deps=["memory_recall"] if "memory_recall" in nodes else [],
+            )
+            if "memory_recall" in nodes:
+                edges.append(("memory_recall", "kg_scan"))
+            rationale.append("knowledge graph")
+
+        final_id = "execute_goal"
+        nodes[final_id] = MissionNode(
+            step_id=final_id,
+            capability="execution",
+            team_scope="core",
+            deps=list(nodes.keys()),
+        )
+        for dep in nodes:
+            if dep != final_id:
+                edges.append((dep, final_id))
+
+        rationale_text = "; ".join(rationale) if rationale else "basic plan"
+        mission_id = uuid.uuid4().hex
+        dag = MissionDAG(mission_id=mission_id, nodes=nodes, edges=edges, rationale=rationale_text)
+        mission = Mission(
+            id=mission_id,
+            title=context.get("title", goal),
+            goal=goal,
+            inputs=context.get("inputs", {}),
+            risk_level=context.get("risk_level", "low"),
+            dag=dag,
+        )
+        save_mission(mission)
+        try:
+            self.event_handler("Mission_Planned", dag.to_dict())
+        except Exception:  # pragma: no cover - event handler optional
+            pass
+        logger.debug("Planned DAG: %s", dag.to_dict())
+        return dag
 
     def to_graph(self, tasks: List[str]) -> Dict[str, Any]:
         """Create a simple sequential LangGraph definition from tasks."""

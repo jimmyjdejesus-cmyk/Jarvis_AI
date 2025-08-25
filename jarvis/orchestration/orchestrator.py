@@ -22,8 +22,46 @@ from langgraph.graph import END, StateGraph
 
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
+from .message_bus import HierarchicalMessageBus
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator template
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class StepContext:
+    """Execution context for a single DAG step."""
+
+    request: str
+    allowed_specialists: Optional[List[str]] = None
+    tools: Optional[List[str]] = None
+    budgets: Optional[Dict[str, Any]] = None
+    retry_policy: Optional[Dict[str, Any]] = None
+    prune_policy: Optional[Dict[str, Any]] = None
+    auction_policy: Optional[Dict[str, Any]] = None
+    recursion_depth: int = 0
+    user_context: Optional[str] = None
+    context: Any | None = None
+
+
+@dataclass
+class StepResult:
+    """Result of executing a step."""
+
+    data: Dict[str, Any]
+    run_id: str
+    depth: int
+
+
+class OrchestratorTemplate:
+    """Base interface for orchestrators used in DAG execution."""
+
+    async def run_step(self, step_ctx: StepContext) -> StepResult:
+        raise NotImplementedError
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +69,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class MultiAgentOrchestrator:
+class MultiAgentOrchestrator(OrchestratorTemplate):
     """Coordinate a collection of specialist agents."""
 
     def __init__(
@@ -40,6 +78,9 @@ class MultiAgentOrchestrator:
         monitor: Any | None = None,
         knowledge_graph: Any | None = None,
         specialists: Optional[Dict[str, Any]] = None,
+        *,
+        message_bus: HierarchicalMessageBus | None = None,
+        budgets: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.mcp_client = mcp_client
         self.monitor = monitor
@@ -50,6 +91,53 @@ class MultiAgentOrchestrator:
         self.task_history = []
         self.active_collaborations = {}
         self.exploration_stats: List[Dict[str, float]] = []
+        self.message_bus = message_bus or HierarchicalMessageBus()
+        self.budgets = budgets or {}
+
+    async def log_event(
+        self,
+        event: str,
+        payload: Any,
+        *,
+        run_id: Optional[str] = None,
+        step_id: Optional[str] = None,
+        parent_id: Optional[str] = None,
+    ) -> None:
+        """Publish an event to the hierarchical message bus."""
+        await self.message_bus.publish(
+            event,
+            payload,
+            run_id=run_id,
+            step_id=step_id,
+            parent_id=parent_id,
+        )
+
+    async def run_step(self, step_ctx: StepContext) -> StepResult:
+        """Execute a single orchestration step."""
+        run_id = step_ctx.budgets.get("run_id") if step_ctx.budgets else None
+        allowed = step_ctx.allowed_specialists
+        original_specialists = self.specialists
+        if allowed is not None:
+            self.specialists = {
+                name: agent
+                for name, agent in original_specialists.items()
+                if name in set(allowed)
+            }
+        try:
+            data = await self.coordinate_specialists(
+                step_ctx.request,
+                context=step_ctx.context,
+                user_context=step_ctx.user_context,
+            )
+        finally:
+            self.specialists = original_specialists
+
+        await self.log_event(
+            "orchestrator.step.completed",
+            {"specialists_used": data.get("specialists_used", [])},
+            run_id=run_id,
+        )
+        return StepResult(data=data, run_id=run_id or "", depth=step_ctx.recursion_depth)
 
     def list_child_orchestrators(self) -> List[str]:
         """List identifiers of active child orchestrators."""
@@ -73,6 +161,24 @@ class MultiAgentOrchestrator:
             context=context,
             user_context=user_context,
         )
+
+    def spawn_child_orchestrator(self, parent_run_id: str, spec: Dict[str, Any]):
+        """Spawn a child orchestrator inheriting this orchestrator's context."""
+        child = self.create_child_orchestrator(parent_run_id, spec)
+
+        async def forward(event: str, payload: Any, *, run_id: Optional[str] = None, step_id: Optional[str] = None):
+            await self.log_event(
+                f"child.{parent_run_id}.{event}",
+                payload,
+                run_id=run_id,
+                step_id=step_id,
+                parent_id=parent_run_id,
+            )
+
+        child.log_event = forward  # type: ignore[attr-defined]
+        child.message_bus = self.message_bus
+        child.budgets = {**self.budgets, **spec.get("budgets", {})}
+        return child
 
     async def _analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
         """Analyze a request to determine complexity and specialists needed."""
