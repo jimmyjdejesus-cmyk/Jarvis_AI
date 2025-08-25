@@ -13,6 +13,7 @@ try:  # Optional dependency
     from .web_tools import WebSearchTool, WebReaderTool
 except Exception:  # pragma: no cover - optional feature
     WebSearchTool = WebReaderTool = None  # type: ignore
+from .registry import ToolsRegistry, ToolMeta
 
 from .legacy_wrappers import (
     safe_read_file,
@@ -48,4 +49,6 @@ __all__ = [
     "safe_write",
     "run_git_command",
     "sanitize_git_args",
+    "ToolsRegistry",
+    "ToolMeta",
 ]
