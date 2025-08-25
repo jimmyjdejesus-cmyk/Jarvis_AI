@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from typing import List, Dict, Any
 
+from jarvis.orchestration.mission import load_mission
+
 # Create a FastAPI app instance
 app = FastAPI()
 
@@ -21,6 +23,11 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+
+def broadcast_workflow_update(update: Dict[str, Any]) -> None:
+    """Background task to emit workflow updates over Socket.IO."""
+    sio.start_background_task(sio.emit, "workflow:update", update)
 
 @app.get("/")
 async def read_root():
@@ -43,6 +50,17 @@ async def get_workflow_data() -> Dict[str, List[Dict[str, Any]]]:
         status_code=501,
         detail="Workflow endpoint is not yet implemented."
     )
+
+
+@app.get("/api/workflow/{mission_id}")
+async def get_mission_workflow(mission_id: str) -> Dict[str, Any]:
+    """Serve the persisted DAG for the given mission."""
+    try:
+        mission = load_mission(mission_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="mission not found")
+    return mission.dag.to_dict()
+
 
 @app.get("/api/logs")
 async def get_agent_logs() -> str:
