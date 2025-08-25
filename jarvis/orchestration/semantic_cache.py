@@ -1,83 +1,68 @@
-"""Semantic cache for reusing similar requests.
+"""Semantic cache backed by the shared vector store.
 
-Caches request-response pairs with simple similarity matching
-using ``difflib.SequenceMatcher``. When a new request is
-encountered, the cache searches for the most similar previous
-request. If the similarity ratio exceeds a configurable
-threshold, the cached response is returned.
-
-This provides a lightweight semantic memoization mechanism that
-can significantly reduce latency for repeated or near-duplicate
-requests.
+The cache hashes requests and stores them alongside their responses. When
+``get`` is called, the request text is queried against the project's
+vector store and, if a sufficiently similar past request is
+found, the associated response is returned. This allows repeated or
+near-duplicate requests to bypass expensive specialist execution.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from time import perf_counter
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
-
-@dataclass
-class CacheEntry:
-    """Stored request/response pair."""
-
-    request: str
-    response: str
+# This assumes a central memory_service is available in your project
+from memory_service import vector_store
 
 
 @dataclass
 class SemanticCache:
-    """Simple in-memory semantic cache.
+    """Vector-store-backed semantic cache.
 
     Parameters
     ----------
     threshold:
-        Minimum similarity ratio required for a cache hit. The ratio is
-        computed using ``difflib.SequenceMatcher`` and ranges from 0.0 to 1.0.
+        Minimum similarity ratio required for a cache hit. ``SequenceMatcher``
+        is used to compare the incoming request with the closest document
+        retrieved from the vector store.
     """
 
     threshold: float = 0.8
-    _entries: List[CacheEntry] = field(default_factory=list)
+    _responses: Dict[str, Any] = field(default_factory=dict)
 
-    def add(self, request: str, response: str) -> None:
+    def _hash(self, text: str) -> str:
+        """Return a stable hash for ``text``."""
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def add(self, request: str, response: Any) -> None:
         """Add a request/response pair to the cache."""
+        key = self._hash(request)
+        vector_store.add_text("orchestrator", "semantic_cache", key, request)
+        self._responses[key] = response
 
-        self._entries.append(CacheEntry(request=request, response=response))
-
-    def get(self, request: str) -> Optional[str]:
-        """Return cached response when similarity exceeds the threshold."""
-
-        best_score = 0.0
-        best_response: Optional[str] = None
-        for entry in self._entries:
-            score = SequenceMatcher(None, request, entry.request).ratio()
-            if score > best_score:
-                best_score = score
-                best_response = entry.response
-        if best_score >= self.threshold:
-            return best_response
+    def get(self, request: str) -> Optional[Any]:
+        """Return cached response when a similar request is found."""
+        result = vector_store.query_text(request, n_results=1)
+        docs = result.get("documents", [[]])
+        if docs and docs[0]:
+            candidate = docs[0][0]
+            score = SequenceMatcher(None, request, candidate).ratio()
+            if score >= self.threshold:
+                key = self._hash(candidate)
+                return self._responses.get(key)
         return None
 
     def execute(
-        self, request: str, fn: Callable[[], str]
-    ) -> Tuple[str, bool, float]:
+        self, request: str, fn: Callable[[], Any]
+    ) -> Tuple[Any, bool, float]:
         """Execute ``fn`` with semantic caching.
 
-        Parameters
-        ----------
-        request:
-            Text describing the request.
-        fn:
-            Function that produces the response if cache miss occurs.
-
-        Returns
-        -------
-        tuple
-            ``(response, from_cache, duration)`` where ``duration`` is the
-            execution time in seconds.
+        Returns a tuple of ``(response, from_cache, duration)`` where
+        ``duration`` is in seconds.
         """
-
         cached = self.get(request)
         if cached is not None:
             return cached, True, 0.0

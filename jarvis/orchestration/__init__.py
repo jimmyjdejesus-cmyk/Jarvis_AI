@@ -14,7 +14,7 @@ from .path_memory import PathMemory
 from .message_bus import MessageBus, HierarchicalMessageBus, Event
 from .bandwidth_channel import BandwidthLimitedChannel
 
-# Adopt the safer optional import style from main for all components
+# Optional imports for extended functionality
 try:  # pragma: no cover - optional import
     from .sub_orchestrator import SubOrchestrator
 except Exception:  # pragma: no cover
@@ -35,7 +35,6 @@ try:
 except Exception:  # pragma: no cover
     PruningManager = None  # type: ignore
 
-# Add the new SemanticCache from the feature branch, also as an optional import
 try:
     from .semantic_cache import SemanticCache
 except Exception:  # pragma: no cover
@@ -47,7 +46,6 @@ except Exception:  # pragma: no cover
     app = None  # type: ignore
     bus = None  # type: ignore
 
-# Add the new Crews from the main branch
 try:
     from .crews import CodeAuditCrew, ResearchCrew
 except Exception:  # pragma: no cover
@@ -55,7 +53,7 @@ except Exception:  # pragma: no cover
     ResearchCrew = None  # type: ignore
 
 
-# Combine __all__ to include everything from both branches
+# Combined __all__ list including additions from both branches
 __all__ = [
     "AgentSpec",
     "DynamicOrchestrator",
@@ -72,9 +70,9 @@ __all__ = [
     "MissionPlanner",
     "RedisTaskQueue",
     "PruningManager",
-    "SemanticCache",      # From feature branch
-    "CodeAuditCrew",      # From main branch
-    "ResearchCrew",       # From main branch
+    "SemanticCache",
+    "CodeAuditCrew",
+    "ResearchCrew",
     "END",
     "app",
     "bus",

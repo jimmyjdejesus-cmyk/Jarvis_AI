@@ -27,6 +27,10 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-24T22:19:48+00:00]** Started implementing log enhancements: extending scoped writer, logging orchestration events, FastAPI endpoint, and UI log viewer.
 *   **[2025-08-24T22:22:49+00:00]** Completed log enhancements, server integration, and UI updates with tests.
 
+*   **[2025-08-25T16:26:00+00:00]** Added semantic cache module with tests ensuring cache hits reduce latency and exported in orchestration package.
+*   **[2025-08-25T16:40:00+00:00]** Refactored semantic cache to use vector store, integrated into orchestrator, and added test confirming repeated requests avoid specialist re-execution.
+=======
+
 *   **[2023-11-26]** Implemented structured ResearchAgent with citation-aware reports, integrated it into YellowCompetitiveAgent for Planner/Orchestrator, and added tests for artifact generation.
 *   **[2025-08-25]** Refined research review heuristics, added URL validation to `WebReaderTool`, and wrote negative-path tests for missing sources and fetch failures.
 =======
@@ -62,4 +66,5 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-26]** Added hierarchical orchestrator template with step context/results, child orchestrator spawning with event bubbling, crew presets, and tests verifying log aggregation and crew swapping.
 =======
 *   **[2025-08-25]** Added mission DAG schema with persistence, planner, UI workflow endpoint, and resume tests.
+
 

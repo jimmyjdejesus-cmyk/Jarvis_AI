@@ -24,6 +24,7 @@ websockets>=15.0.1
 qdrant-client>=1.7.0
 neo4j==5.14.0
 redis>=5.0.0
+networkx>=3.0
 
 # --- UI & Data Visualization ---
 # Streamlit for internal UIs, Plotly for charts
@@ -37,6 +38,7 @@ pyyaml>=6.0
 duckduckgo-search>=4.0.0
 beautifulsoup4>=4.12.0
 pydantic
+beautifulsoup4>=4.12.0
 
 # --- Security & System ---
 # Cryptography, password hashing, system monitoring
