@@ -1,7 +1,6 @@
 """Tests for tool registry RBAC and HITL security."""
 
 import logging
-
 import pytest
 import asyncio
 import importlib.util

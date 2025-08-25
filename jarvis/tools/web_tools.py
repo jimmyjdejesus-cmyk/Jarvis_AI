@@ -11,6 +11,7 @@ from typing import Dict, List
 
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 
 
 class WebSearchTool:
@@ -49,9 +50,39 @@ class WebSearchTool:
 
 
 class WebReaderTool:
-    """Fetch a web page and return plain text content."""
+    """Fetch a web page and return plain text content.
+
+    The reader performs a small amount of URL validation to ensure only HTTP(S)
+    targets are fetched.  This guards against malicious schemes such as
+    ``javascript:`` URLs being passed into the request layer.
+    """
 
     def read(self, url: str) -> str:
+        """Return the plain text contents of ``url``.
+
+        Parameters
+        ----------
+        url:
+            The web address to fetch. Must include an ``http`` or ``https``
+            scheme and a network location.
+
+        Returns
+        -------
+        str
+            The page text with HTML tags stripped.
+
+        Raises
+        ------
+        ValueError
+            If ``url`` does not look like a valid HTTP(S) address.
+        requests.HTTPError
+            Propagated if the HTTP request itself fails.
+        """
+
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("URL must include http or https scheme")
+
         res = requests.get(url, timeout=10)
         res.raise_for_status()
         soup = BeautifulSoup(res.text, "html.parser")

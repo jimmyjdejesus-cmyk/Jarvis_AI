@@ -4,7 +4,7 @@ from __future__ import annotations
 
 The registry stores callable tools along with security metadata such as
 required roles and risk tiers. Tools marked as high risk trigger a
-Human‑in‑the‑Loop (HITL) approval step prior to execution. All activity is
+Human-in-the-Loop (HITL) approval step prior to execution. All activity is
 logged and persisted via an encrypted audit log handler.
 """
 
@@ -12,6 +12,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, get_type_hints
 
+# These imports are required by the main branch's implementation
 from pydantic import BaseModel, create_model
 
 from agent.hitl.policy import ApprovalCallback, HITLPolicy
@@ -37,12 +38,11 @@ class Tool:
 
     def json_schema(self) -> Dict[str, Any]:
         """Return the JSON schema for the tool's arguments."""
-
         return self.args_schema.schema() if self.args_schema else {}
 
 
-class Registry:
-    """Collection of tools with RBAC and HITL enforcement."""
+class ToolsRegistry:
+    """Registry that enforces policy before tool execution."""
 
     def __init__(self) -> None:
         self._tools: Dict[str, Tool] = {}
@@ -58,14 +58,13 @@ class Registry:
         required_role: str | None = None,
     ) -> None:
         """Register ``func`` under ``name`` with associated metadata."""
-
         annotations = get_type_hints(func)
         fields: Dict[str, tuple[Any, Any]] = {}
         for arg, annotation in annotations.items():
             if arg == "return":
                 continue
             fields[arg] = (annotation, ...)
-        schema = create_model(f"{name}_Args", **fields)  # type: ignore[arg-type]
+        schema = create_model(f"{name}_Args", **fields)
         self._tools[name] = Tool(
             name,
             func,
@@ -77,12 +76,15 @@ class Registry:
         )
 
     def get(self, name: str) -> Tool:
+        """Get a tool by name."""
         return self._tools[name]
 
     def all(self) -> Dict[str, Tool]:
+        """Return all registered tools."""
         return dict(self._tools)
 
     def json_export(self) -> Dict[str, Any]:
+        """Export the registry's contents as a JSON-serializable dictionary."""
         return {
             name: {
                 "description": tool.description,
@@ -94,7 +96,6 @@ class Registry:
             for name, tool in self._tools.items()
         }
 
-    # --------------------------------------------------------------
     def execute(
         self,
         name: str,
@@ -106,7 +107,6 @@ class Registry:
         **kwargs: Any,
     ) -> Any:
         """Execute ``name`` for ``user`` enforcing RBAC and HITL policies."""
-
         tool = self.get(name)
         role = security._get_user_role(user)  # RBAC lookup
         if tool.required_role and role != tool.required_role:
@@ -128,4 +128,6 @@ class Registry:
         return tool.func(*args, **kwargs)
 
 
-registry = Registry()
+registry = ToolsRegistry()
+
+__all__ = ["ToolsRegistry", "Tool", "registry"]
