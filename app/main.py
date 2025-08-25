@@ -2,7 +2,8 @@ import socketio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from typing import List, Dict, Any
+from pydantic import BaseModel
+from typing import Any, Dict, List
 
 # Create a FastAPI app instance
 app = FastAPI()
@@ -75,6 +76,29 @@ async def get_hitl_recommendations() -> List[Dict[str, Any]]:
         status_code=501,
         detail="HITL endpoint is not yet implemented."
     )
+
+class HitlDecision(BaseModel):
+    action: str
+
+
+hitl_gates: Dict[str, bool] = {}
+
+
+@app.post("/api/hitl/approve")
+async def approve(decision: HitlDecision) -> Dict[str, str]:
+    """Approve a high-risk operation."""
+
+    hitl_gates[decision.action] = True
+    return {"status": "approved"}
+
+
+@app.post("/api/hitl/deny")
+async def deny(decision: HitlDecision) -> Dict[str, str]:
+    """Deny a high-risk operation."""
+
+    hitl_gates[decision.action] = False
+    return {"status": "denied"}
+
 
 
 # Mount the Socket.IO application to the FastAPI app
