@@ -102,3 +102,21 @@ def test_orchestrator_propagates_research_metadata(tmp_path: Path) -> None:
     report = result["competitive_pair"]["research_summary"]
     assert "No sources found" in report["gaps"]
     assert report["confidence"] == 0.5
+
+
+def test_orchestrator_reports_confident_with_sources(tmp_path: Path) -> None:
+    """Orchestrator boosts confidence when research finds sources."""
+
+    search_html = "<a class='result__a' href='https://example.com'>Title</a>"
+    page_html = "<p>Widget info</p>"
+
+    side_effects = [_make_response(search_html), _make_response(page_html)]
+
+    with patch("jarvis.tools.web_tools.requests.get", side_effect=side_effects):
+        with patch("jarvis.orchestration.graph.MultiTeamOrchestrator", DummyMultiTeamOrchestrator):
+            orch = OrchestratorAgent(meta_agent=types.SimpleNamespace(), objective="Widget", directory=tmp_path)
+            result = orch.run()
+
+    report = result["competitive_pair"]["research_summary"]
+    assert report["gaps"] == []
+    assert report["confidence"] == 1.0

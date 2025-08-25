@@ -134,3 +134,21 @@ def test_citation_deduplication() -> None:
         report = agent.research("Question")
 
     assert len(report["sources"]) == 1
+
+
+def test_citation_normalization_dedupes_variations() -> None:
+    """URL case and trailing slashes do not create duplicate citations."""
+
+    search_html = (
+        "<a class='result__a' href='http://EXAMPLE.com/'>A</a>"
+        "<a class='result__a' href='http://example.com'>B</a>"
+    )
+    read_html = "<p>Same content</p>"
+
+    side_effects = [_make_response(search_html), _make_response(read_html), _make_response(read_html)]
+
+    with patch("jarvis.tools.web_tools.requests.get", side_effect=side_effects):
+        agent = ResearchAgent()
+        report = agent.research("Question")
+
+    assert len(report["sources"]) == 1

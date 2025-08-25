@@ -45,6 +45,20 @@ class ResearchAgent:
         return " ".join(text.strip().split())[:max_length]
 
     # ------------------------------------------------------------------
+    def _normalize_url(self, url: str) -> str:
+        """Return a normalized URL for consistent citation de-duplication.
+
+        Normalization lowercases the scheme and host and strips any trailing
+        slash from the path to avoid treating cosmetic differences as distinct
+        sources.
+        """
+        parsed = urlparse(url)
+        scheme = parsed.scheme.lower()
+        netloc = parsed.netloc.lower()
+        path = parsed.path.rstrip("/")
+        return f"{scheme}://{netloc}{path}"
+
+    # ------------------------------------------------------------------
     def research(self, question: str, depth: int = 1, save_dir: str | Path | None = None) -> Dict[str, Any]:
         """Run iterative search and produce a structured research report.
 
@@ -124,10 +138,11 @@ class ResearchAgent:
                 continue
 
             summary = self.summarizer(content)
-            citation_id = self._citation_lookup.get(url)
+            norm_url = self._normalize_url(url) if url else ""
+            citation_id = self._citation_lookup.get(norm_url)
             if citation_id is None:
                 citation_id = len(self.citations) + 1
-                self._citation_lookup[url] = citation_id
+                self._citation_lookup[norm_url] = citation_id
                 self.citations.append(
                     {"id": citation_id, "url": url, "title": result.get("title", "")}
                 )
