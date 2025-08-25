@@ -1,12 +1,12 @@
 """Research agent capable of iterative web search and structured reporting."""
 
-from __future__ import annotations
-
+from __future-annotations
 import json
 import logging
 import re
 from pathlib import Path
 from typing import Callable, Dict, List, Any
+from urllib.parse import urlparse
 
 from jarvis.tools.web_tools import WebReaderTool, WebSearchTool
 from jarvis.memory.memory_bus import MemoryBus
@@ -81,6 +81,10 @@ class ResearchAgent:
             "claim_evidence": claim_evidence,
             "gaps": [],
         }
+
+        # Identify quality gaps via the "blue" review and assess risk via the
+        # "white" review.  Confidence is reduced if any gaps are present or
+        # if a risky source is detected.
         report["gaps"] = self._blue_review(report)
         report["confidence"] = 1.0 if self._white_review(report) and not report["gaps"] else 0.5
 
@@ -140,16 +144,35 @@ class ResearchAgent:
 
     # ------------------------------------------------------------------
     def _blue_review(self, report: Dict[str, Any]) -> List[str]:
-        """Basic quality review that identifies gaps in the report."""
+        """Quality review identifying missing information.
+
+        The "blue" review focuses on the completeness of the research output
+        and records any gaps that should be addressed in a future iteration.
+        """
+
         gaps: List[str] = []
         if not report["sources"]:
             gaps.append("No sources found")
+        if not report["claim_evidence"]:
+            gaps.append("No claims generated")
         return gaps
 
     # ------------------------------------------------------------------
     def _white_review(self, report: Dict[str, Any]) -> bool:
-        """Risk review ensuring each source has a URL."""
-        return all(src.get("url") for src in report["sources"])
+        """Risk review verifying each source looks trustworthy.
+
+        Currently this ensures that every source has a title and a valid
+        HTTP(S) URL.  The check is intentionally conservative: if any source
+        fails validation the report is marked as lower confidence.
+        """
+
+        for src in report["sources"]:
+            url = src.get("url", "")
+            title = src.get("title", "")
+            parsed = urlparse(url)
+            if not title or parsed.scheme not in ("http", "https") or not parsed.netloc:
+                return False
+        return True
 
     # ------------------------------------------------------------------
     def get_report_markdown(self) -> str:
@@ -203,4 +226,3 @@ class ResearchAgent:
             json.dump(self.last_report, f, indent=2)
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(self.get_report_markdown())
-

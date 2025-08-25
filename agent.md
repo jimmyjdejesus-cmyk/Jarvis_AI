@@ -27,6 +27,10 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-24T22:19:48+00:00]** Started implementing log enhancements: extending scoped writer, logging orchestration events, FastAPI endpoint, and UI log viewer.
 *   **[2025-08-24T22:22:49+00:00]** Completed log enhancements, server integration, and UI updates with tests.
 
+*   **[2023-11-26]** Implemented structured ResearchAgent with citation-aware reports, integrated it into YellowCompetitiveAgent for Planner/Orchestrator, and added tests for artifact generation.
+*   **[2025-08-25]** Refined research review heuristics, added URL validation to `WebReaderTool`, and wrote negative-path tests for missing sources and fetch failures.
+=======
+
 * [2025-08-25] Added scout/scholar simulation hooks, reward oracle, and Monte Carlo regularized policy updates with tests.
 * [2025-08-25] Clarified Monte Carlo regularization, enforced branch budget bounds with edge-case tests, mocked Neo4j, and pinned `neo4j` dependency.
 =======
