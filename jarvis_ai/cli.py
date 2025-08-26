@@ -68,11 +68,7 @@ def run_application(args):
 
         # Create agent and run mission
         try:
-            # We need an MCP client for the agent, for now, we can use a mock or a placeholder
-            # depending on the setup. Assuming a None client is acceptable for now.
             agent = ExecutiveAgent(agent_id="cli_agent", mcp_client=None)
-
-            # Prepare context for the mission planner
             context = {
                 "project": "cli_project",
                 "session": "cli_session",
@@ -83,64 +79,28 @@ def run_application(args):
                 },
                 "risk_level": "medium", # Default risk level for CLI missions
             }
-
-            # The mission planner expects a directive that it can find in its config files.
-            # For a direct CLI command, we might need to adjust how the planner works,
-            # or pass the directive in a way it can be processed directly.
-            # For now, let's assume the directive is the mission name.
-            # We also need to handle the fact that execute_mission is async.
             result = asyncio.run(agent.execute_mission(args.directive, context))
-
             import json
             print("\n✅ Mission complete.")
             print(json.dumps(result, indent=2))
-
         except Exception as e:
             print(f"❌ Error executing mission: {e}")
             sys.exit(1)
-
     else:
         # Run the desktop application
         try:
             import subprocess
-            
-            desktop_app_path = current_dir / "desktop_app.py"
-
+            desktop_app_path = current_dir / "modern_desktop_app.py"
             if not desktop_app_path.exists():
-                print("❌ Could not find desktop_app.py")
+                desktop_app_path = current_dir / "desktop_app.py"
+            if not desktop_app_path.exists():
+                print("❌ Could not find a desktop app script.")
                 sys.exit(1)
-
             print("🚀 Starting Jarvis AI Desktop App...")
-
-            # Activate venv and run desktop_app.py
-            # This is problematic as it assumes a specific venv structure.
-            # A better approach would be to ensure jarvis is installed as a package.
-            # For now, we'll just run with the current python interpreter.
             subprocess.run([sys.executable, str(desktop_app_path)])
-
         except Exception as e:
             print(f"❌ Error starting application: {e}")
             sys.exit(1)
-
-def manage_config(args):
-    """Manage configuration."""
-    try:
-        from config.config_loader import load_config, get_config_path, save_config
-        
-        if args.init:
-            print("🔧 Initializing default configuration...")
-            config_path = get_config_path()
-            if not config_path.exists():
-                default_config_path = current_dir / "config" / "default.yaml"
-                import shutil
-                shutil.copy2(default_config_path, config_path)
-                print(f"✅ Default configuration created at {config_path}")
-            else:
-                print("✅ Configuration file already exists.")
-            return
-
-        config = load_config()
-        
         if args.show:
             import yaml
             print("📋 Current Jarvis AI Configuration:")
