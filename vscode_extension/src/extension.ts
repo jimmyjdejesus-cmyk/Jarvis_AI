@@ -109,6 +109,30 @@ export function sanitizeMissionId(input?: string): string | undefined {
 }
 
 /**
+ * Validate and sanitize backend URL configuration.
+ * Accepts only HTTP(S) URLs targeting localhost and returns the origin without
+ * trailing slash.
+ */
+export function sanitizeBackendUrl(input?: string): string | undefined {
+    if (!input) {
+        return undefined;
+    }
+    try {
+        const url = new URL(input);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return undefined;
+        }
+        const allowedHosts = ['localhost', '127.0.0.1', '[::1]'];
+        if (!allowedHosts.includes(url.hostname)) {
+            return undefined;
+        }
+        return url.origin;
+    } catch {
+        return undefined;
+    }
+}
+
+/**
  * Handler for the "Open DAG Here" command.
  * Resolves the mission ID from user input, fetches the corresponding DAG,
  * highlights the node touching the active file, and renders it in a webview.
@@ -130,7 +154,12 @@ export async function openDagHereCommand(
     }
     try {
         const config = api.workspace.getConfiguration('jarvis');
-        const backendUrl = config.get<string>('backendUrl', 'http://localhost:8000');
+        const backendUrlConfig = config.get<string>('backendUrl', 'http://localhost:8000');
+        const backendUrl = sanitizeBackendUrl(backendUrlConfig);
+        if (!backendUrl) {
+            api.window.showErrorMessage('Invalid backend URL');
+            return;
+        }
         const dag = await fetchFn(missionId, backendUrl);
         const mermaid = dagToMermaid(dag, filePath);
         const panel = api.window.createWebviewPanel('jarvisDag', `Mission ${missionId} DAG`, vscode.ViewColumn.Beside, { enableScripts: true });
