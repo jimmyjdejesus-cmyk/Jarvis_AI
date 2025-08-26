@@ -1,3 +1,28 @@
+def manage_config(args):
+    """Manage configuration."""
+    try:
+        from config.config_loader import load_config, get_config_path, save_config
+        if args.init:
+            print("🔧 Initializing default configuration...")
+            config_path = get_config_path()
+            if not config_path.exists():
+                default_config_path = current_dir / "config" / "default.yaml"
+                import shutil
+                shutil.copy2(default_config_path, config_path)
+                print(f"✅ Default configuration created at {config_path}")
+            else:
+                print("✅ Configuration file already exists.")
+            return
+        config = load_config()
+        if args.show:
+            import yaml
+            print("📋 Current Jarvis AI Configuration:")
+            print(yaml.dump(config))
+        elif args.validate:
+            print("✅ Configuration loaded successfully.")
+    except Exception as e:
+        print(f"❌ Error managing configuration: {e}")
+        sys.exit(1)
 """
 CLI entry point for Jarvis AI
 Provides command-line interface for running and managing Jarvis AI
@@ -101,17 +126,6 @@ def run_application(args):
         except Exception as e:
             print(f"❌ Error starting application: {e}")
             sys.exit(1)
-        if args.show:
-            import yaml
-            print("📋 Current Jarvis AI Configuration:")
-            print(yaml.dump(config))
-            
-        elif args.validate:
-            print("✅ Configuration loaded successfully.")
-            
-    except Exception as e:
-        print(f"❌ Error managing configuration: {e}")
-        sys.exit(1)
 
 def run_indexer(args):
     """Rebuild repository index."""

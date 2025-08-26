@@ -26,7 +26,7 @@ COPY pyproject.toml /tmp/
 
 # Install dependencies
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r /tmp/requirements_enhanced.txt
+    pip install -r requirements_enhanced.txt
 
 # Production stage  
 FROM python:3.11-slim as production
