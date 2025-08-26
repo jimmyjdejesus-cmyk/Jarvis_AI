@@ -1,3 +1,76 @@
+# Legacy Applications
+
+This document contains information about the older and experimental versions of the Jarvis AI application.
+
+## J.A.R.V.I.S. Desktop Application (Tauri + React)
+
+This version of the application is a desktop app built with Tauri and React.
+
+### Architecture
+
+*   **Backend:** A Python application using **FastAPI** provides a robust API and a **WebSocket** server for real-time communication. It is located in the `app/` directory.
+*   **Frontend:** A **React** single-page application provides the user interface. The source code is in the `src-tauri/src/` directory.
+*   **Desktop Shell:** **Tauri** is used to wrap the frontend and backend into a single, cross-platform desktop executable. Tauri configuration is in `src-tauri/tauri.conf.json`.
+
+The Python backend is packaged into an executable using **PyInstaller** and launched by the Tauri application as a **sidecar** process. This creates a fully self-contained application with no need for the user to install Python or other dependencies separately.
+
+### Development Setup
+
+To run the application in a development environment, you will need **Python 3.8+** with `pip`, and **Node.js** with `npm`.
+
+**1. Backend Setup:**
+
+```bash
+pip install -r requirements.txt
+```
+
+**2. Frontend Setup:**
+
+```bash
+cd src-tauri
+npm install
+cd ..
+```
+
+**3. Running in Development Mode:**
+
+You will need two separate terminals to run the backend and frontend servers concurrently.
+
+*   **Terminal 1: Run the Backend**
+    ```bash
+    python app/main.py
+    ```
+
+*   **Terminal 2: Run the Frontend**
+    ```bash
+    cd src-tauri
+    npm run dev
+    ```
+
+## Jarvis AI – Local, Visual Agent (Tkinter)
+
+This is a self-contained local build of Jarvis with a Tkinter UI.
+
+### Features
+
+*   A **dynamic agent** framework (no external dependencies) you can extend with tools.
+*   A **native desktop UI** (Tkinter) for casual chat or prompt-engineering.
+*   A **visual workflow panel** that shows each step (planning → research → analysis) and lets you click nodes to inspect details.
+*   **Session persistence** to disk (chat folders) under `data/sessions/`.
+
+### Run
+
+```bash
+# Desktop app
+python -m jarvis --gui
+
+# CLI
+python -m jarvis "Refactor database.py to improve performance"
+```
+
+## Jarvis AI Desktop Application (Basic Tkinter)
+
+```python
 #!/usr/bin/env python3
 """
 Jarvis AI Desktop Application
@@ -220,7 +293,7 @@ class JarvisDesktopApp:
         frame.pack(fill=tk.BOTH, expand=True)
 
         if prompt_message:
-            ttk.Label(frame, text=prompt_message, foreground="#ffaa00", wraplength=380).pack(pady=(0, 10))
+            ttk.Label(frame, text=prompt_message, foreground='#ffaa00', wraplength=380).pack(pady=(0, 10))
 
         ttk.Label(frame, text="LangSmith API Key:").pack(pady=(10, 5))
         
@@ -370,3 +443,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+```

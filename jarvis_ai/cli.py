@@ -60,20 +60,20 @@ def run_application(args):
     try:
         import subprocess
         
-        desktop_app_path = current_dir / "desktop_app.py"
+        desktop_app_path = current_dir / "modern_desktop_app.py"
         
         if not desktop_app_path.exists():
-            print("❌ Could not find desktop_app.py")
+            print("Error: Could not find desktop_app.py")
             sys.exit(1)
             
-        print("🚀 Starting Jarvis AI Desktop App...")
+        print("Starting Jarvis AI Desktop App...")
         
         # Activate venv and run desktop_app.py
         python_executable = str(current_dir / "venv" / "Scripts" / "python.exe")
         subprocess.run([python_executable, str(desktop_app_path)])
         
     except Exception as e:
-        print(f"❌ Error starting application: {e}")
+        print(f"Error starting application: {e}")
         sys.exit(1)
 
 def manage_config(args):
