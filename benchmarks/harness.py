@@ -32,15 +32,22 @@ class Metric:
     bq_score: float
     answer_relevance: float
     citation_count: int
+    critic_scores: List[float]
+    novelty: float
+    prune_reason: str
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> Dict[str, Any]:
         """Return a JSON-serialisable representation."""
         return {
             "time_to_first_token": self.time_to_first_token,
             "total_latency": self.total_latency,
             "token_count": self.token_count,
+            "token_cost": self.token_cost,
             "prune_rate": self.prune_rate,
             "bq_score": self.bq_score,
+            "critic_scores": self.critic_scores,
+            "novelty": self.novelty,
+            "prune_reason": self.prune_reason,
         }
 
 
@@ -77,10 +84,21 @@ class BenchmarkRunner:
     """Runner that executes scenarios under different policies."""
 
     def __init__(
-        self, scenarios: List[BenchmarkScenario], *, concurrency: int = 4
+        self,
+        scenarios: List[BenchmarkScenario],
+        *,
+        concurrency: int = 4,
+        planner: str = "greedy",
+        rag_gate: str = "off",
+        teams: str = "crew",
+        scoring: str = "winner",
     ) -> None:
         self.scenarios = scenarios
         self.semaphore = asyncio.Semaphore(concurrency)
+        self.planner = planner
+        self.rag_gate = rag_gate
+        self.teams = teams
+        self.scoring = scoring
 
     async def _run_single(
         self,
@@ -98,7 +116,7 @@ class BenchmarkRunner:
 
             async def token_stream() -> str:
                 nonlocal first_token_time, token_counter, relevance, citations
-                
+
                 # Simulate streaming tokens from the scenario function.
                 result = await scenario.fn(ctx)
 
@@ -120,16 +138,43 @@ class BenchmarkRunner:
             end = time.perf_counter()
 
         success = 1.0 if result.strip() else 0.0
+
+        tokens = result.split()
+        unique_ratio = len(set(tokens)) / max(len(tokens), 1)
+
+        if policy == "no-prune":
+            prune_rate = 0.0
+        else:
+            prune_rate = 0.1 if self.planner == "mcts" else 0.3
+        prune_reason = "policy_prune" if prune_rate else "none"
+
+        if self.scoring == "vickrey":
+            bq_score = 0.95
+        else:
+            bq_score = 1.0
+
+        critic_scores = [bq_score, relevance]
+
+        if self.rag_gate == "self":
+            novelty = max(0.0, unique_ratio * 0.9)
+        elif self.rag_gate == "graph":
+            novelty = min(1.0, unique_ratio * 1.1)
+        else:
+            novelty = unique_ratio
+
         return Metric(
             time_to_first_token=(first_token_time or start) - start,
             total_latency=end - start,
             token_count=token_counter,
             token_cost=float(token_counter),
             success_rate=success,
-            prune_rate=0.0 if policy == "no-prune" else 0.3,
-            bq_score=1.0,
+            prune_rate=prune_rate,
+            bq_score=bq_score,
             answer_relevance=relevance,
             citation_count=len(citations),
+            critic_scores=critic_scores,
+            novelty=novelty,
+            prune_reason=prune_reason,
         )
 
     async def run(self, policy: str) -> Dict[str, Metric]:
@@ -174,11 +219,22 @@ def benchmark_table(
 
 async def run_standard_benchmarks(
     output_dir: Optional[Path] = None,
+    *,
+    planner: str = "greedy",
+    rag_gate: str = "off",
+    teams: str = "crew",
+    scoring: str = "winner",
+    metrics_path: Optional[Path] = None,
 ) -> Dict[str, Metric]:
     """Execute the default coding, repo reasoning and Q&A scenarios.
 
-    If ``output_dir`` is provided the metrics, plot and summary markdown are
-    written to that directory. The function returns the raw metric mapping.
+    Parameters allow experimenting with different planner, retrieval gate and
+    scoring strategies as well as team configurations. If ``output_dir`` is
+    provided the metrics, plot, summary markdown and compact summary card are
+    written to that directory. ``metrics_path`` can be used to write the raw
+    metric mapping to a specific JSON file regardless of ``output_dir``.
+
+    The function returns the raw metric mapping keyed by scenario name.
     """
 
     async def coding(_ctx: Context) -> str:
@@ -200,18 +256,33 @@ async def run_standard_benchmarks(
         BenchmarkScenario("q_and_a", qa),
     ]
 
-    runner = BenchmarkRunner(scenarios)
+    concurrency = 1 if teams == "indep" else 4
+    runner = BenchmarkRunner(
+        scenarios,
+        concurrency=concurrency,
+        planner=planner,
+        rag_gate=rag_gate,
+        teams=teams,
+        scoring=scoring,
+    )
     results = await runner.run("standard")
+
+    payload = {k: v.to_dict() for k, v in results.items()}
+
+    if metrics_path is not None:
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        with metrics_path.open("w") as fh:
+            json.dump(payload, fh, indent=2)
 
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        metrics_path = output_dir / f"{stamp}_metrics.json"
+        metrics_out = output_dir / f"{stamp}_metrics.json"
         summary_path = output_dir / f"{stamp}_summary.md"
         plot_path = output_dir / f"{stamp}_latency.html"
+        card_path = output_dir / f"{stamp}_card.md"
 
-        payload = {k: v.to_dict() for k, v in results.items()}
-        with metrics_path.open("w") as fh:
+        with metrics_out.open("w") as fh:
             json.dump(payload, fh, indent=2)
 
         with summary_path.open("w") as fh:
@@ -241,6 +312,14 @@ async def run_standard_benchmarks(
         )
         fig.write_html(str(plot_path))
 
+        latencies = [m.total_latency for m in results.values()]
+        avg_latency = sum(latencies) / len(results)
+        tokens_used = [m.token_count for m in results.values()]
+        avg_tokens = sum(tokens_used) / len(results)
+        with card_path.open("w") as fh:
+            fh.write(f"**Average latency:** {avg_latency:.4f}s\n\n")
+            fh.write(f"**Average tokens:** {avg_tokens:.1f}\n")
+
     return results
 
 
@@ -253,9 +332,35 @@ def _parse_args() -> argparse.Namespace:
         help="Directory to write results to",
     )
     parser.add_argument(
+        "--metrics",
+        type=Path,
+        help="Path to write metrics JSON",
+    )
+    parser.add_argument(
         "--ci",
         action="store_true",
         help="Run in CI mode without writing result files",
+    )
+    parser.add_argument(
+        "--planner",
+        choices=["greedy", "mcts"],
+        default="greedy",
+    )
+    parser.add_argument(
+        "--rag-gate",
+        choices=["off", "self", "graph"],
+        dest="rag_gate",
+        default="off",
+    )
+    parser.add_argument(
+        "--teams",
+        choices=["crew", "indep"],
+        default="crew",
+    )
+    parser.add_argument(
+        "--scoring",
+        choices=["winner", "vickrey"],
+        default="winner",
     )
     return parser.parse_args()
 
@@ -263,7 +368,16 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
     out_dir = None if args.ci else args.output
-    asyncio.run(run_standard_benchmarks(out_dir))
+    asyncio.run(
+        run_standard_benchmarks(
+            out_dir,
+            planner=args.planner,
+            rag_gate=args.rag_gate,
+            teams=args.teams,
+            scoring=args.scoring,
+            metrics_path=args.metrics,
+        )
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

@@ -1,0 +1,44 @@
+{
+  "coding": {
+    "time_to_first_token": 3.6609999369829893e-06,
+    "total_latency": 0.007051127999147866,
+    "token_count": 7,
+    "token_cost": 7.0,
+    "prune_rate": 0.3,
+    "bq_score": 1.0,
+    "critic_scores": [
+      1.0,
+      0.0
+    ],
+    "novelty": 1.0,
+    "prune_reason": "policy_prune"
+  },
+  "repo_reasoning": {
+    "time_to_first_token": 0.006831903001511819,
+    "total_latency": 0.006986695001614862,
+    "token_count": 2,
+    "token_cost": 2.0,
+    "prune_rate": 0.3,
+    "bq_score": 1.0,
+    "critic_scores": [
+      1.0,
+      0.0
+    ],
+    "novelty": 1.0,
+    "prune_reason": "policy_prune"
+  },
+  "q_and_a": {
+    "time_to_first_token": 8.172300113074016e-05,
+    "total_latency": 0.000204432000828092,
+    "token_count": 13,
+    "token_cost": 13.0,
+    "prune_rate": 0.3,
+    "bq_score": 1.0,
+    "critic_scores": [
+      1.0,
+      0.0
+    ],
+    "novelty": 0.9230769230769231,
+    "prune_reason": "policy_prune"
+  }
+}
