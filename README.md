@@ -41,7 +41,7 @@ The recommended way to run Jarvis AI is by using the Streamlit-based web interfa
 You can run the application using the `jarvis` command:
 
 ```bash
-jarvis run
+python -m jarvis_ai.cli run
 ```
 
 This will start the Streamlit web interface, which will be available at `http://localhost:8501`.
