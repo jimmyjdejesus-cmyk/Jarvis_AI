@@ -1,98 +1,151 @@
-# Jarvis AI
+# Jarvis AI - Multi-Agent Orchestrator
 
-J.A.R.V.I.S. is a powerful, privacy-first, and modular platform for developing and orchestrating advanced AI agents. It is designed with a microservices architecture to be scalable, extensible, and robust.
+A powerful desktop application for orchestrating AI agents with visual flow editing, built with Tauri, React, and React Flow.
 
-## 🚀 Quick Start
+## Features
 
-The recommended way to run Jarvis AI is by using the Streamlit-based web interface.
+- **Galaxy Model Visualization**: Hierarchical view of crews and agents with 3D-like navigation
+- **Multi-dimensional Relationship Tracing**: Visual connections showing data flow, control, and dependencies
+- **Rich Desktop Experience**: 
+  - Resizable panes
+  - Multiple chat windows
+  - Project management
+  - Crew and agent organization
+- **Three View Modes**:
+  - Galaxy View: High-level overview of all crews
+  - Crew View: Detailed view of a specific crew and its agents
+  - Agent View: Focus on individual agent configuration
+- **Chat Interface**:
+  - Multiple chat modes (Chat, Research, Agent)
+  - Resizable chat panes
+  - Project-based organization
 
-### 1. Prerequisites
+## Migration from vis-network-react to react-flow
 
-*   Python 3.8+
-*   Docker and Docker Compose (optional, for Docker-based setup)
+This project has been migrated from `vis-network-react` to `react-flow` for better performance, more features, and active maintenance.
 
-### 2. Installation
+### Key Improvements:
+- Better performance with large graphs
+- Built-in controls for zoom, pan, and minimap
+- More customization options
+- Better TypeScript support
+- Active community and regular updates
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/jimmyjdejesus-cmyk/Jarvis_AI.git
-    cd Jarvis_AI
-    ```
+## Installation
 
-2.  **Create a virtual environment:**
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # On Windows, use `.venv\Scripts\activate`
-    ```
-
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Set up environment variables:**
-    ```bash
-    cp .env.example .env
-    ```
-    Edit the `.env` file to add any necessary API keys (e.g., for LangSmith).
-
-### 3. Running the Application
-
-You can run the application using the `jarvis` command:
-
+1. **Install Node.js dependencies:**
 ```bash
-python -m jarvis_ai.cli run
+npm install
 ```
 
-This will start the Streamlit web interface, which will be available at `http://localhost:8501`.
-
-Alternatively, you can use the launcher script:
-
+2. **Install Rust and Tauri CLI (if not already installed):**
 ```bash
-python launcher.py
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install Tauri CLI
+npm install -g @tauri-apps/cli
 ```
 
-This will give you a menu of options, including the web UI, desktop apps, and CLI.
-
-### 4. Docker-based Setup
-
-If you prefer to use Docker, you can run the entire platform with Docker Compose:
-
+3. **Run the development server:**
 ```bash
-docker-compose up -d --build
+# Run the web development server
+npm run dev
+
+# Or run with Tauri (desktop app)
+npm run tauri:dev
 ```
 
-The API will be available at `http://localhost:8000`.
+4. **Build for production:**
+```bash
+# Build web assets
+npm run build
 
-## 📋 Features
+# Build desktop app
+npm run tauri:build
+```
 
-*   **Streamlit Web Interface:** A modern and intuitive web interface for interacting with the AI.
-*   **Ollama Integration:** Run local, open-source language models.
-*   **Lang Ecosystem Integration:** Built-in support for LangChain, LangGraph, and LangSmith.
-*   **Plugin System:** Extend the functionality of the application with custom plugins.
-*   **Custom Workflows:** Create your own custom workflows to automate complex tasks.
-*   **Authentication:** User and admin roles with an admin panel for management.
-*   **Security and Privacy:** Local processing, encrypted data storage, and audit logs.
+## Project Structure
 
-## 📖 Documentation
+```
+jarvis-ai/
+├── src/                    # React frontend source
+│   ├── components/         # React components
+│   │   ├── FlowCanvas.tsx  # Main React Flow canvas
+│   │   ├── Sidebar.tsx     # Project management sidebar
+│   │   └── ChatPanel.tsx   # Chat interface
+│   ├── store/             # State management (Zustand)
+│   ├── styles/            # CSS styles
+│   └── types/             # TypeScript type definitions
+├── src-tauri/             # Tauri backend (Rust)
+├── index.html             # Entry HTML
+├── package.json           # Node dependencies
+└── vite.config.ts         # Vite configuration
+```
 
-*   **[Integration Guide](docs/INTEGRATION_GUIDE.md)**: A guide to integrating Jarvis with other systems.
-*   **[Customization Guide](docs/CUSTOMIZATION_GUIDE.md)**: A guide to customizing and extending the application.
-*   **[Legacy Applications](docs/LEGACY.md)**: Information about the older Tkinter and Tauri desktop applications.
+## Usage
 
-## 🔧 Development
+### Creating a New Project
+1. Click "New Project" in the sidebar
+2. Name your project
+3. Start adding crews and agents
 
-To run the application in a development environment, follow the installation steps above. You can then run the backend and frontend servers separately.
+### Working with Crews
+1. Switch to Galaxy View to see all crews
+2. Click on a crew to enter Crew View
+3. Add agents by clicking the "+" button
+4. Connect agents by dragging from one to another
 
-*   **Backend (FastAPI):**
-    ```bash
-    python app/main.py
-    ```
+### Managing Agents
+1. Click on an agent to select it
+2. Configure agent properties in the sidebar
+3. View agent status and capabilities
+4. Create connections to other agents
 
-*   **Frontend (Streamlit):**
-    ```bash
-    streamlit run jarvis_chat.py
-    ```
+### Using the Chat Interface
+1. Click "New Chat" to start a conversation
+2. Switch between Chat, Research, and Agent modes
+3. Resize panes by dragging the dividers
+4. Add or remove chat panes as needed
 
----
-*This project is under active development.*
+## Technologies Used
+
+- **Frontend**: React 18, TypeScript, Vite
+- **Desktop**: Tauri (Rust)
+- **Flow Visualization**: React Flow 11
+- **State Management**: Zustand
+- **Styling**: Tailwind CSS, CSS Modules
+- **UI Components**: Lucide React (icons), Framer Motion (animations)
+- **Utilities**: UUID, D3.js (for Galaxy visualization)
+
+## Development
+
+### Adding New Agent Types
+Edit `src/types/index.ts` and add your agent type to the `Agent` interface.
+
+### Customizing the Galaxy View
+Modify `src/components/FlowCanvas.tsx` and adjust the `renderGalaxyView` function.
+
+### Adding New Chat Modes
+Update the `ChatMode` type in `src/types/index.ts` and modify `src/components/ChatPanel.tsx`.
+
+## Troubleshooting
+
+If you encounter TypeScript errors, ensure all dependencies are installed:
+```bash
+npm install
+```
+
+If Tauri doesn't start, ensure Rust is properly installed:
+```bash
+rustc --version
+cargo --version
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

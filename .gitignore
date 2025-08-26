@@ -1,50 +1,43 @@
-# Database files
-*.db
-janus_database.db
-
-# Python cache files
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# Temporary files
-*.py.new
-fixed_section.py
-*.bak
-*.tmp
-
-# Environment settings
-.env
-.venv
-env/
-venv/
-ENV/
-.env.*
-
-# Distribution / packaging
-dist/*
-!dist/README.md
-!dist/config_wizard/
-!dist/config_wizard/README.md
-build/
-*.egg-info/
-
 # Logs
+logs
 *.log
-logs/*
-!logs/events.ndjson
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Repository search indices
-data/repo_index/
-# Node artifacts
-node_modules/
-extensions/**/node_modules/
-extensions/**/out/
+node_modules
+dist
+dist-ssr
+*.local
 
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
+# Tauri
+src-tauri/target/
+src-tauri/WixTools/
 
-# Benchmark outputs
-benchmarks/candidate_metrics.json
-results/*
-!results/README.md
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build files
+*.tsbuildinfo
