@@ -2,14 +2,11 @@ import socketio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-<<<<<<< HEAD
 from typing import List, Dict, Any
-=======
 from pydantic import BaseModel
 from typing import Any, Dict, List
 
 from jarvis.orchestration.mission import load_mission
->>>>>>> 90775caae0ee1f419403e60a66426822b7ba0ef6
 
 # Create a FastAPI app instance
 app = FastAPI()
@@ -29,14 +26,11 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-<<<<<<< HEAD
-=======
 
 def broadcast_workflow_update(update: Dict[str, Any]) -> None:
     """Background task to emit workflow updates over Socket.IO."""
     sio.start_background_task(sio.emit, "workflow:update", update)
 
->>>>>>> 90775caae0ee1f419403e60a66426822b7ba0ef6
 @app.get("/")
 async def read_root():
     """
@@ -51,31 +45,8 @@ async def read_root():
 async def get_workflow_data() -> Dict[str, List[Dict[str, Any]]]:
     """
     Provides data for the workflow visualization pane.
-<<<<<<< HEAD
     This is a mock implementation and returns a static graph structure.
     In a real application, this would be dynamically generated.
-    """
-    # DEV-COMMENT: This data represents a directed graph.
-    # 'nodes' are the agents or tasks, and 'edges' represent the flow of work.
-    # The structure is compatible with most graph visualization libraries (e.g., vis.js, d3).
-    nodes = [
-        {"id": 1, "label": "Meta-Agent", "shape": "box", "color": "#94a3b8"},
-        {"id": 2, "label": "Planner Agent", "shape": "box", "color": "#a16207"},
-        {"id": 3, "label": "Research Team", "shape": "ellipse", "color": "#16a34a"},
-        {"id": 4, "label": "Code Generation Team", "shape": "ellipse", "color": "#1d4ed8"},
-        {"id": 5, "label": "Reviewer Agent", "shape": "box", "color": "#a16207"},
-        {"id": 6, "label": "Final Output", "shape": "box", "color": "#94a3b8"},
-    ]
-    edges = [
-        {"from": 1, "to": 2, "arrows": "to"},
-        {"from": 2, "to": 3, "arrows": "to"},
-        {"from": 2, "to": 4, "arrows": "to"},
-        {"from": 3, "to": 5, "arrows": "to"},
-        {"from": 4, "to": 5, "arrows": "to"},
-        {"from": 5, "to": 6, "arrows": "to"},
-    ]
-    return {"nodes": nodes, "edges": edges}
-=======
     NOTE: This endpoint is not yet implemented and will be connected
     to the core J.A.R.V.I.S. orchestrator in a future update.
     """
@@ -94,7 +65,6 @@ async def get_mission_workflow(mission_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="mission not found")
     return mission.dag.to_dict()
 
->>>>>>> 90775caae0ee1f419403e60a66426822b7ba0ef6
 
 @app.get("/api/logs")
 async def get_agent_logs() -> str:
@@ -120,37 +90,8 @@ async def get_agent_logs() -> str:
 async def get_hitl_recommendations() -> List[Dict[str, Any]]:
     """
     Provides a list of Human-in-the-Loop (HITL) recommendations.
-<<<<<<< HEAD
     This is a mock implementation. In a real system, these would be generated
     by an 'Oracle' agent or a similar mechanism when the system needs human input.
-    """
-    # DEV-COMMENT: Each dictionary represents a decision point or recommendation
-    # that the user can act upon. The 'id' is crucial for tracking which action is taken.
-    recommendations = [
-        {
-            "id": "hitl_001",
-            "title": "Approve Code Merge",
-            "description": "The Code Generation Team has submitted a pull request. Review the changes and approve the merge to the main branch.",
-            "actions": ["Approve", "Reject", "Comment"],
-            "status": "Pending"
-        },
-        {
-            "id": "hitl_002",
-            "title": "Select Research Direction",
-            "description": "The Research Team has identified two potential paths for solving the problem. Choose which direction to prioritize.",
-            "actions": ["Path A", "Path B"],
-            "status": "Pending"
-        },
-        {
-            "id": "hitl_003",
-            "title": "Confirm High-Cost Operation",
-            "description": "The system is about to perform a high-cost operation (e.g., large-scale data processing). Please confirm to proceed.",
-            "actions": ["Confirm", "Cancel"],
-            "status": "Pending"
-        }
-    ]
-    return recommendations
-=======
     NOTE: This endpoint is not yet implemented and will be connected
     to the core J.A.R.V.I.S. HITL Oracle in a future update.
     """
@@ -188,7 +129,6 @@ async def deny(decision: HitlDecision) -> Dict[str, str]:
     hitl_gates[decision.action] = False
     return {"status": "denied"}
 
->>>>>>> 90775caae0ee1f419403e60a66426822b7ba0ef6
 
 
 # Mount the Socket.IO application to the FastAPI app
@@ -228,8 +168,4 @@ if __name__ == "__main__":
         "main:app",
         host="127.0.0.1",
         port=8000
-<<<<<<< HEAD
     )
-=======
-    )
->>>>>>> 90775caae0ee1f419403e60a66426822b7ba0ef6
