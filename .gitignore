@@ -23,10 +23,26 @@ ENV/
 .env.*
 
 # Distribution / packaging
-dist/
+dist/*
+!dist/README.md
+!dist/config_wizard/
+!dist/config_wizard/README.md
 build/
 *.egg-info/
 
 # Logs
 *.log
-logs/
+logs/*
+!logs/events.ndjson
+
+# Repository search indices
+data/repo_index/
+# Node artifacts
+node_modules/
+extensions/**/node_modules/
+extensions/**/out/
+
+
+# Deprecated code
+=======
+main

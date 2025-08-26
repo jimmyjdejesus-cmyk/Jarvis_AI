@@ -1,0 +1,7 @@
+site_name: Jarvis AI Docs
+nav:
+  - Run Jarvis in 5 minutes: run-jarvis-in-5-minutes.md
+  - Build a Specialist: build-a-specialist.md
+  - Pruning & Path Memory: pruning-and-path-memory.md
+  - Graph UI: graph-ui.md
+docs_dir: docs

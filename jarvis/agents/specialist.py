@@ -8,10 +8,18 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
 
+from .base_specialist import BaseSpecialist
+
 logger = logging.getLogger(__name__)
 
-class SpecialistAgent:
-    """Base class for specialist agents with expertise in specific domains"""
+class SpecialistAgent(BaseSpecialist):
+    """Concrete implementation of :class:`BaseSpecialist`.
+
+    The class provides common functionality used by all specialist agents
+    such as context handling and prompt generation.  It previously acted as
+    the base class directly; now it implements the :class:`BaseSpecialist`
+    interface to provide a consistent contract for the orchestrator.
+    """
     
     def __init__(self, specialization: str, preferred_models: List[str], mcp_client):
         """
@@ -176,7 +184,13 @@ Provide practical DevOps solutions with implementation roadmaps."""
         
         return prompts.get(self.specialization, f"You are a helpful AI assistant specializing in {self.specialization}.")
     
-    async def process_task(self, task: str, context: List[Dict] = None, user_context: str = None) -> Dict[str, Any]:
+    async def process_task(
+        self,
+        task: str,
+        context: List[Dict] = None,
+        user_context: str = None,
+        models: List[str] | None = None,
+    ) -> Dict[str, Any]:
         """
         Process a task using specialist expertise
         
@@ -190,25 +204,19 @@ Provide practical DevOps solutions with implementation roadmaps."""
         """
         try:
             # Build comprehensive prompt
-            specialist_prompt = self._build_specialist_prompt(task, context, user_context)
-            
-            # Try preferred models in order
-            for model in self.preferred_models:
+            specialist_prompt = self.build_prompt(task, context, user_context)
+
+            # Determine model order (allows dynamic routing)
+            model_order = models or self.preferred_models
+
+            # Try models in order
+            for model in model_order:
                 try:
                     response = await self._generate_response(model, specialist_prompt)
-                    
+
                     # Process and analyze the response
-                    result = self._process_response(response, model, task)
-                    
-                    # Add to task history
-                    self.task_history.append({
-                        "task": task,
-                        "response": response,
-                        "model_used": model,
-                        "timestamp": datetime.now().isoformat(),
-                        "confidence": result["confidence"]
-                    })
-                    
+                    result = self.process_model_response(response, model, task)
+
                     return result
                     
                 except Exception as e:
@@ -222,7 +230,9 @@ Provide practical DevOps solutions with implementation roadmaps."""
             logger.error(f"Task processing failed for {self.specialization}: {e}")
             return self._create_error_result(str(e), task)
     
-    def _build_specialist_prompt(self, task: str, context: List[Dict] = None, user_context: str = None) -> str:
+    def build_prompt(
+        self, task: str, context: List[Dict] = None, user_context: str = None
+    ) -> str:
         """Build comprehensive prompt for specialist analysis"""
         
         prompt_parts = [
@@ -269,17 +279,31 @@ Provide practical DevOps solutions with implementation roadmaps."""
     async def _generate_response(self, model: str, prompt: str) -> str:
         """Generate response using specified model"""
         server = self._get_server_for_model(model)
-        
+
         if not server:
             raise Exception(f"No server available for model: {model}")
-        
+
         response = await self.mcp_client.generate_response(
             server=server,
             model=model,
-            prompt=prompt
+            prompt=prompt,
         )
-        
+
         return response
+
+    def process_model_response(self, response: str, model: str, task: str) -> Dict[str, Any]:
+        """Process model output and update history."""
+        result = self._process_response(response, model, task)
+        self.task_history.append(
+            {
+                "task": task,
+                "response": response,
+                "model_used": model,
+                "timestamp": datetime.now().isoformat(),
+                "confidence": result["confidence"],
+            }
+        )
+        return result
     
     def _get_server_for_model(self, model: str) -> Optional[str]:
         """Determine which server hosts a given model"""

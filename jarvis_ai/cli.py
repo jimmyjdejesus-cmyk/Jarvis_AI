@@ -37,6 +37,10 @@ def main():
     
     # Version command
     version_parser = subparsers.add_parser("version", help="Show version information")
+
+    # Index command to rebuild repository search index
+    index_parser = subparsers.add_parser("index", help="Rebuild repository search index")
+    index_parser.add_argument("--force", action="store_true", help="Force rebuild even if index exists")
     
     args = parser.parse_args()
     
@@ -46,59 +50,28 @@ def main():
         manage_config(args)
     elif args.command == "version":
         show_version()
+    elif args.command == "index":
+        run_indexer(args)
     else:
         parser.print_help()
 
 def run_application(args):
-    """Run the Jarvis AI application."""
+    """Run the Jarvis AI desktop application."""
     try:
-        import streamlit.web.cli as stcli
-        import streamlit as st
+        import subprocess
         
-        # Determine the app file to run
-        app_file = None
-        possible_locations = [
-            current_dir / "legacy" / "app.py",
-            current_dir / "app.py",
-            current_dir / "legacy" / "streamlit_app.py"
-        ]
+        desktop_app_path = current_dir / "desktop_app.py"
         
-        for location in possible_locations:
-            if location.exists():
-                app_file = str(location)
-                break
-        
-        if not app_file:
-            print("❌ Could not find main application file")
-            print("Looking for app.py in:", [str(p) for p in possible_locations])
+        if not desktop_app_path.exists():
+            print("❌ Could not find desktop_app.py")
             sys.exit(1)
+            
+        print("🚀 Starting Jarvis AI Desktop App...")
         
-        print(f"🚀 Starting Jarvis AI on {args.host}:{args.port}")
-        print(f"📁 Using app file: {app_file}")
+        # Activate venv and run desktop_app.py
+        python_executable = str(current_dir / "venv" / "Scripts" / "python.exe")
+        subprocess.run([python_executable, str(desktop_app_path)])
         
-        # Build streamlit command args
-        sys.argv = [
-            "streamlit",
-            "run",
-            app_file,
-            "--server.port", str(args.port),
-            "--server.address", args.host,
-        ]
-        
-        if args.headless:
-            sys.argv.extend([
-                "--server.headless", "true",
-                "--server.enableCORS", "false",
-                "--server.enableXsrfProtection", "false"
-            ])
-        
-        # Run streamlit
-        stcli.main()
-        
-    except ImportError:
-        print("❌ Streamlit not found. Please install dependencies:")
-        print("   pip install jarvis-ai")
-        sys.exit(1)
     except Exception as e:
         print(f"❌ Error starting application: {e}")
         sys.exit(1)
@@ -106,60 +79,43 @@ def run_application(args):
 def manage_config(args):
     """Manage configuration."""
     try:
-        from legacy.agent.core.config_manager import get_config_manager
-        # Dynamically import get_config_manager from legacy.agent.core.config_manager
-        config_manager_path = current_dir / "legacy" / "agent" / "core" / "config_manager.py"
-        spec = importlib.util.spec_from_file_location("config_manager", str(config_manager_path))
-        config_manager_module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(config_manager_module)
-        get_config_manager = config_manager_module.get_config_manager
-        config_manager = get_config_manager()
+        from config.config_loader import load_config, get_config_path, save_config
+        
+        if args.init:
+            print("🔧 Initializing default configuration...")
+            config_path = get_config_path()
+            if not config_path.exists():
+                default_config_path = current_dir / "config" / "default.yaml"
+                import shutil
+                shutil.copy2(default_config_path, config_path)
+                print(f"✅ Default configuration created at {config_path}")
+            else:
+                print("✅ Configuration file already exists.")
+            return
+
+        config = load_config()
         
         if args.show:
-            config = config_manager.load_config()
+            import yaml
             print("📋 Current Jarvis AI Configuration:")
-            print(f"   Version: {config.version}")
-            print(f"   Debug Mode: {config.debug_mode}")
-            print(f"   Data Directory: {config.data_directory}")
-            print(f"   Logs Directory: {config.logs_directory}")
-            print(f"   Ollama Endpoint: {config.integrations.ollama_endpoint}")
-            print(f"   Default Model: {config.integrations.default_model}")
-            print(f"   LangSmith Enabled: {config.lang_ecosystem.langsmith.enabled}")
-            print(f"   LangSmith API Key: {'Set' if config.lang_ecosystem.langsmith.api_key else 'Not set'}")
-            print(f"   V2 Enabled: {config.v2.enabled}")
-            print(f"   V2 Expert Model: {config.v2.expert_model}")
+            print(yaml.dump(config))
             
         elif args.validate:
-            try:
-                config = config_manager.load_config()
-                print("✅ Configuration is valid")
-            except Exception as e:
-                print(f"❌ Configuration validation failed: {e}")
-                sys.exit(1)
-                
-        elif args.init:
-            print("🔧 Initializing default configuration...")
-            # Copy example config if it exists
-            config_dir = Path.cwd() / "config"
-            config_dir.mkdir(exist_ok=True)
-            
-            example_config = current_dir / "legacy" / "config" / "config.example.yaml"
-            target_config = config_dir / "config.yaml"
-            
-            if example_config.exists() and not target_config.exists():
-                import shutil
-                shutil.copy2(example_config, target_config)
-                print(f"✅ Configuration initialized at {target_config}")
-                print("   Please edit the configuration file to customize settings")
-            else:
-                print("❌ Could not initialize configuration")
-                print(f"   Example config: {example_config}")
-                print(f"   Target config: {target_config}")
-        else:
-            print("Use --show, --validate, or --init with config command")
+            print("✅ Configuration loaded successfully.")
             
     except Exception as e:
         print(f"❌ Error managing configuration: {e}")
+        sys.exit(1)
+
+def run_indexer(args):
+    """Rebuild repository index."""
+    try:
+        from tools.repository_indexer import RepositoryIndexer
+        indexer = RepositoryIndexer()
+        indexer.build_index(force_rebuild=args.force)
+        print("✅ Repository index built")
+    except Exception as e:  # pragma: no cover - runtime feedback
+        print(f"❌ Error building index: {e}")
         sys.exit(1)
 
 def show_version():
@@ -174,12 +130,6 @@ def show_version():
         
         # Check for key dependencies
         deps = []
-        try:
-            import streamlit
-            deps.append(f"Streamlit {streamlit.__version__}")
-        except ImportError:
-            deps.append("Streamlit: Not installed")
-            
         try:
             import langchain
             deps.append(f"LangChain {langchain.__version__}")

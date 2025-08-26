@@ -5,9 +5,6 @@ Security features for Jarvis AI
 import sys
 from pathlib import Path
 
-# Add legacy path for imports
-legacy_path = Path(__file__).parent.parent / "legacy"
-sys.path.insert(0, str(legacy_path))
 
 try:
     from agent.features.security import *

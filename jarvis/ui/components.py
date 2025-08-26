@@ -21,7 +21,37 @@ except ImportError:
 
 class UIComponents:
     """Modern UI components with clean interface"""
-    
+
+    @staticmethod
+    def confirm_action(message: str) -> bool:
+        """Prompt user to confirm or deny an action."""
+        try:
+            st.write(message)
+            col1, col2 = st.columns(2)
+            with col1:
+                confirm = st.button("Confirm")
+            with col2:
+                deny = st.button("Deny")
+            key = f"confirm_action_{message}"
+            if key not in st.session_state:
+                st.session_state[key] = None
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Confirm", key=f"{key}_confirm"):
+                    st.session_state[key] = True
+            with col2:
+                if st.button("Deny", key=f"{key}_deny"):
+                    st.session_state[key] = False
+            if st.session_state[key] is not None:
+                result = st.session_state[key]
+                # Optionally reset for future use
+                st.session_state[key] = None
+                return result
+            return None
+        except Exception:
+            response = input(f"{message} (y/N): ").strip().lower()
+            return response in {"y", "yes"}
+
     @staticmethod
     def render_sidebar():
         """Render modern sidebar"""

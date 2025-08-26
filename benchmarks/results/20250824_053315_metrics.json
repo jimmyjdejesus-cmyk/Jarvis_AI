@@ -1,0 +1,23 @@
+{
+  "coding": {
+    "time_to_first_token": 4.464000028292503e-06,
+    "total_latency": 0.007209970000019439,
+    "token_count": 7,
+    "prune_rate": 0.3,
+    "bq_score": 1.0
+  },
+  "repo_reasoning": {
+    "time_to_first_token": 0.0069939069999804815,
+    "total_latency": 0.0071382459999540515,
+    "token_count": 2,
+    "prune_rate": 0.3,
+    "bq_score": 1.0
+  },
+  "q_and_a": {
+    "time_to_first_token": 7.54330000063419e-05,
+    "total_latency": 0.00019935699998541168,
+    "token_count": 13,
+    "prune_rate": 0.3,
+    "bq_score": 1.0
+  }
+}

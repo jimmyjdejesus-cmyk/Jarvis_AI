@@ -33,7 +33,7 @@ python modern_desktop_app.py
 ### 2. 🌐 **Web Interface** (Streamlit)
 
 ```bash
-streamlit run legacy/app.py
+jarvis run
 ```
 Or double-click: `start_web.bat`
 
@@ -287,8 +287,8 @@ def secure_workflow():
 
 ### 2. Web Server Deployment
 ```bash
-# Using Streamlit
-streamlit run legacy/app.py --server.port 8501 --server.address 0.0.0.0
+# Using Jarvis
+jarvis run --port 8501 --host 0.0.0.0
 
 # Using Flask API
 python flask_api.py
@@ -304,8 +304,8 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8501
-CMD ["streamlit", "run", "legacy/app.py", "--server.address", "0.0.0.0"]
+EXPOSE 8000
+CMD ["jarvis", "run", "--host", "0.0.0.0"]
 ```
 
 ### 4. Cloud Deployment

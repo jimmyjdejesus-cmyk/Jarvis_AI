@@ -153,9 +153,9 @@ class SpecialistTask(WorkflowTask):
         
         try:
             # Import here to avoid circular imports
-            from ..orchestration.orchestrator import MultiAgentOrchestrator
-            
-            orchestrator = MultiAgentOrchestrator()
+            from ..ecosystem.meta_intelligence import ExecutiveAgent
+
+            orchestrator = ExecutiveAgent("workflow_meta")
             
             # Replace context variables in prompt
             formatted_prompt = self._format_prompt(context)

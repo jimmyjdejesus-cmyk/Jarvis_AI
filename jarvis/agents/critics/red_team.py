@@ -12,11 +12,19 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
+
 class RedTeamCritic:
     """Inspects specialist outputs for logical flaws and conflicts."""
 
-    def __init__(self, mcp_client):
+    def __init__(self, mcp_client=None, model: str = "llama3.2"):
+        """Initialize the red team critic.
+        
+        Args:
+            mcp_client: Optional MCP client for LLM interactions
+            model: Model name to use for reviews
+        """
         self.mcp_client = mcp_client
+        self.model = model
         self.review_prompt = (
             "You are a red team critic. Review the following specialist output "
             "for logical errors, contradictions, or unsupported assumptions. "
@@ -33,16 +41,33 @@ class RedTeamCritic:
         Returns:
             A dictionary containing ``approved`` and ``feedback`` fields.
         """
+        if not self.mcp_client:
+            # If no MCP client, auto-approve
+            return {"approved": True, "feedback": "Critic not configured"}
+        
         prompt = f"{self.review_prompt}\n\nSpecialist: {specialist}\nOutput:\n{content}"
+        
         try:
             response = await self.mcp_client.generate_response(
-                server="ollama", model=self.model, prompt=prompt
+                server="ollama", 
+                model=self.model, 
+                prompt=prompt
             )
+            
             try:
                 data = json.loads(response.strip())
+                if "approved" not in data:
+                    data["approved"] = True
+                if "feedback" not in data:
+                    data["feedback"] = response
             except json.JSONDecodeError:
                 data = {"approved": True, "feedback": response}
+            
             return data
+            
         except Exception as e:
             logger.error(f"Red team critic failed: {e}")
             return {"approved": True, "feedback": "Critic unavailable"}
+
+
+__all__ = ["RedTeamCritic"]

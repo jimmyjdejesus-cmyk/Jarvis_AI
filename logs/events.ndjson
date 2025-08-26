@@ -1,0 +1,3 @@
+{"event":"PruneSuggested","team_id":"team_alpha","reason":"redundant"}
+{"event":"TeamMerged","source":"team_beta","target":"team_gamma"}
+{"event":"PathMarkedDeadEnd","path_id":"path_123","reason":"loop"}

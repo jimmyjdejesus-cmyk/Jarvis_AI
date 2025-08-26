@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Jarvis Plugin Hub</title>
+    <script>
+        async function uninstall(name) {
+            const token = localStorage.getItem('token');
+            await fetch('/api/plugins/uninstall', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ name })
+            });
+            location.reload();
+        }
+    </script>
+</head>
+<body>
+    <h1>Plugin Hub</h1>
+    <table border="1">
+        <tr><th>Name</th><th>Version</th><th>Description</th><th>Author</th><th>Dependencies</th><th>Actions</th></tr>
+        {% for p in plugins %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.version }}</td>
+            <td>{{ p.description }}</td>
+            <td>{{ p.author }}</td>
+            <td>{{ ', '.join(p.dependencies) }}</td>
+            <td><button class="uninstall-btn" data-name="{{ p.name }}">Uninstall</button></td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

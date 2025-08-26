@@ -2,20 +2,27 @@
 Scripts module for Jarvis AI
 """
 
-import sys
-from pathlib import Path
+import requests
+import subprocess
 
-# Add legacy path for imports
-legacy_path = Path(__file__).parent.parent / "legacy"
-sys.path.insert(0, str(legacy_path))
+def get_available_models():
+    """Get available Ollama models"""
+    try:
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        if response.ok:
+            data = response.json()
+            return [model["name"] for model in data.get("models", [])]
+    except:
+        pass
+    return ["llama3.2", "qwen2.5", "gemma2"] # Default fallback models
 
 try:
-    from scripts.ollama_client import get_available_models, pull_model_subprocess
+    from legacy.scripts.ollama_client import get_available_models, pull_model_subprocess
 except ImportError:
     # Fallback implementations
     import requests
     import subprocess
-    
+
     def get_available_models():
         """Get available Ollama models"""
         try:
@@ -25,8 +32,8 @@ except ImportError:
                 return [model["name"] for model in data.get("models", [])]
         except:
             pass
-        return ["llama3.2", "qwen2.5", "gemma2"]  # Default fallback models
-    
+        return ["llama3.2", "qwen2.5", "gemma2"] # Default fallback models
+
     def pull_model_subprocess(model_name):
         """Pull a model using subprocess"""
         try:
@@ -36,10 +43,10 @@ except ImportError:
                 stderr=subprocess.STDOUT,
                 universal_newlines=True
             )
-            
+
             for line in process.stdout:
                 yield line.strip()
-            
+
             process.wait()
         except Exception as e:
             yield f"Error pulling model: {e}"
