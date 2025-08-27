@@ -55,6 +55,24 @@ npm run dev
 # 4. Open browser to http://localhost:5173
 ```
 
+## 🔐 Authentication
+
+The backend secures selected endpoints using OAuth2 bearer tokens with JWT.
+
+1. Request a token:
+
+   ```bash
+   curl -X POST -F "username=alice" -F "password=secret" http://localhost:8000/token
+   ```
+
+2. Use the token:
+
+   ```bash
+   curl -H "Authorization: Bearer <token>" http://localhost:8000/api/logs
+   ```
+
+Endpoints such as `/api/logs` require the `admin` role and return `403` for unauthorized users.
+
 ## 🎯 What You'll See
 
 ### **🌌 Galaxy View**
