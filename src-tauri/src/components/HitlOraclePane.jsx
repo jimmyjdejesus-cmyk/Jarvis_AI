@@ -18,7 +18,7 @@ const HitlOraclePane = () => {
       setError(null);
       
       // Try the enhanced HITL endpoint
-      const response = await http.fetch('http://127.0.0.1:8000/api/hitl/pending', {
+      const response = await http.fetch('http://localhost:8000/api/hitl/pending', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -103,8 +103,8 @@ const HitlOraclePane = () => {
   const handleHitlAction = useCallback(async (requestId, action, response = null) => {
     try {
       const endpoint = action === 'approve' 
-        ? `http://127.0.0.1:8000/api/hitl/${requestId}/approve`
-        : `http://127.0.0.1:8000/api/hitl/${requestId}/deny`;
+        ? `http://localhost:8000/api/hitl/${requestId}/approve`
+        : `http://localhost:8000/api/hitl/${requestId}/deny`;
       
       const result = await http.fetch(endpoint, {
         method: 'POST',

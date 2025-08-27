@@ -474,7 +474,7 @@ const GalaxyVisualization = () => {
       setError(null);
       
       // Try to fetch real workflow data
-      const response = await fetch('http://127.0.0.1:8000/api/workflow/default-session');
+      const response = await fetch('http://localhost:8000/api/workflow/default-session');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

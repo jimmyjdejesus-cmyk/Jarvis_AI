@@ -26,7 +26,7 @@ const LogViewerPane = () => {
       // Try the enhanced logs endpoint first, fallback to basic if needed
       let response;
       try {
-        response = await http.fetch('http://127.0.0.1:8000/api/logs', {
+        response = await http.fetch('http://localhost:8000/api/logs', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ const LogViewerPane = () => {
         });
       } catch (e) {
         // Fallback to basic logs endpoint
-        response = await http.fetch('http://127.0.0.1:8000/logs/latest', {
+        response = await http.fetch('http://localhost:8000/logs/latest', {
           method: 'GET',
           responseType: http.ResponseType.Text,
         });

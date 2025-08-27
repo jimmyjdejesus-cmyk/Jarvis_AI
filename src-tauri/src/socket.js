@@ -123,10 +123,25 @@ class EnhancedWebSocket {
   }
 }
 
+import { getWebSocketUrl } from './config.js';
+
 // Create and export the socket instance
-const socket = new EnhancedWebSocket('ws://127.0.0.1:8000');
+const socket = new EnhancedWebSocket(getWebSocketUrl());
 
 // Add some debugging
 window.jarvisSocket = socket; // For debugging in browser console
+
+// Add connection status logging
+socket.on('connect', () => {
+  console.log('✅ Cerebro Galaxy Backend Connected!');
+});
+
+socket.on('disconnect', () => {
+  console.log('❌ Cerebro Galaxy Backend Disconnected');
+});
+
+socket.on('error', (error) => {
+  console.error('🔥 WebSocket Connection Error:', error);
+});
 
 export { socket };

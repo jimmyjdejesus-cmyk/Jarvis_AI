@@ -15,7 +15,7 @@ const DeadEndShelf = () => {
       setLoading(true);
       setError(null);
       
-      const response = await http.fetch(`http://127.0.0.1:8000/api/dead-ends?session_id=${sessionId}`, {
+      const response = await http.fetch(`http://localhost:8000/api/dead-ends?session_id=${sessionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ const DeadEndShelf = () => {
     try {
       setRetryingTasks(current => new Set([...current, taskId]));
       
-      const response = await http.fetch(`http://127.0.0.1:8000/api/dead-ends/${taskId}/retry`, {
+      const response = await http.fetch(`http://localhost:8000/api/dead-ends/${taskId}/retry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

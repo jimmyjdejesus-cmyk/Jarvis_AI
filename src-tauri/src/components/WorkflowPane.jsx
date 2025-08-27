@@ -25,7 +25,7 @@ const WorkflowPane = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`http://127.0.0.1:8000/api/workflow/${sessionId}`, {
+      const response = await fetch(`http://localhost:8000/api/workflow/${sessionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ const WorkflowPane = () => {
   // Simulate workflow execution
   const simulateWorkflow = useCallback(async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/workflow/${sessionId}/simulate`, {
+      const response = await fetch(`http://localhost:8000/api/workflow/${sessionId}/simulate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
