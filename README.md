@@ -1,151 +1,146 @@
-# Jarvis AI - Multi-Agent Orchestrator
+# 🧠 Enhanced Jarvis AI - Cerebro Galaxy Model
 
-A powerful desktop application for orchestrating AI agents with visual flow editing, built with Tauri, React, and React Flow.
+A revolutionary AI system featuring a **Cerebro-centric galaxy visualization** where a central meta-agent dynamically spawns multi-agent orchestrators based on natural language conversations.
 
-## Features
+## 🌌 What Makes This Special
 
-- **Galaxy Model Visualization**: Hierarchical view of crews and agents with 3D-like navigation
-- **Multi-dimensional Relationship Tracing**: Visual connections showing data flow, control, and dependencies
-- **Rich Desktop Experience**: 
-  - Resizable panes
-  - Multiple chat windows
-  - Project management
-  - Crew and agent organization
-- **Three View Modes**:
-  - Galaxy View: High-level overview of all crews
-  - Crew View: Detailed view of a specific crew and its agents
-  - Agent View: Focus on individual agent configuration
-- **Chat Interface**:
-  - Multiple chat modes (Chat, Research, Agent)
-  - Resizable chat panes
-  - Project-based organization
+### **Cerebro Galaxy Architecture**
+- **🧠 Cerebro** - Central meta-agent that processes your natural language
+- **🎭 Orchestrators** - Multi-agent systems spawned dynamically by Cerebro  
+- **🤖 Agents** - Individual AI agents within orchestrators
+- **⚡ Tasks** - Specific executions and Monte Carlo simulations
 
-## Migration from vis-network-react to react-flow
+### **Interactive Experience**
+- **Chat with Cerebro** → Watch it think and spawn orchestrators
+- **Navigate the Galaxy** → Click nodes to zoom through levels
+- **Real-time Updates** → See live animations as agents work
+- **Professional UI** → Stunning visual effects and responsive design
 
-This project has been migrated from `vis-network-react` to `react-flow` for better performance, more features, and active maintenance.
+## 🚀 Quick Start
 
-### Key Improvements:
-- Better performance with large graphs
-- Built-in controls for zoom, pan, and minimap
-- More customization options
-- Better TypeScript support
-- Active community and regular updates
-
-## Installation
-
-1. **Install Node.js dependencies:**
+### **Option 1: Full System (Recommended)**
 ```bash
-npm install
+# Windows users - just double-click:
+start_jarvis.bat
+
+# Or run manually:
+python start_jarvis_enhanced.py
 ```
 
-2. **Install Rust and Tauri CLI (if not already installed):**
+### **Option 2: Backend + Frontend Separately**
 ```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Terminal 1 - Start Backend:
+start_backend.bat
+# or: python start_backend_only.py
 
-# Install Tauri CLI
-npm install -g @tauri-apps/cli
+# Terminal 2 - Start Frontend:
+cd src-tauri
+npm run dev
 ```
 
-3. **Run the development server:**
+### **Option 3: Manual Setup**
 ```bash
-# Run the web development server
+# 1. Install Python dependencies
+pip install fastapi uvicorn websockets redis pydantic
+
+# 2. Start backend
+cd app
+python main.py
+
+# 3. Install and start frontend (new terminal)
+cd src-tauri
+npm install --legacy-peer-deps
 npm run dev
 
-# Or run with Tauri (desktop app)
-npm run tauri:dev
+# 4. Open browser to http://localhost:5173
 ```
 
-4. **Build for production:**
+## 🎯 What You'll See
+
+### **🌌 Galaxy View**
+- **Cerebro at center** with animated neural network
+- **Orchestrators orbiting** around Cerebro
+- **Agents within orchestrators** with task satellites
+- **Real-time status indicators** and animations
+
+### **💬 Interactive Chat**
+- Type messages to activate Cerebro
+- Watch thinking animations and orchestrator spawning
+- See real-time galaxy updates as you chat
+
+### **🎮 Navigation**
+- **Click Cerebro** → Zoom to orchestrator level
+- **Click orchestrators** → See individual agents  
+- **Click agents** → View task simulations
+- **Use back button** → Navigate up levels
+
+## 🔧 Troubleshooting
+
+### **"Backend not connected" Error**
+1. **Check backend console** - Look for separate window showing FastAPI logs
+2. **Manual start** - Run `start_backend.bat` or `python start_backend_only.py`
+3. **Verify port 8000** - Visit http://localhost:8000 to test backend
+4. **Refresh browser** - Reload http://localhost:5173
+
+### **Galaxy Not Loading**
+1. **Hard refresh** - Press Ctrl+F5 or Cmd+Shift+R
+2. **Check console** - Open browser dev tools (F12) for errors
+3. **Verify build** - Look for errors in frontend console window
+
+### **Dependencies Issues**
+1. **Run as Administrator** - Right-click .bat files → "Run as administrator"
+2. **Manual npm install** - `cd src-tauri && npm install --legacy-peer-deps`
+3. **Check Node.js** - Ensure Node.js 16+ is installed
+
+## 📁 Project Structure
+
+```
+Enhanced-Jarvis-AI/
+├── 🚀 start_jarvis.bat              # Windows launcher
+├── 🐍 start_jarvis_enhanced.py      # Cross-platform launcher  
+├── 🪟 start_jarvis_enhanced_windows.py # Windows-optimized launcher
+├── 🔧 start_backend.bat             # Backend-only launcher
+├── 📱 app/                          # FastAPI backend
+│   └── main.py                      # Backend server
+├── 🎨 src-tauri/                    # React frontend
+│   ├── src/components/              # UI components
+│   │   ├── GalaxyVisualization.jsx  # Cerebro galaxy model
+│   │   ├── ChatPane.jsx             # Interactive chat
+│   │   └── WorkflowPane.jsx         # Main workflow view
+│   └── src/styles.css               # Galaxy animations & styling
+└── ⚙️ config/                       # Configuration files
+```
+
+## 🎉 Success Indicators
+
+You'll know everything is working when you see:
+
+✅ **Backend Console**: `INFO: Uvicorn running on http://0.0.0.0:8000`  
+✅ **Frontend Console**: `Local: http://localhost:5173/`  
+✅ **Browser**: Cerebro galaxy with animated neural network  
+✅ **Chat**: Messages trigger Cerebro thinking animations  
+✅ **Status**: "Connected" instead of "Backend not connected"  
+
+## 🌟 Features
+
+- **🧠 Cerebro Meta-Agent** - Central intelligence processing natural language
+- **🎭 Dynamic Orchestrators** - Multi-agent systems spawned on demand
+- **🌌 Galaxy Navigation** - Interactive zoom through system levels
+- **💬 Real-time Chat** - Direct communication with Cerebro
+- **📊 Live Monitoring** - Real-time status and performance metrics
+- **🎨 Professional UI** - Stunning animations and responsive design
+- **🖥️ Desktop App** - Tauri-based executable for offline use
+- **🔧 Developer Tools** - Comprehensive API and debugging features
+
+## 🚀 Ready to Explore?
+
+**Start your journey into the Cerebro Galaxy:**
+
 ```bash
-# Build web assets
-npm run build
+# Windows - Just double-click:
+start_jarvis.bat
 
-# Build desktop app
-npm run tauri:build
+# Then open: http://localhost:5173
 ```
 
-## Project Structure
-
-```
-jarvis-ai/
-├── src/                    # React frontend source
-│   ├── components/         # React components
-│   │   ├── FlowCanvas.tsx  # Main React Flow canvas
-│   │   ├── Sidebar.tsx     # Project management sidebar
-│   │   └── ChatPanel.tsx   # Chat interface
-│   ├── store/             # State management (Zustand)
-│   ├── styles/            # CSS styles
-│   └── types/             # TypeScript type definitions
-├── src-tauri/             # Tauri backend (Rust)
-├── index.html             # Entry HTML
-├── package.json           # Node dependencies
-└── vite.config.ts         # Vite configuration
-```
-
-## Usage
-
-### Creating a New Project
-1. Click "New Project" in the sidebar
-2. Name your project
-3. Start adding crews and agents
-
-### Working with Crews
-1. Switch to Galaxy View to see all crews
-2. Click on a crew to enter Crew View
-3. Add agents by clicking the "+" button
-4. Connect agents by dragging from one to another
-
-### Managing Agents
-1. Click on an agent to select it
-2. Configure agent properties in the sidebar
-3. View agent status and capabilities
-4. Create connections to other agents
-
-### Using the Chat Interface
-1. Click "New Chat" to start a conversation
-2. Switch between Chat, Research, and Agent modes
-3. Resize panes by dragging the dividers
-4. Add or remove chat panes as needed
-
-## Technologies Used
-
-- **Frontend**: React 18, TypeScript, Vite
-- **Desktop**: Tauri (Rust)
-- **Flow Visualization**: React Flow 11
-- **State Management**: Zustand
-- **Styling**: Tailwind CSS, CSS Modules
-- **UI Components**: Lucide React (icons), Framer Motion (animations)
-- **Utilities**: UUID, D3.js (for Galaxy visualization)
-
-## Development
-
-### Adding New Agent Types
-Edit `src/types/index.ts` and add your agent type to the `Agent` interface.
-
-### Customizing the Galaxy View
-Modify `src/components/FlowCanvas.tsx` and adjust the `renderGalaxyView` function.
-
-### Adding New Chat Modes
-Update the `ChatMode` type in `src/types/index.ts` and modify `src/components/ChatPanel.tsx`.
-
-## Troubleshooting
-
-If you encounter TypeScript errors, ensure all dependencies are installed:
-```bash
-npm install
-```
-
-If Tauri doesn't start, ensure Rust is properly installed:
-```bash
-rustc --version
-cargo --version
-```
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+**Experience the future of AI interaction where your conversations dynamically shape a living galaxy of intelligent agents!** 🧠🌌✨
