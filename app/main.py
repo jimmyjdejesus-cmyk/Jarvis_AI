@@ -712,7 +712,7 @@ async def get_pending_hitl_requests(request: Request, session_id: Optional[str] 
 
 # Mission history endpoint
 @app.get("/missions/{mission_id}/history", dependencies=[Depends(verify_api_key)])
-async def get_mission_history(mission_id: str = Path(..., regex=r"^[\w-]+$")):
+async def get_mission_history(mission_id: str = Path(..., pattern=r"^[\w-]+$")):
     """Return mission history including steps and discovered facts."""
     try:
         history = neo4j_graph.get_mission_history(mission_id)
