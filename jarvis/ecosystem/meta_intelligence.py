@@ -46,7 +46,6 @@ from jarvis.orchestration.orchestrator import (
     DynamicOrchestrator,
     MultiAgentOrchestrator,
 )
-from jarvis.orchestration.mission import MissionDAG
 from jarvis.orchestration.sub_orchestrator import SubOrchestrator
 from jarvis.persistence.session import SessionManager
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
@@ -186,17 +185,6 @@ class ExecutiveAgent(AIAgent):
         tasks = plan_result.get("tasks", [])
         logger.info(f"Mission '{directive}' planned with {len(tasks)} steps.")
 
-<<<<<<< HEAD
-        mission_id = uuid.uuid4().hex
-        mission = Mission(
-            id=mission_id,
-            title=directive,
-            goal=directive,
-            inputs=context,
-            risk_level=context.get("risk_level", "low"),
-            dag=MissionDAG(mission_id=mission_id),
-        )
-=======
         mission_id = uuid.uuid4().hex
         mission = Mission(
             id=mission_id,
@@ -207,45 +195,41 @@ class ExecutiveAgent(AIAgent):
             dag=MissionDAG(mission_id=mission_id),
         )
 
-        # 2. Execute the mission steps
-        mission_results = []
-        for i, task_def in enumerate(tasks):
-            step_id = task_def.get("id", f"step_{i}")
-            logger.info(f"Executing mission step {i+1}/{len(tasks)}: {step_id}")
-
-            # Prepare the task for the execute_task method
-            task = {
-                "type": "mission_step",
-                "step_id": step_id,
-                "request": task_def.get("details", ""),
-                "specialists": task_def.get("specialists", []),
-                # Pass any other relevant info from the plan to the step
-                "code": task_def.get("code"),
-                "user_context": task_def.get("user_context"),
-            }
->>>>>>> a6ede2b69915ab06fffc4fcb020e1ed9eb86d5dd
-
-        dag = MissionDAG.from_dict(plan_result['graph'])
+        dag = MissionDAG.from_dict(plan_result["graph"])
         workflow = from_mission_dag(dag)
 
         completed_workflow = await workflow_engine.execute_workflow(workflow)
 
+        step_results = [
+            {
+                "step_id": task_id,
+                "success": True,
+                "output": result.output,
+            }
+            for task_id, result in completed_workflow.context.results.items()
+        ]
+
         mission_results = {
             "workflow_id": completed_workflow.workflow_id,
             "status": completed_workflow.status.value,
-            "results": {task_id: result.output for task_id, result in completed_workflow.context.results.items()},
+            "results": step_results,
         }
 
         # 3. Finalize and return results
-        logger.info(f"Mission '{directive}' completed with status: {completed_workflow.status.value}.")
+        logger.info(
+            f"Mission '{directive}' completed with status: {completed_workflow.status.value}."
+        )
 
-        self._update_world_model(mission, mission_results)
+        self._update_world_model(mission, step_results)
 
         # 4. Consider curiosity
         if self.enable_curiosity:
-            await self._consider_curiosity(mission_results["results"])
+            await self._consider_curiosity(step_results)
 
-        return {"success": completed_workflow.status == WorkflowStatus.COMPLETED, "results": mission_results}
+        return {
+            "success": completed_workflow.status == WorkflowStatus.COMPLETED,
+            "results": mission_results,
+        }
 
     async def _consider_curiosity(self, mission_results: List[Dict[str, Any]]):
         """
