@@ -51,88 +51,92 @@ from jarvis.orchestration.sub_orchestrator import SubOrchestrator
 from jarvis.persistence.session import SessionManager
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
+from jarvis.workflows.engine import (
+    WorkflowEngine,
+    WorkflowStatus,
+    add_custom_task,
+    create_workflow,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class ExecutiveAgent(AIAgent):
     """Executive agent that manages other AI agents."""
-    def __init__(
-        self,
-        agent_id: str,
-        mcp_client=None,
-        orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
-        memory_manager: Optional[MemoryManager] = None,
-        mission_planner: Optional['MissionPlanner'] = None,
-        enable_red_team: bool | None = None,
-        enable_blue_team: bool | None = None,
-        blue_team_sensitivity: float = 0.5,
-        enable_curiosity: bool | None = None,
-        enable_curiosity_routing: bool | None = None,
-    ):
-        super().__init__(agent_id, [
-            AgentCapability.REASONING,
-            AgentCapability.PLANNING,
-            AgentCapability.MONITORING,
-            AgentCapability.LEARNING,
-        ])
-        self.mcp_client = mcp_client
-        self.orchestrator_cls = orchestrator_cls
-        self.mission_planner = mission_planner or MissionPlanner()
-        self.session_manager = SessionManager()
-        self.constitutional_critic = ConstitutionalCritic(mcp_client=self.mcp_client)
-        self.memory: MemoryManager = memory_manager or ProjectMemory()
-        self.managed_agents: Dict[str, AIAgent] = {}
-        self.evolution_plans: List[SystemEvolutionPlan] = []
-        self.hypergraph = HierarchicalHypergraph()
-        self.curiosity_agent = CuriosityAgent(self.hypergraph)
-        self.curiosity_router: CuriosityRouter | None = None
+        def __init__(
+                self,
+                agent_id: str,
+                mcp_client=None,
+                orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
+                memory_manager: Optional[MemoryManager] = None,
+                mission_planner: Optional['MissionPlanner'] = None,
+                enable_red_team: bool | None = None,
+                enable_blue_team: bool | None = None,
+                blue_team_sensitivity: float = 0.5,
+                enable_curiosity: bool | None = None,
+                enable_curiosity_routing: bool | None = None,
+            ):
+                super().__init__(agent_id, [
+                    AgentCapability.REASONING,
+                    AgentCapability.PLANNING,
+                    AgentCapability.MONITORING,
+                    AgentCapability.LEARNING,
+                ])
+                self.mcp_client = mcp_client
+                self.orchestrator_cls = orchestrator_cls
+                self.mission_planner = mission_planner or MissionPlanner()
+                self.memory_manager = memory_manager or MemoryManager(ProjectMemory())
+                self.session_manager = SessionManager()
+                self.curiosity_router: CuriosityRouter | None = None
 
-        if (
-            enable_red_team is None
-            or enable_blue_team is None
-            or enable_curiosity is None
-            or enable_curiosity_routing is None
-        ):
-            try:
-                from config.config_loader import load_config
-                cfg = load_config()
-            except Exception:
-                cfg = {}
-            if enable_red_team is None:
-                enable_red_team = cfg.get("ENABLE_RED_TEAM", False)
-            if enable_blue_team is None:
-                enable_blue_team = cfg.get("ENABLE_BLUE_TEAM", True)
-            if enable_curiosity is None:
-                enable_curiosity = cfg.get("ENABLE_CURIOSITY", True)
-            if enable_curiosity_routing is None:
-                enable_curiosity_routing = cfg.get("ENABLE_CURIOSITY_ROUTING", True)
+                if (
+                    enable_red_team is None
+                    or enable_blue_team is None
+                    or enable_curiosity is None
+                    or enable_curiosity_routing is None
+                ):
+                    try:
+                        from config.config_loader import load_config
+                        cfg = load_config()
+                    except Exception:
+                        cfg = {}
+                    if enable_red_team is None:
+                        enable_red_team = cfg.get("ENABLE_RED_TEAM", False)
+                    if enable_blue_team is None:
+                        enable_blue_team = cfg.get("ENABLE_BLUE_TEAM", True)
+                    if enable_curiosity is None:
+                        enable_curiosity = cfg.get("ENABLE_CURIOSITY", True)
+                    if enable_curiosity_routing is None:
+                        enable_curiosity_routing = cfg.get("ENABLE_CURIOSITY_ROUTING", True)
 
-        self.enable_curiosity = bool(enable_curiosity)
-        self.enable_curiosity_routing = bool(enable_curiosity_routing)
-        self.enable_red_team = bool(enable_red_team)
-        self.red_team = RedTeamCritic(mcp_client) if self.enable_red_team else None
-        self.enable_blue_team = bool(enable_blue_team)
-        self.blue_team = (
-            BlueTeamCritic(sensitivity=blue_team_sensitivity)
-            if self.enable_blue_team
-            else None
-        )
-        self.white_gate = WhiteGate()
-        self.system_monitor = SystemMonitor()
-        if self.mcp_client:
-            self.mcp_client.monitor = self.system_monitor
-        self._initialize_knowledge_graph()
-        self.learning_history: List[Dict[str, Any]] = []
-        self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
-        self.critic_merger = CriticInsightMerger()
-        self.performance_tracker = PerformanceTracker()
-        if self.enable_curiosity_routing:
-            self.curiosity_router = CuriosityRouter()
+                self.enable_curiosity = bool(enable_curiosity)
+                self.enable_curiosity_routing = bool(enable_curiosity_routing)
+                self.enable_red_team = bool(enable_red_team)
+                self.red_team = RedTeamCritic(mcp_client) if self.enable_red_team else None
+                self.enable_blue_team = bool(enable_blue_team)
+                self.blue_team = (
+                    BlueTeamCritic(sensitivity=blue_team_sensitivity)
+                    if self.enable_blue_team
+                    else None
+                )
+                self.white_gate = WhiteGate()
+                self.system_monitor = SystemMonitor()
+                if self.mcp_client:
+                    self.mcp_client.monitor = self.system_monitor
+                self._initialize_knowledge_graph()
+                self.learning_history: List[Dict[str, Any]] = []
+                self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
+                self.critic_merger = CriticInsightMerger()
+                self.performance_tracker = PerformanceTracker()
 
-    def log_event(self, event: str, payload: Any):
-        """Log an event."""
-        logger.info(f"Event '{event}': {payload}")
+                self.workflow_engine = WorkflowEngine()
+                self._last_execution_workflow = None
+                if self.enable_curiosity_routing:
+                    self.curiosity_router = CuriosityRouter()
+
+            def log_event(self, event: str, payload: Any):
+                """Log an event."""
+                logger.info(f"Event '{event}': {payload}")
 
     def _initialize_knowledge_graph(self):
         """Connect to a persistent knowledge graph backend.
@@ -173,65 +177,99 @@ class ExecutiveAgent(AIAgent):
     plan_mission = manage_directive
 
     async def execute_mission(self, directive: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
-        """
-        Plan and execute a multi-step mission.
+        """Plan and execute a mission using the workflow engine.
+
+        The mission is first decomposed into a :class:`MissionDAG` by the
+        :class:`MissionPlanner`. Each node in the DAG becomes a task in a
+        :class:`WorkflowEngine` workflow, allowing branches without
+        dependencies to run in parallel.
 
         Args:
-            directive: The high-level mission objective.
-            context: The context for the mission, including code and other details.
-            session_id: An optional session ID for persistence.
+            directive: High level mission objective.
+            context: Additional mission context.
+            session_id: Optional session identifier for persistence.
 
         Returns:
-            A dictionary containing the mission results.
+            Mission execution result dictionary.
         """
-        # 1. Plan the mission
-        plan_result = self.manage_directive(directive, context, session_id)
-        if not plan_result.get("success"):
+        # 1. Plan mission and build workflow
+        dag = self.mission_planner.plan(directive, context)
+        critique = await self.constitutional_critic.review(
+            {"goal": directive, "nodes": list(dag.nodes.keys())}
+        )
+        if critique.get("veto"):
+            return {"success": False, "critique": critique}
+
+        workflow = create_workflow(name=directive)
+        for node in dag.nodes.values():
+            async def _task_fn(_ctx, mission_node=node):
+                step = {
+                    "step_id": mission_node.step_id,
+                    "request": mission_node.capability,
+                    "specialists": [],
+                    "code": None,
+                    "user_context": context.get("user_context"),
+                }
+                return await self._handle_mission_step(step)
+
+            add_custom_task(
+                workflow,
+                task_id=node.step_id,
+                name=node.capability,
+                function=_task_fn,
+                dependencies=node.deps,
+            )
+
+        # 2. Execute workflow via engine
+        executed = await self.workflow_engine.execute_workflow(workflow)
+        self._last_execution_workflow = executed
+
+        mission_results = [
+            executed.context.results[task_id].output
+            for task_id in dag.nodes.keys()
+            if task_id in executed.context.results
+        ]
+
+        if executed.status != WorkflowStatus.COMPLETED:
+            logger.error("Mission '%s' failed.", directive)
             return {
                 "success": False,
-                "error": "Mission planning failed.",
-                "critique": plan_result.get("critique"),
+                "error": "Mission execution failed.",
+                "results": mission_results,
             }
 
-        tasks = plan_result.get("tasks", [])
-        logger.info(f"Mission '{directive}' planned with {len(tasks)} steps.")
+        logger.info("Mission '%s' completed successfully.", directive)
 
-        # 2. Execute the mission steps
-        mission_results = []
-        for i, task_def in enumerate(tasks):
-            step_id = task_def.get("id", f"step_{i}")
-            logger.info(f"Executing mission step {i+1}/{len(tasks)}: {step_id}")
-
-            # Prepare the task for the execute_task method
-            task = {
-                "type": "mission_step",
-                "step_id": step_id,
-                "request": task_def.get("details", ""),
-                "specialists": task_def.get("specialists", []),
-                # Pass any other relevant info from the plan to the step
-                "code": task_def.get("code"),
-                "user_context": task_def.get("user_context"),
-            }
-
-            step_result = await self.execute_task(task)
-            mission_results.append(step_result)
-
-            if not step_result.get("success"):
-                logger.error(f"Mission step {step_id} failed. Aborting mission.")
-                return {
-                    "success": False,
-                    "error": f"Mission failed at step {step_id}",
-                    "results": mission_results,
-                }
-
-        # 3. Finalize and return results
-        logger.info(f"Mission '{directive}' completed successfully.")
-
-        # 4. Consider curiosity
         if self.enable_curiosity:
             await self._consider_curiosity(mission_results)
 
         return {"success": True, "results": mission_results}
+
+    def get_execution_graph(self) -> Dict[str, Any]:
+        """Return graph of the last executed workflow."""
+        if not self._last_execution_workflow:
+            return {}
+
+        workflow = self._last_execution_workflow
+        nodes = {
+            task.task_id: {
+                "name": task.name,
+                "status": task.status.value,
+                "dependencies": task.dependencies,
+            }
+            for task in workflow.tasks
+        }
+        edges = [
+            (dep, task.task_id)
+            for task in workflow.tasks
+            for dep in task.dependencies
+        ]
+        return {
+            "workflow_id": workflow.workflow_id,
+            "status": workflow.status.value,
+            "nodes": nodes,
+            "edges": edges,
+        }
 
     async def _consider_curiosity(self, mission_results: List[Dict[str, Any]]):
         """

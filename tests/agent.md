@@ -1,6 +1,6 @@
 ## Agent Log
+- 2024-05-29: Added workflow execution test for ExecutiveAgent.
 - Added tests for specialist dispatch timeout and retry behavior.
-
 - Consolidated dependency stubs in `conftest.py` and added successful retry test for dispatch logic.
 - Refactored `test_orchestrator_auction` to run without async plugin.
 ## Agent Log 2025-08-31
@@ -14,9 +14,7 @@
 ## Dev Log
 - Added tests for curiosity routing to ensure directives execute when enabled and skip when disabled.
 - [2025-08-27T20:19:33+00:00] Covered router sanitization and logging checks.
-
 ---
-
 # Agent Log
 - Added test_mission_neo4j_roundtrip.py to verify MissionDAG persistence.
 ## Agent Interaction
