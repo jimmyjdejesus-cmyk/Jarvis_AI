@@ -32,8 +32,9 @@ import logging
 from enum import Enum
 import uvicorn
 import os
-from neo4j.exceptions import ServiceUnavailable, TransientError
+from neo4j.exceptions import ServiceUnavailable
 
+from jarvis.world_model.neo4j_graph import Neo4jGraph
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -215,6 +216,14 @@ class CypherQuery(BaseModel):
     query: str = Field(..., description="Read-only Cypher statement")
 
 
+class Neo4jCredentials(BaseModel):
+    """Neo4j connection parameters provided by the client."""
+
+    uri: str
+    user: str
+    password: str
+
+
 # In-memory storage
 workflows_db: Dict[str, Workflow] = {}
 logs_db: List[LogEntry] = []
@@ -261,7 +270,6 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
-neo4j_graph = Neo4jGraph()
 
 # Initialize Neo4j graph adapter
 neo4j_graph = None
@@ -473,6 +481,18 @@ async def health_check():
         "version": "2.0.0",
         "neo4j_active": neo4j_graph.is_alive() if neo4j_graph else False,
     }
+
+
+# Configure Neo4j credentials at runtime
+@app.post("/api/neo4j/config", dependencies=[Depends(verify_api_key)])
+async def configure_neo4j(creds: Neo4jCredentials) -> Dict[str, str]:
+    """Initialize the global Neo4j driver with provided credentials."""
+    global neo4j_graph
+    try:
+        neo4j_graph = Neo4jGraph(creds.uri, creds.user, creds.password)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Failed to initialize Neo4j driver") from exc
+    return {"status": "configured"}
 
 
 # Workflow endpoints

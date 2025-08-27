@@ -188,6 +188,7 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 ## 2025-08-30
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
 ## 2025-09-05
 - Adjusted LogViewerPane tests to match "Filter logs..." placeholder and full connection titles.
 - Installed Node dependencies and ran `npm test` in `src-tauri`; LogViewerPane tests passed.
