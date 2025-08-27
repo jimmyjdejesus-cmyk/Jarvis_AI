@@ -41,3 +41,7 @@ desktop.ini
 
 # Build files
 *.tsbuildinfo
+
+# Python cache
+__pycache__/
+*.pyc
