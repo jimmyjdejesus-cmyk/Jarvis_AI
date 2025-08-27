@@ -33,11 +33,11 @@ from enum import Enum
 import uvicorn
 import sys
 import os
-from pathlib import Path
+from pathlib import Path as FilePath
 from neo4j.exceptions import ServiceUnavailable, TransientError
 
 # Add jarvis to Python path
-jarvis_path = Path(__file__).parent.parent / "jarvis"
+jarvis_path = FilePath(__file__).parent.parent / "jarvis"
 if jarvis_path.exists():
     sys.path.insert(0, str(jarvis_path.parent))
 
@@ -57,6 +57,7 @@ try:
     from jarvis.agents.base_specialist import BaseSpecialist
     from jarvis.core.mcp_agent import MCPJarvisAgent
     from jarvis.world_model.neo4j_graph import Neo4jGraph
+    from jarvis.world_model.knowledge_graph import KnowledgeGraph
     from jarvis.workflows.engine import workflow_engine
     JARVIS_AVAILABLE = True
     logger.info("✅ Jarvis orchestration system loaded successfully")
@@ -76,6 +77,13 @@ except Exception as e:
 
         def query(self, query):
             raise ServiceUnavailable("Mock Neo4j is not available")
+
+    class KnowledgeGraph:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def query(self, query):  # pragma: no cover - simple stub
+            raise ValueError("KnowledgeGraph is not available")
 
     class workflow_engine:
         def get_workflow_status(self, workflow_id):
@@ -277,6 +285,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 neo4j_graph = Neo4jGraph()
+knowledge_graph = KnowledgeGraph()
 
 # Initialize Neo4j graph adapter
 neo4j_graph = None
@@ -723,6 +732,18 @@ async def get_mission_history(mission_id: str = Path(..., pattern=r"^[\w-]+$")):
     return history
 
 
+@app.get("/knowledge/query")
+async def knowledge_query_get(q: str = Query(..., min_length=1, description="Knowledge query")) -> Dict[str, Any]:
+    """Run a simple query against the in-memory ``KnowledgeGraph``."""
+    try:
+        return {"results": knowledge_graph.query(q)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - unexpected errors
+        logger.error(f"Failed to execute knowledge query: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
 @app.post("/knowledge/query")
 async def knowledge_query(payload: Dict[str, Any], current_user: Any = Depends(get_current_user)) -> Dict[str, Any]:
     """Query the Neo4j graph and handle connection errors. Requires authentication."""
@@ -731,10 +752,10 @@ async def knowledge_query(payload: Dict[str, Any], current_user: Any = Depends(g
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
     try:
         return {"results": neo4j_graph.query(query)}
-    except ServiceUnavailable as exc:
-        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
     except TransientError as exc:
         raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
+    except ServiceUnavailable as exc:
+        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
     except Exception as exc:
         logger.error(f"Failed to execute knowledge query: {exc}")
         raise HTTPException(status_code=500, detail="Internal server error") from exc

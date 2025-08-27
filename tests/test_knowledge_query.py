@@ -28,8 +28,10 @@ workflows_engine = types.ModuleType("jarvis.workflows.engine")
 workflows_engine.workflow_engine = object()
 sys.modules["jarvis.workflows.engine"] = workflows_engine
 
-from app.main import app  # noqa: E402
+from app.main import app, get_current_user  # noqa: E402
 from jarvis.world_model.neo4j_graph import Neo4jGraph  # noqa: E402
+
+app.dependency_overrides[get_current_user] = lambda: object()
 
 client = TestClient(app)
 
@@ -37,9 +39,7 @@ client = TestClient(app)
 def test_knowledge_query_service_unavailable():
     """ServiceUnavailable from Neo4j results in HTTP 500."""
     with patch(
-        "jarvis.world_model.neo4j_graph.Neo4jGraph.query",
-        side_effect=ServiceUnavailable("database down"),
-        create=True,
+        "app.main.neo4j_graph.query", side_effect=ServiceUnavailable("database down")
     ):
         response = client.post("/knowledge/query", json={"query": "MATCH (n) RETURN n"})
     assert response.status_code == 500
@@ -49,9 +49,7 @@ def test_knowledge_query_service_unavailable():
 def test_knowledge_query_transient_error():
     """TransientError from Neo4j results in HTTP 500."""
     with patch(
-        "jarvis.world_model.neo4j_graph.Neo4jGraph.query",
-        side_effect=TransientError("temporary failure"),
-        create=True,
+        "app.main.neo4j_graph.query", side_effect=TransientError("temporary failure")
     ):
         response = client.post("/knowledge/query", json={"query": "MATCH (n) RETURN n"})
     assert response.status_code == 500
