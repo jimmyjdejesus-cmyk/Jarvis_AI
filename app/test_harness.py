@@ -40,7 +40,7 @@ def create_test_app(graph: Optional[Any] = None) -> FastAPI:
 
     @app.get("/missions/{mission_id}/history")
     async def get_mission_history(
-        mission_id: str = Path(..., regex=r"^[\w-]+$"),
+        mission_id: str = Path(..., pattern=r"^[\w-]+$"),
     ) -> Dict[str, Any]:
         """Return mission history including steps and facts."""
         try:
