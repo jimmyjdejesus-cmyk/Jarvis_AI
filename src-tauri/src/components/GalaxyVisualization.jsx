@@ -507,7 +507,7 @@ const GalaxyVisualization = () => {
     fetchGalaxyData();
   }, [fetchGalaxyData]);
 
-  // WebSocket updates
+  // WebSocket updates for real-time Cerebro integration
   useEffect(() => {
     const handleWorkflowUpdate = (data) => {
       console.log('Galaxy workflow update:', data);
@@ -523,16 +523,90 @@ const GalaxyVisualization = () => {
       }
     };
 
+    const handleCerebroThinking = (data) => {
+      console.log('🧠 Cerebro thinking:', data);
+      setLastUserMessage(data.data?.message || '');
+      setCerebroStatus('thinking');
+    };
+
+    const handleCerebroResponse = (data) => {
+      console.log('🧠 Cerebro response:', data);
+      setCerebroStatus('active');
+      
+      // Update galaxy with real orchestrator data
+      if (data.data?.specialists_used?.length > 0) {
+        // Refresh galaxy to show new orchestrators
+        fetchGalaxyData();
+      }
+    };
+
+    const handleOrchestratorSpawned = (data) => {
+      console.log('🎭 Orchestrator spawned:', data);
+      setCerebroStatus('spawning');
+      
+      // Add visual feedback for orchestrator spawning
+      setTimeout(() => {
+        setCerebroStatus('active');
+        // Refresh galaxy to show new orchestrator
+        fetchGalaxyData();
+      }, 2000);
+    };
+
+    const handleAgentActivated = (data) => {
+      console.log('🤖 Agent activated:', data);
+      
+      // Update specific agent status in real-time
+      setNodes(currentNodes => 
+        currentNodes.map(node => 
+          node.id === data.data?.agent_id 
+            ? { 
+                ...node, 
+                data: { 
+                  ...node.data, 
+                  status: 'running',
+                  currentTask: data.data?.task 
+                } 
+              }
+            : node
+        )
+      );
+    };
+
+    const handleChatResponse = (data) => {
+      console.log('💬 Chat response from Cerebro:', data);
+      
+      // Update Cerebro status based on response
+      if (data.data?.source === 'cerebro') {
+        setCerebroStatus('active');
+        
+        // Show specialists involved in the response
+        if (data.data?.specialists_involved?.length > 0) {
+          console.log('Specialists involved:', data.data.specialists_involved);
+        }
+      }
+    };
+
+    // Register all event listeners
     socket.on('workflow_updated', handleWorkflowUpdate);
     socket.on('galaxy_update', handleWorkflowUpdate);
     socket.on('chat_message', handleChatMessage);
+    socket.on('cerebro_thinking', handleCerebroThinking);
+    socket.on('cerebro_response', handleCerebroResponse);
+    socket.on('orchestrator_spawned', handleOrchestratorSpawned);
+    socket.on('agent_activated', handleAgentActivated);
+    socket.on('chat_response', handleChatResponse);
     
     return () => {
       socket.off('workflow_updated', handleWorkflowUpdate);
       socket.off('galaxy_update', handleWorkflowUpdate);
       socket.off('chat_message', handleChatMessage);
+      socket.off('cerebro_thinking', handleCerebroThinking);
+      socket.off('cerebro_response', handleCerebroResponse);
+      socket.off('orchestrator_spawned', handleOrchestratorSpawned);
+      socket.off('agent_activated', handleAgentActivated);
+      socket.off('chat_response', handleChatResponse);
     };
-  }, [generateCerebroGalaxy, setNodes, setEdges, simulateCerebroThinking]);
+  }, [generateCerebroGalaxy, setNodes, setEdges, simulateCerebroThinking, fetchGalaxyData]);
 
   const visibleNodes = getVisibleNodes();
 
