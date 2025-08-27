@@ -38,6 +38,20 @@ cd src-tauri
 npm run dev
 ```
 
+### Environment Variables
+
+The backend reads Neo4j connection details from the environment. Tests mock the
+database, but you can override defaults by setting:
+
+| Variable         | Default                    |
+|------------------|----------------------------|
+| `NEO4J_URI`      | `bolt://localhost:7687`    |
+| `NEO4J_USER`     | `neo4j`                    |
+| `NEO4J_PASSWORD` | `test`                     |
+
+These values allow the application or tests to connect to a real Neo4j instance
+when desired.
+
 ### **Option 3: Manual Setup**
 ```bash
 # 1. Install Python dependencies

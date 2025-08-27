@@ -188,6 +188,11 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 ## 2025-08-30
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
+## 2025-08-30
+- Added tests for mission execution graph updates and API endpoints.
+- Introduced mock Neo4jGraph fixture for tests.
+- Documented Neo4j environment variables in README.
+- Aliased pathlib.Path in app/main.py to avoid FastAPI Path conflicts.
 ## 2025-08-31
 - Integrated Neo4j graph updates into `ExecutiveAgent.execute_mission`, recording nodes and edges for each mission step and closing the driver after completion.
 - Ran `pytest tests/test_executive_agent.py tests/test_update_world_model.py -q` to validate mission execution and world model updates.

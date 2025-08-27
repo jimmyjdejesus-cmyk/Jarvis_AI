@@ -67,17 +67,3 @@ except Exception as e:
 
         def is_alive(self):
             return False
-        
-        def get_mission_history(self, mission_id):
-            return None
-
-        def query(self, query):
-            raise ServiceUnavailable("Mock Neo4j is not available")
-
-    class workflow_engine:
-        def get_workflow_status(self, workflow_id):
-            return None
-
-    class SessionManager:
-        def read_runs(self, mission_id):
-            return []

@@ -7,10 +7,36 @@ import importlib.util
 import types
 from pathlib import Path
 import sys
+from unittest.mock import MagicMock
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+@pytest.fixture
+def mock_neo4j_graph(monkeypatch):
+    """Provide a mock Neo4j graph for tests.
+
+    This fixture patches both the Neo4jGraph class used by core modules and the
+    instantiated ``neo4j_graph`` in ``app.main`` so tests can run without a
+    real database connection.
+    """
+
+    mock_graph = MagicMock()
+
+    try:
+        import jarvis.world_model.neo4j_graph as neo_module
+        monkeypatch.setattr(neo_module, "Neo4jGraph", MagicMock(return_value=mock_graph))
+    except Exception:
+        pass
+
+    try:
+        import app.main as main_app
+        monkeypatch.setattr(main_app, "neo4j_graph", mock_graph)
+    except Exception:
+        pass
+
+    return mock_graph
 
 # Stub minimal ``jarvis.security.secret_manager`` to avoid heavy package imports
 SEC_PATH = ROOT / "jarvis" / "security" / "secret_manager.py"
@@ -47,6 +73,5 @@ class _MemoryKeyring(KeyringBackend):
 @pytest.fixture(autouse=True)
 def _isolate_keyring() -> None:
     """Use an in-memory keyring for each test to avoid side effects."""
-
     keyring.set_keyring(_MemoryKeyring())
     yield
