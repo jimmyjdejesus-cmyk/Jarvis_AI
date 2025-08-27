@@ -1,8 +1,11 @@
 // Centralized configuration for backend API endpoints
+const storedHttp = localStorage.getItem('jarvis-backend-url') || 'http://localhost:8000';
+const storedWs = localStorage.getItem('jarvis-backend-ws') || 'ws://localhost:8000';
+
 const API_CONFIG = {
   // Backend base URLs
-  HTTP_BASE_URL: 'http://localhost:8000',
-  WS_BASE_URL: 'ws://localhost:8000',
+  HTTP_BASE_URL: storedHttp,
+  WS_BASE_URL: storedWs,
   
   // API endpoints
   ENDPOINTS: {
@@ -29,14 +32,26 @@ export const getWebSocketUrl = () => {
   return API_CONFIG.WS_BASE_URL;
 };
 
-// Test backend connectivity
-export const testBackendConnection = async () => {
+// Update backend base URL at runtime
+export const setBackendBaseUrl = (url) => {
+  API_CONFIG.HTTP_BASE_URL = url;
+  API_CONFIG.WS_BASE_URL = url.replace(/^http/i, 'ws');
+  localStorage.setItem('jarvis-backend-url', API_CONFIG.HTTP_BASE_URL);
+  localStorage.setItem('jarvis-backend-ws', API_CONFIG.WS_BASE_URL);
+};
+
+// Fetch backend and Neo4j health status
+export const getHealthStatus = async () => {
   try {
     const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH));
-    return response.ok;
+    if (!response.ok) {
+      return { backend: false, neo4j: false };
+    }
+    const data = await response.json();
+    return { backend: true, neo4j: Boolean(data.neo4j_active) };
   } catch (error) {
-    console.error('Backend connection test failed:', error);
-    return false;
+    console.error('Health check failed:', error);
+    return { backend: false, neo4j: false };
   }
 };
 

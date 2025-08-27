@@ -5,6 +5,7 @@ import WorkflowPane from './components/WorkflowPane';
 import LogViewerPane from './components/LogViewerPane';
 import HitlOraclePane from './components/HitlOraclePane';
 import DeadEndShelf from './components/DeadEndShelf';
+import MissionHistoryView from './components/MissionHistoryView';
 import './styles.css';
 
 // Enhanced App component with dynamic pane management and view switching
@@ -165,6 +166,17 @@ function App() {
           </div>
         );
 
+      case 'history':
+        return (
+          <div className="main-content history-view">
+            <div className="view-header">
+              <h1>📜 Mission History</h1>
+              <p>Inspect missions, steps, and discovered facts</p>
+            </div>
+            <MissionHistoryView />
+          </div>
+        );
+
       default:
         return (
           <div className="main-content">
@@ -219,11 +231,17 @@ function App() {
                 >
                   🤖 Agent
                 </button>
-                <button 
+                <button
                   className={`nav-btn ${activeView === 'deadend' ? 'active' : ''}`}
                   onClick={() => handleViewChange('deadend')}
                 >
                   💀 Dead-End
+                </button>
+                <button
+                  className={`nav-btn ${activeView === 'history' ? 'active' : ''}`}
+                  onClick={() => handleViewChange('history')}
+                >
+                  📜 History
                 </button>
               </nav>
             </div>
