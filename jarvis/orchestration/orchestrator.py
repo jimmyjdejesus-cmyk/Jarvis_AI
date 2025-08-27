@@ -307,7 +307,13 @@ JSON Response:
         timeout: int = 60,
         retries: int = 3,
     ) -> Dict[str, Any]:
-        """Execute a task with the requested specialist."""
+        """Execute a task with the requested specialist.
+
+        The specialist's ``process_task`` method is executed with
+        ``asyncio.wait_for`` to enforce the provided timeout. The call is
+        retried up to ``retries`` times, logging each failure and aborting
+        after the maximum number of retries.
+        """
         cache_key = f"{specialist_type}:{task}"
         cached = self.semantic_cache.get(cache_key)
         if cached is not None:
@@ -317,9 +323,23 @@ JSON Response:
             kwargs = {"context": context, "user_context": user_context}
             if models is not None:
                 kwargs["models"] = models
-            result = await specialist.process_task(task, **kwargs)
-            self.semantic_cache.add(cache_key, result)
-            return result
+            for attempt in range(1, retries + 1):
+                try:
+                    result = await asyncio.wait_for(
+                        specialist.process_task(task, **kwargs), timeout
+                    )
+                    self.semantic_cache.add(cache_key, result)
+                    return result
+                except Exception as e:
+                    logger.warning(
+                        "Attempt %s/%s for %s failed: %s",
+                        attempt,
+                        retries,
+                        specialist_type,
+                        e,
+                    )
+                    if attempt == retries:
+                        raise
         if specialist_type in self.child_orchestrators:
             result = await self.run_child_orchestrator(
                 specialist_type, task, context=context, user_context=user_context
@@ -439,9 +459,15 @@ JSON Response:
             for (server, model, items), responses in zip(group_info, batch_results):
                 if isinstance(responses, Exception):
                     logger.error(f"Batch {server}/{model} failed: {responses}")
-                    for stype, spec, _, mods in items:
+                    for stype, _spec, _prompt, mods in items:
                         try:
-                            res = await spec.process_task(task, context=context, user_context=user_context, models=mods)
+                            res = await self.dispatch_specialist(
+                                stype,
+                                task,
+                                context=context,
+                                user_context=user_context,
+                                models=mods,
+                            )
                         except Exception as e:
                             res = self._create_specialist_error(stype, str(e))
                         specialist_results[stype] = res
@@ -655,9 +681,9 @@ JSON Response:
         health_results = {}
         for name, specialist in self.specialists.items():
             try:
-                result = await specialist.process_task("Health check test")
+                result = await self.dispatch_specialist(name, "Health check test")
                 health_results[name] = {
-                    "status": "healthy", 
+                    "status": "healthy",
                     "confidence": result.get("confidence", 0.0)
                 }
             except Exception as e:
@@ -738,309 +764,3 @@ JSON Response:
             "coordination_type": coordination_type
         }
 
-    async def dispatch_specialist(
-        self,
-        specialist_type: str,
-        task: str,
-        *,
-        context: Any | None = None,
-        user_context: str | None = None,
-        models: List[str] | None = None,
-    ) -> Dict[str, Any]:
-        """Execute a task with the requested specialist."""
-        if specialist_type in self.specialists:
-            specialist = self.specialists[specialist_type]
-            kwargs = {"context": context, "user_context": user_context}
-            if models is not None:
-                kwargs["models"] = models
-            return await specialist.process_task(task, **kwargs)
-        if specialist_type in self.child_orchestrators:
-            return await self.run_child_orchestrator(
-                specialist_type, task, context=context, user_context=user_context
-            )
-        raise ValueError(f"Unknown specialist or orchestrator: {specialist_type}")
-
-    def create_child_orchestrator(self, name: str, spec: Dict[str, Any]):
-        """Create and register a child SubOrchestrator."""
-        from .sub_orchestrator import SubOrchestrator  # Local import to avoid cycle
-
-        child = SubOrchestrator(self.mcp_client, **spec)
-        self.child_orchestrators[name] = child
-        return child
-
-    def remove_child_orchestrator(self, name: str) -> bool:
-        """Remove a child orchestrator by name."""
-        return self.child_orchestrators.pop(name, None) is not None
-
-    async def run_child_orchestrator(
-        self,
-        name: str,
-        task: str,
-        context: Any | None = None,
-        user_context: str | None = None
-    ) -> Dict[str, Any]:
-        """Run a child orchestrator."""
-        if name not in self.child_orchestrators:
-            raise ValueError(f"Child orchestrator '{name}' not found")
-        
-        child = self.child_orchestrators[name]
-        return await child.process(task, context=context, user_context=user_context)
-
-    def _determine_coordination_type(self, specialists: List[str], complexity: str) -> str:
-        """Determine how specialists should be coordinated"""
-        if len(specialists) <= 1:
-            return "single"
-        elif len(specialists) == 2 and complexity in ["low", "medium"]:
-            return "parallel"
-        elif complexity == "high" or len(specialists) > 3:
-            return "sequential"
-        else:
-            return "parallel"
-
-    def _determine_collaboration_depth(self, specialists: List[str]) -> str:
-        """Determine depth of collaboration between specialists"""
-        if len(specialists) <= 1:
-            return "none"
-        elif len(specialists) == 2:
-            return "basic"
-        elif len(specialists) <= 3:
-            return "moderate"
-        else:
-            return "deep"
-
-    def _route_model_preferences(self, specialist, complexity: str) -> List[str]:
-        """Determine model order based on system resources and task complexity."""
-        models = list(specialist.preferred_models)
-        local = [m for m in models if specialist._get_server_for_model(m) == "ollama"]
-        cloud = [m for m in models if specialist._get_server_for_model(m) != "ollama"]
-
-        snapshot = self.monitor.snapshot() if self.monitor else None
-        if snapshot and snapshot.cpu > 80 and complexity != "high":
-            return local + cloud
-        if complexity == "high":
-            return cloud + local
-        return local + cloud
-
-    async def _single_specialist_analysis(
-        self, request: str, analysis: Dict, path_memory: PathMemory, code: str | None,
-        user_context: str | None, context: Any | None
-    ) -> Dict[str, Any]:
-        specialist_type = analysis["specialists_needed"][0]
-        task = self._create_specialist_task(request, code, user_context)
-        try:
-            result = await self.dispatch_specialist(
-                specialist_type, task, context=context, user_context=user_context
-            )
-            path_memory.add_decisions(result.get("suggestions", [])[:3])
-
-            candidate = Candidate(
-                agent=specialist_type,
-                bid=float(result.get("confidence", 0.0)),
-                content=result.get("response", ""),
-            )
-            auction = run_vickrey_auction([candidate])
-            self.exploration_stats.append(auction.metrics)
-
-            return {
-                "type": "single_specialist",
-                "complexity": analysis["complexity"],
-                "specialists_used": [specialist_type],
-                "results": {specialist_type: result},
-                "synthesized_response": await self._synthesize_parallel_results(request, [result]),
-                "confidence": auction.winner.bid,
-                "coordination_summary": f"Auction won by {auction.winner.agent}",
-                "auction": {"winner": auction.winner.agent, "price": auction.price},
-                "exploration_metrics": auction.metrics,
-            }
-        except Exception as e:
-            logger.error(f"Single specialist analysis failed: {e}")
-            return self._create_error_response(str(e), request)
-
-    async def _parallel_specialist_analysis(
-        self, request: str, analysis: Dict, path_memory: PathMemory, code: str | None,
-        user_context: str | None, context: Any | None
-    ) -> Dict[str, Any]:
-        specialists_needed = analysis["specialists_needed"]
-        task = self._create_specialist_task(request, code, user_context)
-
-        grouped: Dict[tuple, List[tuple]] = defaultdict(list)
-        for specialist_type in specialists_needed:
-            specialist = self.specialists.get(specialist_type)
-            if not specialist:
-                continue
-            models = self._route_model_preferences(specialist, analysis["complexity"])
-            prompt = specialist.build_prompt(task, context, user_context)
-            primary_model = models[0]
-            server = specialist._get_server_for_model(primary_model)
-            grouped[(server, primary_model)].append((specialist_type, specialist, prompt, models))
-
-        try:
-            batch_tasks, group_info = [], []
-            for (server, model), items in grouped.items():
-                prompts = [it[2] for it in items]
-                batch_tasks.append(self.mcp_client.generate_response_batch(server, model, prompts))
-                group_info.append((server, model, items))
-
-            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
-
-            specialist_results, successful_results = {}, []
-            for (server, model, items), responses in zip(group_info, batch_results):
-                if isinstance(responses, Exception):
-                    logger.error(f"Batch {server}/{model} failed: {responses}")
-                    for stype, spec, _, mods in items:
-                        try:
-                            res = await spec.process_task(task, context=context, user_context=user_context, models=mods)
-                        except Exception as e:
-                            res = self._create_specialist_error(stype, str(e))
-                        specialist_results[stype] = res
-                        if res.get("type") != "error":
-                            successful_results.append(res)
-                            path_memory.add_decisions(res.get("suggestions", [])[:3])
-                    continue
-
-                for (specialist_type, specialist, _, _), response in zip(items, responses):
-                    result = specialist.process_model_response(response, model, task)
-                    specialist_results[specialist_type] = result
-                    if result.get("type") != "error":
-                        successful_results.append(result)
-                        path_memory.add_decisions(result.get("suggestions", [])[:3])
-
-            candidates = [
-                Candidate(
-                    agent=res.get("specialist", "unknown"),
-                    bid=float(res.get("confidence", 0.0)),
-                    content=res.get("response", ""),
-                )
-                for res in successful_results
-            ]
-            auction = run_vickrey_auction(candidates) if candidates else None
-            if auction:
-                self.exploration_stats.append(auction.metrics)
-            synthesized_response = await self._synthesize_parallel_results(request, successful_results)
-            return {
-                "type": "parallel_specialists",
-                "complexity": analysis["complexity"],
-                "specialists_used": specialists_needed,
-                "results": specialist_results,
-                "synthesized_response": synthesized_response,
-                "confidence": auction.winner.bid if auction else 0.0,
-                "coordination_summary": f"Auction won by {auction.winner.agent}" if auction else "No winner",
-                "auction": {"winner": auction.winner.agent, "price": auction.price} if auction else {},
-                "exploration_metrics": auction.metrics if auction else {},
-            }
-        except Exception as e:
-            logger.error(f"Parallel specialist analysis failed: {e}")
-            return self._create_error_response(str(e), request)
-
-    async def _sequential_specialist_analysis(
-        self, request: str, analysis: Dict, path_memory: PathMemory, code: str | None,
-        user_context: str | None, context: Any | None
-    ) -> Dict[str, Any]:
-        specialists_needed = analysis["specialists_needed"]
-        shared_context = [] if context is None else [context]
-        specialist_results = {}
-        task = self._create_specialist_task(request, code, user_context)
-
-        try:
-            for specialist_type in specialists_needed:
-                specialist = self.specialists.get(specialist_type)
-                models = self._route_model_preferences(specialist, analysis["complexity"]) if specialist else None
-
-                result = await self.dispatch_specialist(
-                    specialist_type, task, context=shared_context, user_context=user_context, models=models
-                )
-                specialist_results[specialist_type] = result
-
-                decisions = result.get("suggestions", [])[:3]
-                shared_context.append({
-                    "specialist": specialist_type, 
-                    "key_points": decisions,
-                    "confidence": result.get("confidence", 0.7),
-                    "priority_issues": result.get("priority_issues", [])[:2],
-                })
-                path_memory.add_decisions(decisions)
-                logger.info(f"Completed {specialist_type} analysis, passing context to next specialist")
-
-            synthesized_response = await self._synthesize_sequential_results(request, specialist_results)
-
-            candidates = [
-                Candidate(
-                    agent=res.get("specialist", stype),
-                    bid=float(res.get("confidence", 0.0)),
-                    content=res.get("response", ""),
-                )
-                for stype, res in specialist_results.items()
-            ]
-            auction = run_vickrey_auction(candidates) if candidates else None
-            winner_agent = auction.winner.agent if auction else "N/A"
-            winner_bid = auction.winner.bid if auction else 0.0
-            auction_price = auction.price if auction else 0.0
-            if auction:
-                self.exploration_stats.append(auction.metrics)
-
-            return {
-                "type": "sequential_specialists",
-                "complexity": analysis["complexity"],
-                "specialists_used": specialists_needed,
-                "results": specialist_results,
-                "synthesized_response": synthesized_response,
-                "confidence": winner_bid,
-                "coordination_summary": f"Auction won by {winner_agent} after sequential analysis",
-                "auction": {"winner": winner_agent, "price": auction_price},
-                "exploration_metrics": auction.metrics if auction else {},
-            }
-        except Exception as e:
-            logger.error(f"Sequential specialist analysis failed: {e}")
-            return self._create_error_response(str(e), request)
-
-
-
-# ---------------------------------------------------------------------------
-# Dynamic execution graphs
-# ---------------------------------------------------------------------------
-
-AgentCallable = Callable[[Dict[str, Any]], Dict[str, Any] | Awaitable[Dict[str, Any]]]
-
-@dataclass
-class AgentSpec:
-    """Specification for a single node in the workflow."""
-    name: str
-    fn: AgentCallable
-    next: Optional[str] = None
-    condition: Optional[Callable[[Dict[str, Any]], str]] = None
-    branches: Optional[Dict[str, Any]] = None
-    entry: bool = False
-
-class DynamicOrchestrator:
-    """Compile and run LangGraph workflows from AgentSpec objects."""
-    
-    def __init__(self, agent_specs: List[AgentSpec]):
-        self.agent_specs = agent_specs
-        
-        if StateGraph is None:
-            raise ImportError("langgraph is required for DynamicOrchestrator. Install it with: pip install langgraph")
-            
-        graph = StateGraph(dict)
-        for spec in agent_specs:
-            graph.add_node(spec.name, spec.fn)
-
-        entry = next((s.name for s in agent_specs if s.entry), agent_specs[0].name)
-        graph.set_entry_point(entry)
-
-        for spec in agent_specs:
-            if spec.next:
-                graph.add_edge(spec.name, spec.next)
-            if spec.condition and spec.branches:
-                graph.add_conditional_edges(spec.name, spec.condition, spec.branches)
-
-        self.workflow = graph.compile()
-
-    async def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute the compiled workflow and return the final state."""
-        logger.debug("Starting workflow with state: %s", state)
-        result = await self.workflow.ainvoke(state)
-        logger.debug("Workflow completed with state: %s", result)
-        return result
-
-
-__all__ = ["AgentSpec", "DynamicOrchestrator", "MultiAgentOrchestrator", "END"]
