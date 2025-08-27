@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 import logging
 
+from jarvis.orchestration.mission import MissionDAG
+
 logger = logging.getLogger(__name__)
 
 class WorkflowStatus(Enum):
@@ -471,6 +473,9 @@ class WorkflowEngine:
         
         return False
 
+# Global workflow engine instance
+workflow_engine = WorkflowEngine()
+
 # Workflow Builder Helper Functions
 def create_workflow(name: str, description: str = "", max_parallel: int = 5) -> Workflow:
     """Create a new workflow"""
@@ -517,4 +522,21 @@ def add_custom_task(workflow: Workflow,
         conditions=conditions
     )
     workflow.tasks.append(task)
+    return workflow
+
+def from_mission_dag(dag: MissionDAG) -> Workflow:
+    """Convert a MissionDAG to a Workflow that can be executed by the engine."""
+    workflow = create_workflow(name=dag.mission_id, description=dag.rationale)
+
+    for node_id, node in dag.nodes.items():
+        # Use team_scope as the specialist_type, and details or capability as the prompt
+        add_specialist_task(
+            workflow=workflow,
+            task_id=node.step_id,
+            name=node.step_id,
+            specialist_type=node.team_scope,
+            prompt=node.details or node.capability,
+            dependencies=node.deps,
+        )
+
     return workflow

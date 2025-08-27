@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+import json
 from typing import Any, Callable, Dict, List, Optional
 
-from jarvis.models.client import model_client
 from jarvis.world_model.predictive_simulation import PredictiveSimulator
 try:  # pragma: no cover - optional dependency
     from jarvis.memory.project_memory import MemoryManager, ProjectMemory
@@ -35,19 +35,44 @@ class MissionPlanner:
 
     def __init__(
         self,
-        client=model_client,
+        client=None,
         model: str = "llama3.2",
         predictor: PredictiveSimulator | None = None,
         memory: Optional[MemoryManager] = None,
         knowledge_graph: Optional[KnowledgeGraph] = None,
         event_handler: Optional[Callable[[str, Dict[str, Any]], None]] = None,
     ) -> None:
-        self.client = client
+        if client is None:
+            from jarvis.models.client import model_client
+            self.client = model_client
+        else:
+            self.client = client
         self.model = model
         self.predictor = predictor
         self.memory = memory
         self.knowledge_graph = knowledge_graph
         self.event_handler = event_handler or (lambda _name, _payload: None)
+
+    def _create_planning_prompt(self, goal: str, context: Dict[str, Any], memory_hits: List[Dict[str, Any]], kg_neighbors: List[str]) -> str:
+        """Create the prompt for the LLM to generate a mission plan."""
+
+        prompt = f"""You are an expert project planner. Your task is to break down a high-level goal into a series of smaller, actionable tasks.
+The output must be a JSON object with a single key "tasks", which is a list of strings. Each string is a task.
+
+Goal: {goal}
+"""
+
+        if context:
+            prompt += f"\nContext: {json.dumps(context, indent=2)}\n"
+
+        if memory_hits:
+            prompt += f"\nRelevant information from past projects:\n{json.dumps(memory_hits, indent=2)}\n"
+
+        if kg_neighbors:
+            prompt += f"\nRelevant files in the current project:\n{', '.join(kg_neighbors)}\n"
+
+        prompt += "\nJSON output:"
+        return prompt
 
     def plan(self, goal: str, context: Dict[str, Any]) -> MissionDAG:
         """Create and persist a mission plan for ``goal``.
@@ -78,35 +103,38 @@ class MissionPlanner:
         edges: List[tuple[str, str]] = []
         rationale: List[str] = []
 
-        if memory_hits:
-            nodes["memory_recall"] = MissionNode(
-                step_id="memory_recall",
-                capability="memory_lookup",
-                team_scope="memory",
-            )
-            rationale.append("project memory")
+        # New LLM-based planning
+        prompt = self._create_planning_prompt(goal, context, memory_hits, kg_neighbors)
+        llm_response = self.client.generate_response(self.model, prompt)
 
-        if kg_neighbors:
-            nodes["kg_scan"] = MissionNode(
-                step_id="kg_scan",
-                capability="kg_lookup",
-                team_scope="knowledge",
-                deps=["memory_recall"] if "memory_recall" in nodes else [],
-            )
-            if "memory_recall" in nodes:
-                edges.append(("memory_recall", "kg_scan"))
-            rationale.append("knowledge graph")
+        try:
+            # Extract the JSON part of the response
+            json_response_str = llm_response[llm_response.find('{'):llm_response.rfind('}')+1]
+            planned_tasks = json.loads(json_response_str)
+            task_list = planned_tasks.get("tasks", [])
+        except (json.JSONDecodeError, KeyError):
+            logger.warning("Failed to parse LLM response for mission planning. Falling back to basic plan.")
+            task_list = [goal] # Fallback to a single task
 
-        final_id = "execute_goal"
-        nodes[final_id] = MissionNode(
-            step_id=final_id,
-            capability="execution",
-            team_scope="core",
-            deps=list(nodes.keys()),
-        )
-        for dep in nodes:
-            if dep != final_id:
-                edges.append((dep, final_id))
+        nodes: Dict[str, MissionNode] = {}
+        edges: List[tuple[str, str]] = []
+        last_node_id = None
+
+        # Create nodes for each task from the LLM
+        for i, task_description in enumerate(task_list):
+            node_id = f"task_{i+1}"
+            nodes[node_id] = MissionNode(
+                step_id=node_id,
+                capability="execution", # Or determine from task
+                team_scope="core",
+                details=task_description,
+                deps=[last_node_id] if last_node_id else []
+            )
+            if last_node_id:
+                edges.append((last_node_id, node_id))
+            last_node_id = node_id
+
+        rationale = ["LLM-generated plan"]
 
         rationale_text = "; ".join(rationale) if rationale else "basic plan"
         mission_id = uuid.uuid4().hex
