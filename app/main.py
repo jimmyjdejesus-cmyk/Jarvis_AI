@@ -33,11 +33,11 @@ from enum import Enum
 import uvicorn
 import sys
 import os
-from pathlib import Path
+from pathlib import Path as PathlibPath
 from neo4j.exceptions import ServiceUnavailable, TransientError
 
 # Add jarvis to Python path
-jarvis_path = Path(__file__).parent.parent / "jarvis"
+jarvis_path = PathlibPath(__file__).parent.parent / "jarvis"
 if jarvis_path.exists():
     sys.path.insert(0, str(jarvis_path.parent))
 
@@ -58,6 +58,7 @@ try:
     from jarvis.core.mcp_agent import MCPJarvisAgent
     from jarvis.world_model.neo4j_graph import Neo4jGraph
     from jarvis.workflows.engine import workflow_engine
+    from jarvis.persistence.session import SessionManager
     JARVIS_AVAILABLE = True
     logger.info("✅ Jarvis orchestration system loaded successfully")
 except Exception as e:
@@ -80,6 +81,10 @@ except Exception as e:
     class workflow_engine:
         def get_workflow_status(self, workflow_id):
             return None
+
+    class SessionManager:
+        def read_runs(self, mission_id):
+            return []
 
 
 # Lifespan context to initialize application state
@@ -276,6 +281,7 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+session_manager = SessionManager()
 neo4j_graph = Neo4jGraph()
 
 # Initialize Neo4j graph adapter
@@ -713,14 +719,16 @@ async def get_pending_hitl_requests(request: Request, session_id: Optional[str] 
 # Mission history endpoint
 @app.get("/missions/{mission_id}/history", dependencies=[Depends(verify_api_key)])
 async def get_mission_history(mission_id: str = Path(..., pattern=r"^[\w-]+$")):
-    """Return mission history including steps and discovered facts."""
+    """Return chronological mission events from session logs."""
     try:
-        history = neo4j_graph.get_mission_history(mission_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid mission id")
-    if not history:
+        runs = session_manager.read_runs(mission_id)
+    except Exception as exc:
+        logger.error("Failed to read mission history for %s: %s", mission_id, exc)
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+    if not runs:
         raise HTTPException(status_code=404, detail="Mission not found")
-    return history
+    runs = sorted(runs, key=lambda r: r.get("ts", 0))
+    return {"mission_id": mission_id, "events": runs}
 
 
 @app.post("/knowledge/query")

@@ -176,3 +176,8 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
 
+## 2025-08-31
+- Added session-based mission history endpoint using `SessionManager` and returned chronological events.
+- Created unit tests validating mission history retrieval and not-found behavior.
+- Ran `flake8 app/main.py tests/test_api.py` (multiple pre-existing style errors) and executed targeted pytest tests (passed).
+

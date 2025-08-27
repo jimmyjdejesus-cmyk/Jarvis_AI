@@ -2,7 +2,7 @@ import sys
 import pathlib
 import random
 import os
-from collections import deque
+import json
 from dataclasses import dataclass
 from typing import List, Any
 import pytest
@@ -162,6 +162,65 @@ def test_push_and_recall(tmp_path):
     log_content = bus.read_log()
     assert "push" in log_content
     assert "recall" in log_content
+
+
+def test_mission_history_endpoint(tmp_path):
+    os.environ["JARVIS_API_KEY"] = "test-key"
+    mission_id = "mission1"
+
+    class DummySessionManager:
+        def __init__(self, base_dir: str) -> None:
+            self.base = Path(base_dir)
+
+        def read_runs(self, mission_id: str):
+            log = self.base / mission_id / "log.jsonl"
+            if not log.exists():
+                return []
+            lines = log.read_text().splitlines()
+            return [json.loads(line) for line in lines if line.strip()]
+
+    sm = DummySessionManager(str(tmp_path))
+    sess_dir = Path(tmp_path) / mission_id
+    sess_dir.mkdir()
+    entries = [
+        {"step": "start", "ts": 1},
+        {"step": "end", "ts": 2},
+    ]
+    log_file = sess_dir / "log.jsonl"
+    log_file.write_text("\n".join(json.dumps(e) for e in entries))
+
+    import app.main as main_module
+    main_module.session_manager = sm
+    client = TestClient(app)
+    headers = {"X-API-Key": "test-key"}
+    response = client.get(f"/missions/{mission_id}/history", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mission_id"] == mission_id
+    assert [e["ts"] for e in data["events"]] == [1, 2]
+
+
+def test_mission_history_not_found(tmp_path):
+    os.environ["JARVIS_API_KEY"] = "test-key"
+
+    class DummySessionManager:
+        def __init__(self, base_dir: str) -> None:
+            self.base = Path(base_dir)
+
+        def read_runs(self, mission_id: str):
+            log = self.base / mission_id / "log.jsonl"
+            if not log.exists():
+                return []
+            lines = log.read_text().splitlines()
+            return [json.loads(line) for line in lines if line.strip()]
+
+    sm = DummySessionManager(str(tmp_path))
+    import app.main as main_module
+    main_module.session_manager = sm
+    client = TestClient(app)
+    headers = {"X-API-Key": "test-key"}
+    response = client.get("/missions/unknown/history", headers=headers)
+    assert response.status_code == 404
 
 if __name__ == '__main__':
     unittest.main()
