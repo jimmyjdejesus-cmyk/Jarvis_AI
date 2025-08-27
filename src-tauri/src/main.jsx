@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles.css';
+import { initAuth } from './auth';
+
+// Initialize authentication helpers (fetch wrappers, token loading)
+initAuth();
 
 // DEV-COMMENT: This is the standard entry point for a React application.
 // It finds the 'root' DOM element (defined in index.html) and renders our main <App /> component into it.
