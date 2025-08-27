@@ -176,3 +176,5 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
 
+
+- Removed duplicate `python-multipart` requirement entry, leaving single `python-multipart>=0.0.6`. Ran `pip check` (no issues) and `pytest -q` (collection errors: Path default values and missing modules).
