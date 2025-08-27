@@ -44,6 +44,12 @@ except ImportError as e:
     logger.warning(f"⚠️ Jarvis orchestration not available: {e}")
     JARVIS_AVAILABLE = False
 
+try:
+    from jarvis.world_model.neo4j_graph import Neo4jGraph
+except Exception as e:
+    Neo4jGraph = None  # type: ignore[assignment]
+    logger.warning(f"⚠️ Neo4j graph not available: {e}")
+
 # Create FastAPI app
 app = FastAPI(
     title="Jarvis AI Orchestrator Backend",
@@ -144,6 +150,12 @@ class HITLRequest(BaseModel):
     response: Optional[Any] = None
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
+
+class CypherQuery(BaseModel):
+    """Request body for Neo4j Cypher queries."""
+
+    query: str = Field(..., description="Read-only Cypher statement")
+
 # In-memory storage
 workflows_db: Dict[str, Workflow] = {}
 logs_db: List[LogEntry] = []
@@ -188,6 +200,14 @@ class ConnectionManager:
             await connection.send_text(message)
 
 manager = ConnectionManager()
+
+# Initialize Neo4j graph adapter
+neo4j_graph = None
+if Neo4jGraph:
+    try:
+        neo4j_graph = Neo4jGraph()
+    except Exception as exc:
+        logger.warning("Neo4jGraph initialization failed: %s", exc)
 
 # Initialize Cerebro (Real Multi-Agent Orchestrator)
 cerebro_orchestrator = None
@@ -551,6 +571,20 @@ async def get_logs(session_id: Optional[str] = Query(None), limit: int = Query(1
         }
     ]
     return sample_logs
+
+# Graph endpoints
+@app.post("/api/graph/cypher")
+async def run_cypher(query: CypherQuery):
+    """Execute a read-only Cypher query against the Neo4j graph."""
+
+    if neo4j_graph is None:
+        raise HTTPException(status_code=503, detail="Neo4j graph unavailable")
+
+    try:
+        results = neo4j_graph.query(query.query)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"results": results}
 
 # HITL endpoints
 @app.get("/api/hitl/pending")
