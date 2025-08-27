@@ -185,11 +185,11 @@ main() {
     
     # Create launcher script
     print_step "Creating launcher script..."
-    cat > "$INSTALL_DIR/start-jarvis.sh" << 'EOF'
+cat > "$INSTALL_DIR/start-jarvis.sh" << 'EOF'
 #!/bin/bash
 cd "$(dirname "$0")"
 source venv/bin/activate
-jarvis run
+jarvis run "$@"
 EOF
     chmod +x "$INSTALL_DIR/start-jarvis.sh"
     
@@ -217,7 +217,7 @@ EOF
     echo "1. To start Jarvis AI:"
     echo "   cd $INSTALL_DIR && ./start-jarvis.sh"
     echo "   or"
-    echo "   cd $INSTALL_DIR && source venv/bin/activate && jarvis run"
+    echo "   cd $INSTALL_DIR && source venv/bin/activate && jarvis run \"<objective>\""
     echo
     echo "2. Open your browser to: http://localhost:8501"
     echo

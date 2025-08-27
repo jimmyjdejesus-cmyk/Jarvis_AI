@@ -1,39 +1,53 @@
-import pytest
-from unittest.mock import patch, MagicMock
 import os
-import asyncio
-
 import sys
+import types
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 root = Path(__file__).resolve().parents[1]
 sys.path.append(str(root / "jarvis"))
-from jarvis_ai import cli
+from jarvis_ai import cli  # noqa: E402
+
 
 @pytest.fixture
-def mock_orchestrator():
+def mock_agent():
     mock = MagicMock()
-    # since coordinate_specialists is an async function, we need to mock it with an async function
-    async def mock_coordinate_specialists(*args, **kwargs):
-        return {"result": "success"}
-    mock.coordinate_specialists = mock_coordinate_specialists
+    mock.execute_mission = AsyncMock(return_value={"result": "success"})
     return mock
 
-def test_cli_with_objective(mock_orchestrator):
-    with patch("jarvis_ai.cli.MultiAgentOrchestrator", return_value=mock_orchestrator):
-        with patch("sys.argv", ["jarvis", "test objective"]):
-            cli.main(mcp_client=MagicMock())
-            # We can't assert the call directly because it's in a different thread.
-            # Instead, we'll just check that the orchestrator was initialized.
-            assert cli.MultiAgentOrchestrator.called
 
-def test_cli_with_code_and_context(mock_orchestrator):
-    with patch("jarvis_ai.cli.MultiAgentOrchestrator", return_value=mock_orchestrator):
-        # Create a dummy code file
+def test_cli_with_objective(mock_agent):
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        with patch("sys.argv", ["jarvis", "run", "test objective"]):
+            cli.main(mcp_client=MagicMock())
+            mock_agent.execute_mission.assert_awaited_with("test objective", {})
+
+
+def test_cli_with_code_and_context(mock_agent):
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
         with open("test_code.py", "w") as f:
             f.write("print('hello')")
 
-        with patch("sys.argv", ["jarvis", "test objective", "--code", "test_code.py", "--context", "test context"]):
+        with patch(
+            "sys.argv",
+            [
+                "jarvis",
+                "run",
+                "test objective",
+                "--code",
+                "test_code.py",
+                "--context",
+                "test context",
+            ],
+        ):
             cli.main(mcp_client=MagicMock())
-            assert cli.MultiAgentOrchestrator.called
+            mock_agent.execute_mission.assert_awaited_with(
+                "test objective",
+                {"code": "print('hello')", "user_context": "test context"},
+            )
 
         os.remove("test_code.py")
