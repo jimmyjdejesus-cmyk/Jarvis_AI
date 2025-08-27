@@ -41,7 +41,7 @@ npm run dev
 ### **Option 3: Manual Setup**
 ```bash
 # 1. Install Python dependencies
-pip install fastapi uvicorn websockets redis pydantic
+pip install fastapi uvicorn websockets redis pydantic pyjwt python-multipart
 
 # 2. Start backend
 cd app
@@ -57,6 +57,25 @@ npm run dev
 
 ## 🔐 Authentication
 
+
+The backend exposes an OAuth2 password flow and returns JWTs for authenticated
+requests. Retrieve a token via the `/token` endpoint:
+
+```bash
+curl -X POST -F "username=admin" -F "password=adminpass" http://localhost:8000/token
+```
+
+Use the token in the `Authorization` header when calling protected routes:
+`Authorization: Bearer <token>`.
+
+Sample in-memory users:
+
+| Username | Password   | Role  |
+|----------|------------|-------|
+| admin    | adminpass  | admin |
+| user     | userpass   | user  |
+
+## Endpoints like `/api/logs` require the `admin` role.
 The backend secures selected endpoints using OAuth2 bearer tokens with JWT.
 
 1. Request a token:
@@ -72,6 +91,7 @@ The backend secures selected endpoints using OAuth2 bearer tokens with JWT.
    ```
 
 Endpoints such as `/api/logs` require the `admin` role and return `403` for unauthorized users.
+
 
 ## 🎯 What You'll See
 

@@ -28,6 +28,12 @@ security:
     algorithm: "HS256"
     access_token_expire_minutes: 30
 
+# Authentication settings
+auth:
+  secret_key: ""  # Set via environment variable JARVIS_AUTH_SECRET
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
 # Performance Settings
 performance:
   cache_enabled: true

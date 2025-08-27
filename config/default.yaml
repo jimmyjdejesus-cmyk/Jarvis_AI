@@ -43,6 +43,12 @@ backend:
   redis_enabled: false
   redis_url: "redis://localhost:6379"
 
+# Authentication defaults
+auth:
+  secret_key: "change_me"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
 # Logging Configuration
 logging:
   level: INFO

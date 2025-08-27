@@ -1,71 +1,96 @@
+from __future__ import annotations
+
+"""Authentication utilities for the FastAPI backend.
+
+Provides JWT-based authentication with simple role-based access control
+using OAuth2 password flow. This module is intentionally minimal and
+defaults to an in-memory user store for demonstration.
+"""
+
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from typing import Any, Callable, Dict, Optional, List
+import os
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from jose import JWTError, jwt
 
-from config.config_loader import load_config
+# Configuration values can be overridden via environment variables or config files
+try:
+    from config.config_loader import load_config
+    config = load_config()
+    auth_cfg = config.get("auth", {})
+except ImportError:
+    auth_cfg = {}
 
-config = load_config()
-auth_cfg = config.get("auth", {})
-SECRET_KEY = auth_cfg.get("secret_key", "CHANGE_ME")
+SECRET_KEY = os.getenv("JARVIS_AUTH_SECRET", auth_cfg.get("secret_key", "CHANGE_ME"))
 ALGORITHM = auth_cfg.get("algorithm", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = auth_cfg.get("access_token_expire_minutes", 30)
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JARVIS_AUTH_EXPIRE_MINUTES", auth_cfg.get("access_token_expire_minutes", 30)))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Demo users; replace with persistent storage in production
+
+class Token(BaseModel):
+    """Response model for access tokens."""
+
+    access_token: str
+    token_type: str
+
+
+# Example in-memory user database. Replace with real user management as needed.
 fake_users_db: Dict[str, Dict[str, Any]] = {
+    "admin": {
+        "username": "admin",
+        "hashed_password": bcrypt.hashpw(b"adminpass", bcrypt.gensalt()).decode("utf-8"),
+        "roles": ["admin"],
+    },
+    "user": {
+        "username": "user",
+        "hashed_password": bcrypt.hashpw(b"userpass", bcrypt.gensalt()).decode("utf-8"),
+        "roles": ["user"],
+    },
     "alice": {
         "username": "alice",
-        "hashed_password": bcrypt.hashpw(
-            b"secret", bcrypt.gensalt()
-        ).decode(),
+        "hashed_password": bcrypt.hashpw(b"secret", bcrypt.gensalt()).decode("utf-8"),
         "roles": ["admin"],
     },
     "bob": {
         "username": "bob",
-        "hashed_password": bcrypt.hashpw(
-            b"secret", bcrypt.gensalt()
-        ).decode(),
+        "hashed_password": bcrypt.hashpw(b"secret", bcrypt.gensalt()).decode("utf-8"),
         "roles": ["user"],
     },
 }
 
-  
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against a bcrypt hash."""
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
+    """Verify a plain password against a hashed password."""
 
-  
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     """Authenticate a user by username and password."""
+
     user = fake_users_db.get(username)
     if not user or not verify_password(password, user["hashed_password"]):
         return None
     return user
 
-  
 
-def create_access_token(
-    data: dict, expires_delta: Optional[timedelta] = None
-) -> str:
+def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
+
     to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-  
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
-    """Retrieve the current user from a JWT token."""
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    """Retrieve the current user from the JWT token."""
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -79,18 +104,32 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
+
     user = fake_users_db.get(username)
     if user is None:
         raise credentials_exception
     return {"username": username, "roles": roles}
 
-  
 
-def role_required(required_role: str):
-    """Dependency enforcing that the current user has a specific role."""
+def role_required(required_role: str) -> Callable:
+    """Dependency factory that ensures the current user has the given role."""
 
     def dependency(user: Dict[str, Any] = Depends(get_current_user)) -> None:
         if required_role not in user.get("roles", []):
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
-
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
     return dependency
+
+
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
+    """Validate user credentials and return an access token."""
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+    access_token = create_access_token({"sub": user["username"], "roles": user["roles"]})
+    return Token(access_token=access_token, token_type="bearer")
