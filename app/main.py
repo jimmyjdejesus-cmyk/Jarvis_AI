@@ -5,7 +5,14 @@ FastAPI + WebSockets + Real Multi-Agent Orchestration
 Complete integration with Jarvis orchestration system
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Body, Path
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Query,
+    Path as FastAPIPath,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -565,7 +572,9 @@ async def get_pending_hitl_requests(session_id: Optional[str] = Query(None)):
 
 # Mission history endpoint
 @app.get("/missions/{mission_id}/history")
-async def get_mission_history(mission_id: str = Path(..., regex=r"^[\w-]+$")):
+async def get_mission_history(
+    mission_id: str = FastAPIPath(..., regex=r"^[\w-]+$"),
+):
     """Return mission history including steps and discovered facts."""
 
     try:

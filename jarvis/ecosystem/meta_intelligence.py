@@ -15,14 +15,11 @@ import json
 import logging
 import os
 import uuid
-from abc import abstractmethod
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
 
 from jarvis.agents.agent_resources import (
     AgentCapability,
-    AgentMetrics,
     SystemEvolutionPlan,
     SystemHealth,
 )
@@ -41,18 +38,25 @@ from jarvis.agents.specialist import SpecialistAgent
 from jarvis.memory.project_memory import MemoryManager, ProjectMemory
 from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
 from jarvis.homeostasis import SystemMonitor
-from jarvis.orchestration.orchestrator import (
-    AgentSpec,
-    DynamicOrchestrator,
-    MultiAgentOrchestrator,
-)
-from jarvis.orchestration.mission import MissionDAG
+from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.orchestration.sub_orchestrator import SubOrchestrator
 from jarvis.persistence.session import SessionManager
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
-from jarvis.workflows.engine import workflow_engine, from_mission_dag, WorkflowStatus
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
 from jarvis.orchestration.mission import Mission, MissionDAG
+
+try:  # pragma: no cover - optional dependency
+    from jarvis.workflows.engine import (
+        WorkflowEngine,
+        workflow_engine,
+        from_mission_dag,
+        WorkflowStatus,
+    )
+except Exception:  # pragma: no cover - minimal test environments
+    WorkflowEngine = None  # type: ignore
+    workflow_engine = None  # type: ignore
+    from_mission_dag = None  # type: ignore
+    WorkflowStatus = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -184,9 +188,10 @@ class ExecutiveAgent(AIAgent):
             }
 
         tasks = plan_result.get("tasks", [])
-        logger.info(f"Mission '{directive}' planned with {len(tasks)} steps.")
+        logger.info(
+            f"Mission '{directive}' planned with {len(tasks)} steps."
+        )
 
-<<<<<<< HEAD
         mission_id = uuid.uuid4().hex
         mission = Mission(
             id=mission_id,
@@ -196,56 +201,60 @@ class ExecutiveAgent(AIAgent):
             risk_level=context.get("risk_level", "low"),
             dag=MissionDAG(mission_id=mission_id),
         )
-=======
-        mission_id = uuid.uuid4().hex
-        mission = Mission(
-            id=mission_id,
-            title=directive,
-            goal=directive,
-            inputs=context,
-            risk_level=context.get("risk_level", "low"),
-            dag=MissionDAG(mission_id=mission_id),
-        )
 
-        # 2. Execute the mission steps
-        mission_results = []
-        for i, task_def in enumerate(tasks):
-            step_id = task_def.get("id", f"step_{i}")
-            logger.info(f"Executing mission step {i+1}/{len(tasks)}: {step_id}")
-
-            # Prepare the task for the execute_task method
-            task = {
-                "type": "mission_step",
-                "step_id": step_id,
-                "request": task_def.get("details", ""),
-                "specialists": task_def.get("specialists", []),
-                # Pass any other relevant info from the plan to the step
-                "code": task_def.get("code"),
-                "user_context": task_def.get("user_context"),
-            }
->>>>>>> a6ede2b69915ab06fffc4fcb020e1ed9eb86d5dd
-
-        dag = MissionDAG.from_dict(plan_result['graph'])
+        dag = MissionDAG.from_dict(plan_result["graph"])
+        global WorkflowEngine, from_mission_dag, WorkflowStatus
+        if from_mission_dag is None or WorkflowEngine is None or WorkflowStatus is None:
+            from jarvis.workflows.engine import (  # type: ignore
+                WorkflowEngine as _WorkflowEngine,
+                from_mission_dag as _from_mission_dag,
+                WorkflowStatus as _WorkflowStatus,
+            )
+            if WorkflowEngine is None:
+                WorkflowEngine = _WorkflowEngine
+            if from_mission_dag is None:
+                from_mission_dag = _from_mission_dag
+            if WorkflowStatus is None:
+                WorkflowStatus = _WorkflowStatus
         workflow = from_mission_dag(dag)
-
-        completed_workflow = await workflow_engine.execute_workflow(workflow)
+        engine = WorkflowEngine()
+        completed_workflow = await engine.execute_workflow(workflow)
 
         mission_results = {
             "workflow_id": completed_workflow.workflow_id,
             "status": completed_workflow.status.value,
-            "results": {task_id: result.output for task_id, result in completed_workflow.context.results.items()},
+            "results": {
+                task_id: result.output
+                for task_id, result in completed_workflow.context.results.items()
+            },
         }
 
-        # 3. Finalize and return results
-        logger.info(f"Mission '{directive}' completed with status: {completed_workflow.status.value}.")
+        step_results = [
+            {
+                "step_id": task_id,
+                "success": getattr(result.status, "value", "") == "completed",
+                "output": result.output,
+                "facts": [],
+                "relationships": [],
+            }
+            for task_id, result in completed_workflow.context.results.items()
+        ]
 
-        self._update_world_model(mission, mission_results)
+        logger.info(
+            "Mission '%s' completed with status: %s.",
+            directive,
+            completed_workflow.status.value,
+        )
 
-        # 4. Consider curiosity
+        self._update_world_model(mission, step_results)
+
         if self.enable_curiosity:
-            await self._consider_curiosity(mission_results["results"])
+            await self._consider_curiosity(step_results)
 
-        return {"success": completed_workflow.status == WorkflowStatus.COMPLETED, "results": mission_results}
+        return {
+            "success": completed_workflow.status == WorkflowStatus.COMPLETED,
+            "results": mission_results,
+        }
 
     async def _consider_curiosity(self, mission_results: List[Dict[str, Any]]):
         """

@@ -41,6 +41,10 @@ class Tool:
         return self.args_schema.schema() if self.args_schema else {}
 
 
+# Backwards compatibility alias
+ToolMeta = Tool
+
+
 class ToolsRegistry:
     """Registry that enforces policy before tool execution."""
 

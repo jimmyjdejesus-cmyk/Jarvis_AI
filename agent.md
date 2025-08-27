@@ -121,3 +121,6 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 * [2025-08-27] Added docs, database, security, and localization specialists with modular prompt loading and dynamic registry; updated orchestrator and tests.
 * [2025-08-27] Refactored `SpecialistAgent` for backward compatibility and updated auction orchestrator test stubs.
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
+* [2025-08-27] Replaced print/return logic with assertions in `test_backend.py` and removed manual execution block for pytest.
+
+* [2025-08-27] Cleaned merge markers and added lazy workflow engine import in meta_intelligence; sanitized memory __init__ and added ToolMeta alias; fixed FastAPI Path usage in app/main.py; resolved coding agent f-string; tests: test_update_world_model, test_executive_agent, and test_backend now pass.
