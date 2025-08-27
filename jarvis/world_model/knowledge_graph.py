@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List, Tuple
 
 import networkx as nx
 
@@ -82,3 +82,41 @@ class KnowledgeGraph:
             for _, target, data in self.graph.out_edges(function_id, data=True)
             if data.get("type") == "calls"
         ]
+
+    # ------------------------------------------------------------------
+    def add_fact(
+        self,
+        subject: str,
+        predicate: str,
+        obj: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Store a simple factual triple in the graph.
+
+        This method ensures nodes for ``subject`` and ``obj`` exist and then
+        creates an edge labelled with ``predicate``. Additional ``metadata`` can
+        be attached to the edge.
+        """
+
+        self.add_node(subject, "entity")
+        self.add_node(obj, "entity")
+        self.add_edge(subject, obj, predicate, metadata)
+
+    # ------------------------------------------------------------------
+    def get_facts(self, subject: Optional[str] = None) -> List[Tuple[str, str, str, Dict[str, Any]]]:
+        """Return stored factual triples.
+
+        Args:
+            subject: If provided, only facts with this subject are returned.
+
+        Returns:
+            A list of tuples ``(subject, predicate, object, metadata)``.
+        """
+
+        facts: List[Tuple[str, str, str, Dict[str, Any]]] = []
+        for src, dst, data in self.graph.edges(data=True):
+            predicate = data.get("type", "")
+            meta = {k: v for k, v in data.items() if k != "type"}
+            if subject is None or src == subject:
+                facts.append((src, predicate, dst, meta))
+        return facts
