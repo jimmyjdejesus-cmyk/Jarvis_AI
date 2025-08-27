@@ -1,30 +1,31 @@
+"""Specialized agent implementations for various domains.
+
+These classes wrap :class:`~jarvis.agents.specialist.SpecialistAgent` with
+domain‑specific helper methods.  They are kept lightweight so that new
+specializations can be added easily and are all registered with the dynamic
+specialist registry.
 """
-Specialized Agent Implementations
-Each agent is an expert in their domain
-"""
+
+from __future__ import annotations
+
 import ast
 from typing import Dict, List
 
 from .specialist import SpecialistAgent
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
-
-from jarvis.tools.execution_sandbox import run_python_code, ExecutionResult
+from jarvis.tools.execution_sandbox import run_python_code
 
 
 class CodeReviewAgent(SpecialistAgent):
-    """Expert code reviewer specializing in code quality and best practices"""
+    """Expert code reviewer specializing in code quality and best practices."""
 
-    def __init__(
-        self,
-        mcp_client,
-        knowledge_graph: KnowledgeGraph | None = None,
-    ):
+    def __init__(self, mcp_client, knowledge_graph: KnowledgeGraph | None = None):
         super().__init__(
             specialization="code_review",
             preferred_models=["claude-3.5-sonnet", "gpt-4", "codellama", "llama3.2"],
             mcp_client=mcp_client,
+            knowledge_graph=knowledge_graph,
         )
-        self.knowledge_graph = knowledge_graph
 
     def _dependencies_for_code(self, code: str) -> Dict[str, List[str]]:
         """Find function call dependencies using the world model."""
@@ -47,25 +48,14 @@ class CodeReviewAgent(SpecialistAgent):
                     deps[node.name] = calls
         return deps
 
-    async def review_code(self, code: str, language: str = None, context: str = None) -> dict:
-        """
-        Comprehensive code review with dependency analysis
+    async def review_code(self, code: str, language: str | None = None, context: str | None = None) -> dict:
+        """Comprehensive code review with dependency analysis."""
 
-        Args:
-            code: Code to review
-            language: Programming language (auto-detect if None)
-            context: Additional context about the code
-
-        Returns:
-            Detailed code review results
-        """
         deps = self._dependencies_for_code(code)
         dep_text = "\n".join(
             f"{func}: {', '.join(calls)}" for func, calls in deps.items()
         )
-        dependency_section = (
-            f"\n**Known Dependencies:**\n{dep_text}\n" if dep_text else ""
-        )
+        dependency_section = f"\n**Known Dependencies:**\n{dep_text}\n" if dep_text else ""
         review_task = f"""
         **CODE REVIEW REQUEST**
 
@@ -92,118 +82,46 @@ class CodeReviewAgent(SpecialistAgent):
         """
 
         return await self.process_task(review_task)
-    
-    async def suggest_improvements(self, code: str, focus_area: str = None) -> dict:
-        """Suggest specific improvements for code"""
+
+    async def suggest_improvements(self, code: str, focus_area: str | None = None) -> dict:
+        """Suggest specific improvements for code."""
         improvement_task = f"""
         **CODE IMPROVEMENT REQUEST**
-        
+
         Focus Area: {focus_area or 'General improvements'}
-        
+
         **Code:**
         ```
         {code}
         ```
-        
+
         Please suggest specific improvements with before/after examples.
         """
-        
+
         return await self.process_task(improvement_task)
 
-class SecurityAgent(SpecialistAgent):
-    """Expert security analyst specializing in vulnerability assessment"""
-    
-    def __init__(self, mcp_client):
-        super().__init__(
-            specialization="security",
-            preferred_models=["claude-3.5-sonnet", "gpt-4", "llama3.2"],
-            mcp_client=mcp_client
-        )
-    
-    async def security_audit(self, code: str = None, description: str = None) -> dict:
-        """
-        Comprehensive security audit
-        
-        Args:
-            code: Code to audit (optional)
-            description: System/feature description
-            
-        Returns:
-            Security assessment results
-        """
-        audit_task = f"""
-        **SECURITY AUDIT REQUEST**
-        
-        {'**Code to Audit:**' if code else '**System Description:**'}
-        ```
-        {code if code else description}
-        ```
-        
-        **Security Assessment Requirements:**
-        1. OWASP Top 10 vulnerability analysis
-        2. Authentication and authorization review
-        3. Input validation and sanitization
-        4. Data protection and privacy assessment
-        5. Cryptographic implementation review
-        6. API security considerations
-        7. Infrastructure security recommendations
-        
-        Provide specific vulnerability findings with risk levels and remediation steps.
-        """
-        
-        return await self.process_task(audit_task)
-    
-    async def threat_modeling(self, system_description: str) -> dict:
-        """Perform threat modeling analysis"""
-        threat_task = f"""
-        **THREAT MODELING REQUEST**
-        
-        **System Description:**
-        {system_description}
-        
-        **Analysis Requirements:**
-        1. Attack surface identification
-        2. Threat actor analysis
-        3. Attack vector mapping
-        4. Risk assessment and prioritization
-        5. Mitigation strategies
-        6. Security controls recommendations
-        
-        Provide a comprehensive threat model with actionable security measures.
-        """
-        
-        return await self.process_task(threat_task)
 
 class ArchitectureAgent(SpecialistAgent):
-    """Expert software architect specializing in system design"""
-    
+    """Expert software architect specializing in system design."""
+
     def __init__(self, mcp_client):
         super().__init__(
             specialization="architecture",
             preferred_models=["gpt-4", "claude-3.5-sonnet", "llama3.2"],
-            mcp_client=mcp_client
+            mcp_client=mcp_client,
         )
-    
-    async def design_review(self, description: str, requirements: str = None) -> dict:
-        """
-        Architecture design review
-        
-        Args:
-            description: System architecture description
-            requirements: System requirements
-            
-        Returns:
-            Architecture analysis and recommendations
-        """
+
+    async def design_review(self, description: str, requirements: str | None = None) -> dict:
+        """Architecture design review."""
         design_task = f"""
         **ARCHITECTURE DESIGN REVIEW**
-        
+
         **System Description:**
         {description}
-        
+
         **Requirements:**
         {requirements or 'No specific requirements provided'}
-        
+
         **Review Focus Areas:**
         1. Architectural patterns and design principles
         2. Scalability and performance considerations
@@ -213,23 +131,23 @@ class ArchitectureAgent(SpecialistAgent):
         6. Integration patterns and API design
         7. Deployment and operational considerations
         8. Cost optimization opportunities
-        
+
         Provide architectural recommendations with trade-off analysis.
         """
-        
+
         return await self.process_task(design_task)
-    
-    async def technology_recommendation(self, project_description: str, constraints: str = None) -> dict:
-        """Recommend technology stack for a project"""
+
+    async def technology_recommendation(self, project_description: str, constraints: str | None = None) -> dict:
+        """Recommend technology stack for a project."""
         tech_task = f"""
         **TECHNOLOGY STACK RECOMMENDATION**
-        
+
         **Project Description:**
         {project_description}
-        
+
         **Constraints:**
         {constraints or 'No specific constraints'}
-        
+
         **Recommendation Areas:**
         1. Programming languages and frameworks
         2. Database and storage solutions
@@ -237,32 +155,33 @@ class ArchitectureAgent(SpecialistAgent):
         4. Development and deployment tools
         5. Monitoring and observability stack
         6. Security and compliance tools
-        
+
         Provide justified technology recommendations with pros/cons analysis.
         """
-        
+
         return await self.process_task(tech_task)
 
+
 class TestingAgent(SpecialistAgent):
-    """Expert testing specialist focusing on quality assurance"""
-    
+    """Expert testing specialist focusing on quality assurance."""
+
     def __init__(self, mcp_client):
         super().__init__(
             specialization="testing",
             preferred_models=["claude-3.5-sonnet", "gpt-4", "llama3.2"],
-            mcp_client=mcp_client
+            mcp_client=mcp_client,
         )
-    
-    async def testing_strategy(self, code: str = None, description: str = None) -> dict:
-        """Develop comprehensive testing strategy"""
+
+    async def testing_strategy(self, code: str | None = None, description: str | None = None) -> dict:
+        """Develop comprehensive testing strategy."""
         strategy_task = f"""
         **TESTING STRATEGY DEVELOPMENT**
-        
+
         {'**Code to Test:**' if code else '**System Description:**'}
         ```
         {code if code else description}
         ```
-        
+
         **Testing Strategy Requirements:**
         1. Test pyramid implementation (unit, integration, e2e)
         2. Test case design and coverage goals
@@ -271,26 +190,24 @@ class TestingAgent(SpecialistAgent):
         5. Automated testing pipeline
         6. Performance and load testing approach
         7. Quality metrics and reporting
-        
+
         Provide a comprehensive testing strategy with implementation guidance.
         """
-        
+
         return await self.process_task(strategy_task)
-    
+
     async def generate_test_cases(self, code: str, test_type: str = "unit", max_retries: int = 3) -> dict:
-        """
-        Generate specific test cases for code with execution-guided self-correction.
-        """
+        """Generate specific test cases for code with execution-guided self-correction."""
         base_prompt = f"""
         **TEST CASE GENERATION**
-        
+
         Test Type: {test_type}
-        
+
         **Code to Test:**
         ```
         {code}
         ```
-        
+
         **Requirements:**
         1. Generate comprehensive {test_type} test cases.
         2. The generated code should be a single block of executable Python code.
@@ -300,18 +217,15 @@ class TestingAgent(SpecialistAgent):
         """
 
         for i in range(max_retries):
-            # Generate the test code
             generation_result = await self.process_task(base_prompt)
             generated_code = generation_result.get("response", "")
 
             if not generated_code:
                 return {"error": "Failed to generate test code."}
 
-            # Execute the generated code
             execution_result = run_python_code(generated_code)
 
             if execution_result.exit_code == 0:
-                # Success
                 generation_result["execution_guided"] = {
                     "status": "success",
                     "retries": i,
@@ -320,7 +234,6 @@ class TestingAgent(SpecialistAgent):
                 }
                 return generation_result
             else:
-                # Failure, construct a new prompt for self-correction
                 base_prompt = f"""
                 The previously generated test case failed with the following error.
                 Please fix the error and provide a corrected version of the test case.
@@ -346,30 +259,31 @@ class TestingAgent(SpecialistAgent):
                 3. Ensure all necessary imports are included.
                 4. Use the standard `unittest` framework.
                 """
-        
+
         return {"error": f"Failed to generate a valid test case after {max_retries} retries."}
 
+
 class DevOpsAgent(SpecialistAgent):
-    """Expert DevOps engineer specializing in automation and infrastructure"""
-    
+    """Expert DevOps engineer specializing in automation and infrastructure."""
+
     def __init__(self, mcp_client):
         super().__init__(
             specialization="devops",
             preferred_models=["claude-3.5-sonnet", "gpt-4", "llama3.2"],
-            mcp_client=mcp_client
+            mcp_client=mcp_client,
         )
-    
-    async def infrastructure_review(self, description: str, requirements: str = None) -> dict:
-        """Review infrastructure design and provide recommendations"""
+
+    async def infrastructure_review(self, description: str, requirements: str | None = None) -> dict:
+        """Review infrastructure design and provide recommendations."""
         infra_task = f"""
         **INFRASTRUCTURE REVIEW**
-        
+
         **Infrastructure Description:**
         {description}
-        
+
         **Requirements:**
         {requirements or 'No specific requirements provided'}
-        
+
         **Review Areas:**
         1. Infrastructure as Code (IaC) best practices
         2. Scalability and high availability design
@@ -379,20 +293,20 @@ class DevOpsAgent(SpecialistAgent):
         6. Backup and disaster recovery strategy
         7. CI/CD pipeline optimization
         8. Container and orchestration strategy
-        
+
         Provide infrastructure recommendations with implementation guidance.
         """
-        
+
         return await self.process_task(infra_task)
-    
+
     async def cicd_optimization(self, pipeline_description: str) -> dict:
-        """Optimize CI/CD pipeline configuration"""
+        """Optimize CI/CD pipeline configuration."""
         cicd_task = f"""
         **CI/CD PIPELINE OPTIMIZATION**
-        
+
         **Current Pipeline:**
         {pipeline_description}
-        
+
         **Optimization Areas:**
         1. Build time optimization
         2. Pipeline security and compliance
@@ -402,139 +316,11 @@ class DevOpsAgent(SpecialistAgent):
         6. Environment promotion strategies
         7. Rollback and recovery procedures
         8. Monitoring and alerting integration
-        
+
         Provide specific pipeline improvements with configuration examples.
         """
-        
+
         return await self.process_task(cicd_task)
-
-class DocumentationAgent(SpecialistAgent):
-    """Expert technical writer for project documentation."""
-
-    def __init__(self, mcp_client):
-        super().__init__(
-            specialization="documentation",
-            preferred_models=["claude-3.5-sonnet", "gpt-4", "llama3.2"],
-            mcp_client=mcp_client,
-        )
-
-    async def generate_documentation(self, code: str, commit_message: str | None = None) -> dict:
-        """Generate user-facing documentation from code and commit messages."""
-        doc_task = f"""
-        **DOCUMENTATION REQUEST**
-
-        **Code:**
-        ```
-        {code}
-        ```
-
-        **Commit Message:**
-        {commit_message or 'No commit message provided'}
-
-        **Documentation Requirements:**
-        1. User-friendly explanation of functionality
-        2. API usage examples
-        3. Setup or installation guidance
-        4. Important notes or warnings
-
-        Provide well-structured documentation.
-        """
-        return await self.process_task(doc_task)
-
-
-class DatabaseAgent(SpecialistAgent):
-    """Specialist in database design, optimization, and migrations."""
-
-    def __init__(self, mcp_client):
-        super().__init__(
-            specialization="database",
-            preferred_models=["gpt-4", "claude-3.5-sonnet", "llama3.2"],
-            mcp_client=mcp_client,
-        )
-
-    async def optimize_query(self, query: str, schema: str | None = None) -> dict:
-        """Optimize database queries and suggest improvements."""
-        db_task = f"""
-        **QUERY OPTIMIZATION REQUEST**
-
-        **Schema:**
-        {schema or 'Schema not provided'}
-
-        **Query:**
-        ```
-        {query}
-        ```
-
-        **Optimization Focus:**
-        1. Indexing recommendations
-        2. Execution plan analysis
-        3. Potential refactoring
-        4. Security considerations
-
-        Provide optimized query suggestions with rationale.
-        """
-        return await self.process_task(db_task)
-
-
-class LocalizationAgent(SpecialistAgent):
-    """Manages translation workflows and localization quality."""
-
-    def __init__(self, mcp_client):
-        super().__init__(
-            specialization="localization",
-            preferred_models=["gpt-4", "claude-3.5-sonnet", "llama3.2"],
-            mcp_client=mcp_client,
-        )
-
-    async def translate_content(self, text: str, target_language: str) -> dict:
-        """Translate text and provide localization guidance."""
-        loc_task = f"""
-        **LOCALIZATION REQUEST**
-
-        **Target Language:** {target_language}
-
-        **Content:**
-        ```
-        {text}
-        ```
-
-        **Localization Considerations:**
-        1. Terminology consistency
-        2. Cultural adaptation
-        3. Formatting and layout
-
-        Provide translated content with notes for reviewers.
-        """
-        return await self.process_task(loc_task)
-
-
-class EthicalHackerAgent(SpecialistAgent):
-    """Adversarial security specialist performing red-team assessments."""
-
-    def __init__(self, mcp_client):
-        super().__init__(
-            specialization="ethical_hacking",
-            preferred_models=["gpt-4", "claude-3.5-sonnet", "llama3.2"],
-            mcp_client=mcp_client,
-        )
-
-    async def penetration_test(self, system_description: str) -> dict:
-        """Simulate adversarial attack paths and report findings."""
-        hack_task = f"""
-        **PENETRATION TEST REQUEST**
-
-        **System Description:**
-        {system_description}
-
-        **Testing Objectives:**
-        1. Reconnaissance and scanning
-        2. Exploit and privilege escalation attempts
-        3. Potential impact assessment
-        4. Mitigation recommendations
-
-        Provide detailed attack narrative and remediation steps.
-        """
-        return await self.process_task(hack_task)
 
 
 class CloudCostOptimizerAgent(SpecialistAgent):
@@ -595,4 +381,14 @@ class UserFeedbackAgent(SpecialistAgent):
         Provide summarized insights with priority levels.
         """
         return await self.process_task(feedback_task)
+
+
+__all__ = [
+    "CodeReviewAgent",
+    "ArchitectureAgent",
+    "TestingAgent",
+    "DevOpsAgent",
+    "CloudCostOptimizerAgent",
+    "UserFeedbackAgent",
+]
 
