@@ -5,11 +5,20 @@ FastAPI + WebSockets + Real Multi-Agent Orchestration
 Complete integration with Jarvis orchestration system
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Body
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Query,
+    Body,
+    Request,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Set
+from contextlib import asynccontextmanager
 import asyncio
 import json
 import uuid
@@ -44,10 +53,20 @@ except ImportError as e:
     logger.warning(f"⚠️ Jarvis orchestration not available: {e}")
     JARVIS_AVAILABLE = False
 
+# Lifespan context to initialize application state
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Configure per-instance in-memory databases."""
+    app.state.workflows_db = {}
+    app.state.logs_db = []
+    app.state.hitl_requests_db = {}
+    yield
+
 # Create FastAPI app
 app = FastAPI(
     title="Jarvis AI Orchestrator Backend",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -144,10 +163,6 @@ class HITLRequest(BaseModel):
     response: Optional[Any] = None
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
-# In-memory storage
-workflows_db: Dict[str, Workflow] = {}
-logs_db: List[LogEntry] = []
-hitl_requests_db: Dict[str, HITLRequest] = {}
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -380,23 +395,31 @@ async def health_check():
 
 # Workflow endpoints
 @app.get("/api/workflow/{session_id}")
-async def get_workflow(session_id: str):
-    """Get current workflow state for a session with real Cerebro data"""
+async def get_workflow(request: Request, session_id: str):
+    """Get current workflow state for a session with real Cerebro data."""
     if not cerebro_orchestrator:
         raise HTTPException(status_code=503, detail="Cerebro orchestrator not initialized")
-    
+
+    workflows_db = request.app.state.workflows_db
+    if session_id in workflows_db:
+        return workflows_db[session_id]
+
     # Get real orchestrator status
-    orchestrator_count = len(cerebro_orchestrator.child_orchestrators) if hasattr(cerebro_orchestrator, 'child_orchestrators') else 3
+    orchestrator_count = (
+        len(cerebro_orchestrator.child_orchestrators)
+        if hasattr(cerebro_orchestrator, "child_orchestrators")
+        else 3
+    )
     specialist_count = len(specialist_agents)
-    
+
     # Build galaxy structure with real data
     nodes = []
     edges = []
-    
+
     # Cerebro node (central meta-agent)
     cerebro_node = {
         "id": "cerebro",
-        "type": "cerebro", 
+        "type": "cerebro",
         "position": {"x": 0, "y": 0},
         "data": {
             "label": "CEREBRO",
@@ -405,9 +428,9 @@ async def get_workflow(session_id: str):
             "totalAgents": specialist_count,
             "activeConversations": len(active_orchestrators),
             "lastMessage": "",
-            "level": "cerebro"
+            "level": "cerebro",
         },
-        "status": "running"
+        "status": "running",
     }
     nodes.append(cerebro_node)
     
@@ -513,11 +536,17 @@ async def get_workflow(session_id: str):
                 "id": f"orchestrator-{i+1}",
                 "label": name,
                 "purpose": f"Specialized {name.split()[0].lower()} coordination",
-                "status": "active" if f"orchestrator-{i+1}" in active_orchestrators else "idle",
-                "agents": list(specialist_agents.keys())[i*2:(i+1)*2] if i*2 < len(specialist_agents) else []
-            } for i, name in enumerate(orchestrator_names)
-        ]
+                "status": "active"
+                if f"orchestrator-{i+1}" in active_orchestrators
+                else "idle",
+                "agents": list(specialist_agents.keys())[i * 2 : (i + 1) * 2]
+                if i * 2 < len(specialist_agents)
+                else [],
+            }
+            for i, name in enumerate(orchestrator_names)
+        ],
     }
+    workflows_db[session_id] = workflow
     return workflow
 
 from jarvis.workflows.engine import workflow_engine
@@ -532,31 +561,31 @@ async def get_workflow_status(workflow_id: str):
 
 # Logs endpoints
 @app.get("/api/logs")
-async def get_logs(session_id: Optional[str] = Query(None), limit: int = Query(100)):
-    """Get logs with optional filters"""
-    sample_logs = [
-        {
-            "id": str(uuid.uuid4()),
-            "session_id": session_id or "default-session",
-            "level": "info",
-            "message": "Cerebro galaxy initialized successfully",
-            "timestamp": datetime.now().isoformat()
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "session_id": session_id or "default-session", 
-            "level": "info",
-            "message": "Backend connected and ready for real-time updates",
-            "timestamp": datetime.now().isoformat()
-        }
+async def get_logs(
+    request: Request,
+    session_id: Optional[str] = Query(None),
+    limit: int = Query(100),
+):
+    """Get logs with optional filters."""
+    logs_db = request.app.state.logs_db
+    logs = [
+        log
+        for log in logs_db
+        if session_id is None or log.session_id == session_id
     ]
-    return sample_logs
+    return [log.dict() for log in logs[:limit]]
 
 # HITL endpoints
 @app.get("/api/hitl/pending")
-async def get_pending_hitl_requests(session_id: Optional[str] = Query(None)):
-    """Get pending HITL requests"""
-    return []  # No pending requests for demo
+async def get_pending_hitl_requests(
+    request: Request, session_id: Optional[str] = Query(None)
+):
+    """Get pending HITL requests."""
+    hitl_db = request.app.state.hitl_requests_db
+    requests = list(hitl_db.values())
+    if session_id is not None:
+        requests = [r for r in requests if r.session_id == session_id]
+    return [r.dict() for r in requests]
 
 # WebSocket endpoint with real Cerebro integration
 @app.websocket("/ws/{client_id}")
