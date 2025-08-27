@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from .replay_memory import Experience, ReplayMemory
+
 # The full ProjectMemory implementation pulls in optional dependencies. For
 # testing (and to avoid import errors when those dependencies are missing) we
 # attempt to import the real implementation but fall back to lightweight stubs.
@@ -25,6 +27,6 @@ except Exception:  # pragma: no cover - used in minimal test environments
 try:  # pragma: no cover - optional import
     from .project_memory import MemoryManager, ProjectMemory  # type: ignore
 
-    __all__ = ["MemoryManager", "ProjectMemory"]
+    __all__ = ["Experience", "ReplayMemory", "MemoryManager", "ProjectMemory"]
 except Exception:  # pragma: no cover - import guard
-    __all__: list[str] = []
+    __all__: list[str] = ["Experience", "ReplayMemory"]

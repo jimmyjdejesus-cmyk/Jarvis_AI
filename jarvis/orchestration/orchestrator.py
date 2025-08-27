@@ -28,6 +28,10 @@ from .path_memory import PathMemory
 from .semantic_cache import SemanticCache
 from .message_bus import HierarchicalMessageBus
 from jarvis.memory.project_memory import ProjectMemory
+from jarvis.agents.specialist_registry import (
+    SPECIALIST_REGISTRY,
+    create_specialist,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - used only for type hints
     from .sub_orchestrator import SubOrchestrator
@@ -95,7 +99,13 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.monitor = monitor
         self.knowledge_graph = knowledge_graph
         self.memory = memory
-        self.specialists: Dict[str, Any] = specialists or {}
+        if specialists is None:
+            self.specialists = {
+                name: create_specialist(name, mcp_client, knowledge_graph=knowledge_graph)
+                for name in SPECIALIST_REGISTRY
+            }
+        else:
+            self.specialists = specialists
         self.semantic_cache = SemanticCache()
         self.child_orchestrators: Dict[str, "SubOrchestrator"] = {}
         self.collaboration_patterns = defaultdict(int)
