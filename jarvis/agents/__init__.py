@@ -17,6 +17,11 @@ try:  # pragma: no cover - optional dependencies
 except Exception:  # pragma: no cover
     CuriosityAgent = None  # type: ignore
 
+try:  # pragma: no cover - optional dependencies
+    from .curiosity_router import CuriosityRouter
+except (ImportError, SyntaxError):  # pragma: no cover
+    CuriosityRouter = None  # type: ignore
+
 # Optional specialist agents – failure to import simply leaves them as ``None``
 try:  # pragma: no cover
     from .coding_agent import CodingAgent, get_coding_agent
@@ -27,10 +32,16 @@ except Exception:  # pragma: no cover
         raise ImportError("CodingAgent not available")
 
 from .base_specialist import BaseSpecialist
-from .simulation_agent import SimulationAgent
-from .monte_carlo_explorer import MonteCarloExplorer
-from .benchmark_agent import BenchmarkRewardAgent
-from .decentralized_actor import DecentralizedActor
+try:  # pragma: no cover - optional dependencies
+    from .simulation_agent import SimulationAgent
+    from .monte_carlo_explorer import MonteCarloExplorer
+    from .benchmark_agent import BenchmarkRewardAgent
+    from .decentralized_actor import DecentralizedActor
+except (ImportError, SyntaxError):  # pragma: no cover
+    SimulationAgent = None  # type: ignore
+    MonteCarloExplorer = None  # type: ignore
+    BenchmarkRewardAgent = None  # type: ignore
+    DecentralizedActor = None  # type: ignore
 
 try:
     from .live_test_agent import LiveTestAgent
@@ -59,6 +70,7 @@ try:
         'SimulationAgent',
         'MonteCarloExplorer',
         'CuriosityAgent',
+        'CuriosityRouter',
         'BenchmarkRewardAgent',
         'LiveTestAgent',
         'SpecialistAgent',
@@ -81,6 +93,7 @@ except Exception:  # pragma: no cover
         'SimulationAgent',
         'MonteCarloExplorer',
         'CuriosityAgent',
+        'CuriosityRouter',
         'BenchmarkRewardAgent',
         'LiveTestAgent',
         'DecentralizedActor',
