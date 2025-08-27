@@ -520,6 +520,16 @@ async def get_workflow(session_id: str):
     }
     return workflow
 
+from jarvis.workflows.engine import workflow_engine
+
+@app.get("/api/workflow/status/{workflow_id}")
+async def get_workflow_status(workflow_id: str):
+    """Get the status of a specific workflow."""
+    status = workflow_engine.get_workflow_status(workflow_id)
+    if not status:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return status
+
 # Logs endpoints
 @app.get("/api/logs")
 async def get_logs(session_id: Optional[str] = Query(None), limit: int = Query(100)):

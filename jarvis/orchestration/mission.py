@@ -27,6 +27,7 @@ class MissionNode:
     step_id: str
     capability: str
     team_scope: str
+    details: Optional[str] = None
     hitl_gate: bool = False
     deps: List[str] = field(default_factory=list)
     state: MissionNodeState = field(default_factory=MissionNodeState)
@@ -56,6 +57,7 @@ class MissionDAG:
                 step_id=v["step_id"],
                 capability=v["capability"],
                 team_scope=v["team_scope"],
+                details=v.get("details"),
                 hitl_gate=v.get("hitl_gate", False),
                 deps=v.get("deps", []),
                 state=MissionNodeState(**v.get("state", {})),

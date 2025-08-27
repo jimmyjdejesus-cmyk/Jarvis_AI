@@ -45,9 +45,11 @@ from jarvis.orchestration.orchestrator import (
     DynamicOrchestrator,
     MultiAgentOrchestrator,
 )
+from jarvis.orchestration.mission import MissionDAG
 from jarvis.orchestration.sub_orchestrator import SubOrchestrator
 from jarvis.persistence.session import SessionManager
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.workflows.engine import workflow_engine, from_mission_dag, WorkflowStatus
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
 
 logger = logging.getLogger(__name__)
@@ -127,9 +129,9 @@ class ExecutiveAgent(AIAgent):
     def manage_directive(self, directive_text: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
         """Break a directive into tasks and store the mission plan."""
         dag = self.mission_planner.plan(directive_text, context)
-        tasks = dag.tasks
-        graph = self.mission_planner.to_graph(tasks)
-        critique = self.constitutional_critic.review({"tasks": tasks, "goal": directive_text})
+        tasks = list(dag.nodes.values())
+        graph = self.mission_planner.to_graph([node.details for node in tasks if node.details])
+        critique = self.constitutional_critic.review({"tasks": [node.details for node in tasks if node.details], "goal": directive_text})
         if critique.get("veto"):
             return {"success": False, "critique": critique}
         if session_id:
@@ -166,42 +168,28 @@ class ExecutiveAgent(AIAgent):
         tasks = plan_result.get("tasks", [])
         logger.info(f"Mission '{directive}' planned with {len(tasks)} steps.")
 
-        # 2. Execute the mission steps
-        mission_results = []
-        for i, task_def in enumerate(tasks):
-            step_id = task_def.get("id", f"step_{i}")
-            logger.info(f"Executing mission step {i+1}/{len(tasks)}: {step_id}")
+        # 2. Execute the mission using the WorkflowEngine
+        logger.info(f"Executing mission '{directive}' with WorkflowEngine.")
 
-            # Prepare the task for the execute_task method
-            task = {
-                "type": "mission_step",
-                "step_id": step_id,
-                "request": task_def.get("details", ""),
-                "specialists": task_def.get("specialists", []),
-                # Pass any other relevant info from the plan to the step
-                "code": task_def.get("code"),
-                "user_context": task_def.get("user_context"),
-            }
+        dag = MissionDAG.from_dict(plan_result['graph'])
+        workflow = from_mission_dag(dag)
 
-            step_result = await self.execute_task(task)
-            mission_results.append(step_result)
+        completed_workflow = await workflow_engine.execute_workflow(workflow)
 
-            if not step_result.get("success"):
-                logger.error(f"Mission step {step_id} failed. Aborting mission.")
-                return {
-                    "success": False,
-                    "error": f"Mission failed at step {step_id}",
-                    "results": mission_results,
-                }
+        mission_results = {
+            "workflow_id": completed_workflow.workflow_id,
+            "status": completed_workflow.status.value,
+            "results": {task_id: result.output for task_id, result in completed_workflow.context.results.items()},
+        }
 
         # 3. Finalize and return results
-        logger.info(f"Mission '{directive}' completed successfully.")
+        logger.info(f"Mission '{directive}' completed with status: {completed_workflow.status.value}.")
 
         # 4. Consider curiosity
         if self.enable_curiosity:
-            await self._consider_curiosity(mission_results)
+            await self._consider_curiosity(mission_results["results"])
 
-        return {"success": True, "results": mission_results}
+        return {"success": completed_workflow.status == WorkflowStatus.COMPLETED, "results": mission_results}
 
     async def _consider_curiosity(self, mission_results: List[Dict[str, Any]]):
         """
