@@ -132,7 +132,7 @@ def main(mcp_client: McpClient | None = None) -> MissionResult | None:
             print(f"Mission execution failed: {exc}")
             return
 
-        if not result.get("success", True):
+        if not result.get("success", False):
             print("Mission execution failed:")
             print(result.get("error", "Unknown error"))
             return
