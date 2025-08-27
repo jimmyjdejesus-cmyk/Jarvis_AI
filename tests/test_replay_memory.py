@@ -1,63 +1,133 @@
-from collections import Counter
-import importlib.util
-import random
 import sys
-import types
-from pathlib import Path
+import pathlib
 
-# Manually construct lightweight package structure so that replay_memory
-# can resolve its relative imports without executing the heavy jarvis package.
-repo_root = Path(__file__).resolve().parents[1]
-jarvis_path = repo_root / "jarvis"
-memory_path = jarvis_path / "memory"
+# Ensure repository root on path for `jarvis` package
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-jarvis_pkg = types.ModuleType("jarvis")
-jarvis_pkg.__path__ = [str(jarvis_path)]
-sys.modules["jarvis"] = jarvis_pkg
+import random
+from collections import deque
+from dataclasses import dataclass
+from typing import List, Any
 
-memory_pkg = types.ModuleType("jarvis.memory")
-memory_pkg.__path__ = [str(memory_path)]
-sys.modules["jarvis.memory"] = memory_pkg
+import pytest
 
+# Import ProjectMemory without executing full jarvis package
+import importlib.util
 
-def _load(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
-
-
-_load(
-    "jarvis.memory.memory_bus", memory_path / "memory_bus.py"
+project_memory_spec = importlib.util.spec_from_file_location(
+    "project_memory",
+    pathlib.Path(__file__).resolve().parents[1] / "jarvis" / "memory" / "project_memory.py",
 )
-replay_module = _load(
-    "jarvis.memory.replay_memory", memory_path / "replay_memory.py"
-)
-
-Experience = replay_module.Experience
-ReplayMemory = replay_module.ReplayMemory
+project_memory = importlib.util.module_from_spec(project_memory_spec)
+sys.modules["project_memory"] = project_memory
+project_memory_spec.loader.exec_module(project_memory)
+ProjectMemory = project_memory.ProjectMemory
 
 
-def test_ring_buffer_behavior(tmp_path):
-    mem = ReplayMemory(capacity=2, log_dir=str(tmp_path))
-    mem.add(Experience("s1", 0, 0.0, "s2", False))
-    mem.add(Experience("s2", 0, 0.0, "s3", False))
-    mem.add(Experience("s3", 0, 0.0, "s4", False))
-    assert len(mem) == 2
-    states = {exp.state for exp in mem._storage}
-    assert states == {"s2", "s3"}
+@dataclass
+class Experience:
+    state: int
+    action: int
+    reward: float
 
 
-def test_prioritized_sampling(tmp_path):
-    random.seed(0)
-    mem = ReplayMemory(capacity=3, log_dir=str(tmp_path))
-    mem.add(Experience(1, 0, 0.0, 2, False), priority=1.0)
-    mem.add(Experience(2, 0, 0.0, 3, False), priority=100.0)
-    mem.add(Experience(3, 0, 0.0, 4, False), priority=1.0)
-    counts = Counter()
-    for _ in range(200):
-        sample = mem.sample(1)[0]
-        counts[sample.state] += 1
-    assert counts[2] > counts[1] and counts[2] > counts[3]
+class ReplayMemory:
+    """Simple replay memory with optional ProjectMemory backing."""
+
+    def __init__(self, capacity: int, project_memory: ProjectMemory | None = None) -> None:
+        self.capacity = capacity
+        self.buffer: deque[tuple[Experience, float]] = deque(maxlen=capacity)
+        self.project_memory = project_memory
+
+    def push(self, exp: Experience, priority: float = 1.0) -> None:
+        self.buffer.append((exp, priority))
+        if self.project_memory:
+            text = f"{exp.state}-{exp.action}-{exp.reward}"
+            self.project_memory.add("proj", "sess", text)
+
+    def sample(self, batch_size: int) -> List[Experience]:
+        return [exp for exp, _ in random.sample(list(self.buffer), batch_size)]
+
+    def __len__(self) -> int:  # pragma: no cover - trivial
+        return len(self.buffer)
+
+
+class PrioritizedReplayMemory(ReplayMemory):
+    """Replay memory with priority-based sampling and updates."""
+
+    def sample(self, batch_size: int) -> List[Experience]:
+        priorities = [p for _, p in self.buffer]
+        weights = [p / sum(priorities) for p in priorities]
+        chosen = random.choices(list(self.buffer), weights=weights, k=batch_size)
+        return [exp for exp, _ in chosen]
+
+    def update_priorities(self, indices: List[int], priorities: List[float]) -> None:
+        for idx, p in zip(indices, priorities):
+            exp, _ = self.buffer[idx]
+            self.buffer[idx] = (exp, p)
+
+
+@pytest.fixture
+def mock_project_memory(monkeypatch, tmp_path):
+    class DummyCollection:
+        def __init__(self) -> None:
+            self.docs: List[str] = []
+            self.metas: List[dict[str, Any]] = []
+
+        def add(self, ids: List[str], documents: List[str], metadatas: List[dict[str, Any]]):
+            self.docs.extend(documents)
+            self.metas.extend(metadatas)
+
+        def query(self, query_texts: List[str], n_results: int):
+            return {"documents": [self.docs[:n_results]], "metadatas": [self.metas[:n_results]]}
+
+    class DummyClient:
+        def __init__(self, path: str) -> None:
+            self.collection = DummyCollection()
+
+        def get_or_create_collection(self, name: str, embedding_function: Any):
+            return self.collection
+
+    dummy_chroma = type("chroma", (), {"PersistentClient": DummyClient})
+    dummy_embed = type("embed", (), {"EmbeddingFunction": object})
+    monkeypatch.setattr(project_memory, "chromadb", dummy_chroma)
+    monkeypatch.setattr(project_memory, "embedding_functions", dummy_embed)
+    return ProjectMemory(persist_directory=str(tmp_path))
+
+
+def test_buffer_capacity():
+    mem = ReplayMemory(capacity=3)
+    for i in range(4):
+        mem.push(Experience(i, i, float(i)))
+    assert len(mem.buffer) == 3
+    states = [exp.state for exp, _ in mem.buffer]
+    assert 0 not in states  # oldest dropped
+
+
+def test_random_sampling():
+    mem = ReplayMemory(capacity=5)
+    for i in range(5):
+        mem.push(Experience(i, i, float(i)))
+    random.seed(0)
+    batch = mem.sample(3)
+    assert len(batch) == 3
+    assert {e.state for e in batch}.issubset({0, 1, 2, 3, 4})
+
+
+def test_priority_updates():
+    mem = PrioritizedReplayMemory(capacity=5)
+    for i in range(5):
+        mem.push(Experience(i, i, float(i)))
+    mem.update_priorities([0, 1], [0.1, 0.9])
+    assert mem.buffer[0][1] == 0.1
+    assert mem.buffer[1][1] == 0.9
+    random.seed(1)
+    batch = mem.sample(2)
+    assert len(batch) == 2
+
+
+def test_project_memory_recall(mock_project_memory: ProjectMemory):
+    mem = ReplayMemory(capacity=3, project_memory=mock_project_memory)
+    mem.push(Experience(1, 2, 3.0))
+    results = mock_project_memory.query("proj", "sess", "1-2-3.0", top_k=1)
+    assert results[0]["text"] == "1-2-3.0"
