@@ -31,15 +31,10 @@ from datetime import datetime, timedelta
 import logging
 from enum import Enum
 import uvicorn
-import sys
 import os
-from pathlib import Path
 from neo4j.exceptions import ServiceUnavailable, TransientError
 
 # Add jarvis to Python path
-jarvis_path = Path(__file__).parent.parent / "jarvis"
-if jarvis_path.exists():
-    sys.path.insert(0, str(jarvis_path.parent))
 
 # Configure logging
 logging.basicConfig(
