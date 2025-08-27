@@ -225,7 +225,7 @@ class ExecutiveAgent(AIAgent):
         question = self.curiosity_agent.generate_question()
         if question:
             logger.info(f"Curiosity agent generated a new question: {question}")
-            if self.curiosity_router and self.enable_curiosity_router:
+            if self.curiosity_router:
                 self.curiosity_router.route(question)
             self.log_event("curiosity_triggered", {"question": question})
 
