@@ -11,6 +11,9 @@ const DEFAULT_SETTINGS = {
   soundEnabled: true,
   compactMode: false,
   chatMode: 'chat', // 'chat', 'research', 'agent'
+  neo4jUri: '',
+  neo4jUser: '',
+  neo4jPassword: '',
 };
 
 // Load settings from localStorage
@@ -386,6 +389,39 @@ const ChatPane = () => {
                 onChange={(e) => handleSettingsChange('compactMode', e.target.checked)}
               />
               Compact mode
+            </label>
+          </div>
+
+          <div className="settings-section">
+            <label>
+              Neo4j URI:
+              <input
+                type="text"
+                value={settings.neo4jUri}
+                onChange={(e) => handleSettingsChange('neo4jUri', e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="settings-section">
+            <label>
+              Neo4j User:
+              <input
+                type="text"
+                value={settings.neo4jUser}
+                onChange={(e) => handleSettingsChange('neo4jUser', e.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="settings-section">
+            <label>
+              Neo4j Password:
+              <input
+                type="password"
+                value={settings.neo4jPassword}
+                onChange={(e) => handleSettingsChange('neo4jPassword', e.target.value)}
+              />
             </label>
           </div>
         </div>

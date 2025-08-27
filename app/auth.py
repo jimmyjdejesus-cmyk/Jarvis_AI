@@ -8,19 +8,26 @@ defaults to an in-memory user store for demonstration.
 """
 
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, List
 import os
 
 import bcrypt
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from jose import JWTError, jwt
 
 # Configuration values can be overridden via environment variables or config files
-SECRET_KEY = os.getenv("JARVIS_AUTH_SECRET", "change_me")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JARVIS_AUTH_EXPIRE_MINUTES", "30"))
+try:
+    from config.config_loader import load_config
+    config = load_config()
+    auth_cfg = config.get("auth", {})
+except ImportError:
+    auth_cfg = {}
+
+SECRET_KEY = os.getenv("JARVIS_AUTH_SECRET", auth_cfg.get("secret_key", "CHANGE_ME"))
+ALGORITHM = auth_cfg.get("algorithm", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JARVIS_AUTH_EXPIRE_MINUTES", auth_cfg.get("access_token_expire_minutes", 30)))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -33,16 +40,26 @@ class Token(BaseModel):
 
 
 # Example in-memory user database. Replace with real user management as needed.
-fake_users_db: Dict[str, Dict[str, str]] = {
+fake_users_db: Dict[str, Dict[str, Any]] = {
     "admin": {
         "username": "admin",
         "hashed_password": bcrypt.hashpw(b"adminpass", bcrypt.gensalt()).decode("utf-8"),
-        "role": "admin",
+        "roles": ["admin"],
     },
     "user": {
         "username": "user",
         "hashed_password": bcrypt.hashpw(b"userpass", bcrypt.gensalt()).decode("utf-8"),
-        "role": "user",
+        "roles": ["user"],
+    },
+    "alice": {
+        "username": "alice",
+        "hashed_password": bcrypt.hashpw(b"secret", bcrypt.gensalt()).decode("utf-8"),
+        "roles": ["admin"],
+    },
+    "bob": {
+        "username": "bob",
+        "hashed_password": bcrypt.hashpw(b"secret", bcrypt.gensalt()).decode("utf-8"),
+        "roles": ["user"],
     },
 }
 
@@ -53,8 +70,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-def authenticate_user(username: str, password: str) -> Optional[Dict[str, str]]:
-    """Authenticate a user from the in-memory store."""
+def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+    """Authenticate a user by username and password."""
 
     user = fake_users_db.get(username)
     if not user or not verify_password(password, user["hashed_password"]):
@@ -70,6 +87,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
     """Retrieve the current user from the JWT token."""
 
@@ -81,38 +99,37 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        role: str = payload.get("role")
-        if username is None or role is None:
+        roles: List[str] = payload.get("roles", [])
+        if username is None:
             raise credentials_exception
-    except jwt.PyJWTError:
+    except JWTError:
         raise credentials_exception
 
     user = fake_users_db.get(username)
     if user is None:
         raise credentials_exception
-    return user
+    return {"username": username, "roles": roles}
 
 
 def role_required(required_role: str) -> Callable:
     """Dependency factory that ensures the current user has the given role."""
 
-    async def dependency(current_user: Dict[str, Any] = Depends(get_current_user)):
-        if current_user.get("role") != required_role:
+    def dependency(user: Dict[str, Any] = Depends(get_current_user)) -> None:
+        if required_role not in user.get("roles", []):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
-        return current_user
-
     return dependency
 
 
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm) -> Token:
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
     """Validate user credentials and return an access token."""
-
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
-    access_token = create_access_token({"sub": user["username"], "role": user["role"]})
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+    access_token = create_access_token({"sub": user["username"], "roles": user["roles"]})
     return Token(access_token=access_token, token_type="bearer")
-

@@ -57,6 +57,7 @@ npm run dev
 
 ## 🔐 Authentication
 
+
 The backend exposes an OAuth2 password flow and returns JWTs for authenticated
 requests. Retrieve a token via the `/token` endpoint:
 
@@ -74,7 +75,23 @@ Sample in-memory users:
 | admin    | adminpass  | admin |
 | user     | userpass   | user  |
 
-Endpoints like `/api/logs` require the `admin` role.
+## Endpoints like `/api/logs` require the `admin` role.
+The backend secures selected endpoints using OAuth2 bearer tokens with JWT.
+
+1. Request a token:
+
+   ```bash
+   curl -X POST -F "username=alice" -F "password=secret" http://localhost:8000/token
+   ```
+
+2. Use the token:
+
+   ```bash
+   curl -H "Authorization: Bearer <token>" http://localhost:8000/api/logs
+   ```
+
+Endpoints such as `/api/logs` require the `admin` role and return `403` for unauthorized users.
+
 
 ## 🎯 What You'll See
 
