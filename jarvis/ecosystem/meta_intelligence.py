@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -121,7 +122,23 @@ class ExecutiveAgent(AIAgent):
         logger.info(f"Event '{event}': {payload}")
 
     def _initialize_knowledge_graph(self):
-        # Placeholder for KG initialization
+        """Connect to a persistent knowledge graph backend.
+
+        Attempts to create a :class:`Neo4jGraph` using environment variables
+        (``NEO4J_URI``, ``NEO4J_USER``, ``NEO4J_PASSWORD``). If the connection
+        fails or the dependencies are unavailable, it falls back to the
+        in-memory :class:`KnowledgeGraph` implementation.
+        """
+
+        try:
+            from jarvis.world_model.neo4j_graph import Neo4jGraph
+
+            if os.getenv("NEO4J_URI"):
+                self.knowledge_graph = Neo4jGraph()
+                return
+        except Exception as exc:  # pragma: no cover - optional dependency
+            logger.warning("Neo4j backend unavailable: %s", exc)
+
         self.knowledge_graph = KnowledgeGraph()
 
     def manage_directive(self, directive_text: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
@@ -401,6 +418,18 @@ class ExecutiveAgent(AIAgent):
         return orchestrator
 
     async def _handle_mission_step(self, step: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a single planned mission step.
+
+        The step outcome is persisted to both the project memory and the
+        knowledge graph for later retrieval.
+
+        Args:
+            step: Definition of the mission step including ``step_id`` and
+                ``request``.
+
+        Returns:
+            A dictionary containing the step result and critique information.
+        """
         step_id = step.get("step_id", uuid.uuid4().hex[:8])
         orchestrator = self.sub_orchestrators.get(step_id)
         if not orchestrator:
@@ -418,6 +447,15 @@ class ExecutiveAgent(AIAgent):
         result = await orchestrator.coordinate_specialists(
             step.get("request", ""), step.get("code"), step.get("user_context"),
         )
+        try:
+            self.memory.add("mission", step_id, json.dumps(result))
+        except Exception as exc:  # pragma: no cover - safety net
+            logger.warning("Memory persistence failed for step %s: %s", step_id, exc)
+        try:
+            self.knowledge_graph.add_fact(step_id, "result", json.dumps(result))
+        except Exception as exc:  # pragma: no cover - safety net
+            logger.warning("KG persistence failed for step %s: %s", step_id, exc)
+
         return {"success": True, "result": result, "step_id": step_id, "critique": critique}
 
     def _record_strategy_from_trace(self, trace: List[str], confidence: float = 1.0) -> str:
