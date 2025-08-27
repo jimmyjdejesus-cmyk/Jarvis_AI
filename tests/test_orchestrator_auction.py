@@ -28,6 +28,11 @@ sys.modules["jarvis.agents.specialist_registry"] = types.SimpleNamespace(
     SPECIALIST_REGISTRY={},
     create_specialist=lambda name, mcp_client, **_: _Dummy(),
 )
+from app.main import app
+
+import jarvis.memory.project_memory as project_memory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.project_memory import ProjectMemory
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.orchestration.path_memory import PathMemory
 

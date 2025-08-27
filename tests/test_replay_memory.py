@@ -1,8 +1,6 @@
 import random
 from dataclasses import dataclass
-from typing import Any, List
-
-import pytest
+from app.main import app
 
 import jarvis.memory.project_memory as project_memory
 from jarvis.memory.memory_bus import MemoryBus

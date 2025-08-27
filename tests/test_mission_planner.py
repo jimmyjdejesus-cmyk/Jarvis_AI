@@ -1,5 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
+from app.main import app
+
+import jarvis.memory.project_memory as project_memory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.project_memory import ProjectMemory
 
 from jarvis.agents.mission_planner import MissionPlanner
 
