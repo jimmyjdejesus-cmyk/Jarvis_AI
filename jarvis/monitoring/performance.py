@@ -17,11 +17,13 @@ class CriticInsightMerger:
 
 @dataclass
 class PerformanceTracker:
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    def record_event(self, event_type: str, success: bool, attempt: int = 1):
-        if "retry_attempts" not in self.metrics:
-            self.metrics["retry_attempts"] = 0
-        if success:
-            pass
-        else:
-            self.metrics["retry_attempts"] +=1
+    metrics: Dict[str, Any] = field(
+        default_factory=lambda: {"retry_attempts": 0, "failed_steps": 0}
+    )
+
+    def record_event(self, event_type: str, success: bool, attempt: int = 1) -> None:
+        """Record execution metrics for orchestrator operations."""
+        if event_type == "retry" and not success:
+            self.metrics["retry_attempts"] += 1
+        if event_type == "step" and not success:
+            self.metrics["failed_steps"] += 1

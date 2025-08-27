@@ -32,6 +32,7 @@ from jarvis.agents.specialist_registry import (
     get_specialist_registry,
     create_specialist,
 )
+from jarvis.monitoring.performance import PerformanceTracker
 
 if TYPE_CHECKING:  # pragma: no cover - used only for type hints
     from .sub_orchestrator import SubOrchestrator
@@ -58,6 +59,7 @@ class StepContext:
     recursion_depth: int = 0
     user_context: Optional[str] = None
     context: Any | None = None
+    timeout: Optional[float] = None
 
 
 @dataclass
@@ -94,6 +96,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         message_bus: HierarchicalMessageBus | None = None,
         budgets: Optional[Dict[str, Any]] = None,
         memory: Optional[ProjectMemory] = None,
+        performance_tracker: PerformanceTracker | None = None,
     ) -> None:
         self.mcp_client = mcp_client
         self.monitor = monitor
@@ -114,6 +117,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.exploration_stats: List[Dict[str, float]] = []
         self.message_bus = message_bus or HierarchicalMessageBus()
         self.budgets = budgets or {}
+        self.performance_tracker = performance_tracker or PerformanceTracker()
         from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         self.critic = ConstitutionalCritic(mcp_client=self.mcp_client)
@@ -137,7 +141,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         )
 
     async def run_step(self, step_ctx: StepContext) -> StepResult:
-        """Execute a single orchestration step."""
+        """Execute a single orchestration step with retry and timeout control."""
         run_id = step_ctx.budgets.get("run_id") if step_ctx.budgets else None
         allowed = step_ctx.allowed_specialists
         original_specialists = self.specialists
@@ -147,12 +151,34 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
                 for name, agent in original_specialists.items()
                 if name in set(allowed)
             }
+
+        retry_policy = step_ctx.retry_policy or {}
+        retries = retry_policy.get("retries", 0)
+        backoff_base = retry_policy.get("backoff_base", 1)
+        timeout = step_ctx.timeout or retry_policy.get("timeout")
+
+        attempt = 0
         try:
-            data = await self.coordinate_specialists(
-                step_ctx.request,
-                context=step_ctx.context,
-                user_context=step_ctx.user_context,
-            )
+            while True:
+                attempt += 1
+                try:
+                    coro = self.coordinate_specialists(
+                        step_ctx.request,
+                        context=step_ctx.context,
+                        user_context=step_ctx.user_context,
+                    )
+                    if timeout is not None:
+                        data = await asyncio.wait_for(coro, timeout)
+                    else:
+                        data = await coro
+                    self.performance_tracker.record_event("step", True, attempt)
+                    break
+                except Exception:
+                    self.performance_tracker.record_event("step", False, attempt)
+                    if attempt > retries:
+                        raise
+                    delay = backoff_base * (2 ** (attempt - 1))
+                    await asyncio.sleep(delay)
         finally:
             self.specialists = original_specialists
 
