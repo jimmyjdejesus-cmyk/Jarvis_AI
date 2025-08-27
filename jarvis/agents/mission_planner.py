@@ -151,8 +151,8 @@ class MissionPlanner:
                     self.knowledge_graph.add_edge(
                         src, tgt, "depends_on", {"mission_id": mission_id}
                     )
-                except Exception:  # pragma: no cover - optional KG
-                    pass
+                except Exception as e:  # pragma: no cover - optional KG
+                    logger.warning("Failed to add mission edge %s->%s to knowledge graph: %s", src, tgt, e)
         try:
             self.event_handler("Mission_Planned", dag.to_dict())
         except Exception:  # pragma: no cover - event handler optional
