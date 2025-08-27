@@ -144,8 +144,8 @@ class MissionPlanner:
                             "status": node.state.status,
                         },
                     )
-                except Exception:  # pragma: no cover - optional KG
-                    pass
+                except Exception as e:  # pragma: no cover - optional KG
+                    logger.warning("Failed to add mission node %s to knowledge graph: %s", node.step_id, e)
             for src, tgt in dag.edges:
                 try:
                     self.knowledge_graph.add_edge(
