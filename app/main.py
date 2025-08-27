@@ -476,7 +476,7 @@ async def health_check():
 
 
 # Workflow endpoints
-@app.get("/api/workflow/{session_id}")
+@api_router.get("/workflow/{session_id}")
 async def get_workflow(request: Request, session_id: str):
     """Get current workflow state for a session with real Cerebro data."""
     if not cerebro_orchestrator:
@@ -638,7 +638,10 @@ class DummyWorkflowEngine:
 workflow_engine = DummyWorkflowEngine()
 
 
-@app.get("/api/workflow/status/{workflow_id}", dependencies=[Depends(get_current_user)])
+@api_router.get(
+    "/workflow/status/{workflow_id}",
+    dependencies=[Depends(get_current_user)],
+)
 async def get_workflow_status(workflow_id: str):
     """Get the status of a specific workflow."""
     status = workflow_engine.get_workflow_status(workflow_id)
@@ -648,8 +651,15 @@ async def get_workflow_status(workflow_id: str):
 
 
 # Logs endpoints
-@app.get("/api/logs", dependencies=[Depends(role_required("admin"))])
-async def get_logs(request: Request, session_id: Optional[str] = Query(None), limit: int = Query(100)):
+@api_router.get(
+    "/logs",
+    dependencies=[Depends(role_required("admin"))],
+)
+async def get_logs(
+    request: Request,
+    session_id: Optional[str] = Query(None),
+    limit: int = Query(100),
+):
     """Get logs with optional filters. Requires admin role."""
     logs_db = request.app.state.logs_db
     logs = [
@@ -661,8 +671,11 @@ async def get_logs(request: Request, session_id: Optional[str] = Query(None), li
 
 
 # Graph endpoints
-@app.post("/api/graph/cypher")
-async def run_cypher(query: CypherQuery, current_user: Any = Depends(get_current_user)) -> Dict[str, Any]:
+@api_router.post("/graph/cypher")
+async def run_cypher(
+    query: CypherQuery,
+    current_user: Any = Depends(get_current_user),
+) -> Dict[str, Any]:
     """Execute a read-only Cypher query against the Neo4j graph."""
 
     if neo4j_graph is None:
@@ -673,16 +686,32 @@ async def run_cypher(query: CypherQuery, current_user: Any = Depends(get_current
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ServiceUnavailable as exc:
-        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Neo4j service unavailable",
+        ) from exc
     except TransientError as exc:
-        raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Neo4j transient error",
+        ) from exc
     except Exception as exc:
         logger.error(f"Failed to execute knowledge query: {exc}")
-        raise HTTPException(status_code=500, detail="Internal server error") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        ) from exc
+
 
 # HITL endpoints
-@app.get("/api/hitl/pending", dependencies=[Depends(get_current_user)])
-async def get_pending_hitl_requests(request: Request, session_id: Optional[str] = Query(None)):
+@api_router.get(
+    "/hitl/pending",
+    dependencies=[Depends(get_current_user)],
+)
+async def get_pending_hitl_requests(
+    request: Request,
+    session_id: Optional[str] = Query(None),
+):
     """Get pending HITL requests."""
     hitl_db = request.app.state.hitl_requests_db
     requests = list(hitl_db.values())
