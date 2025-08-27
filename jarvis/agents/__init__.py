@@ -19,7 +19,7 @@ except Exception:  # pragma: no cover
 
 try:  # pragma: no cover - optional dependencies
     from .curiosity_router import CuriosityRouter
-except Exception:  # pragma: no cover
+except (ImportError, SyntaxError):  # pragma: no cover
     CuriosityRouter = None  # type: ignore
 
 # Optional specialist agents – failure to import simply leaves them as ``None``
