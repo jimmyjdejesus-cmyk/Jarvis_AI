@@ -221,6 +221,18 @@ class HITLRequest(BaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
+class CypherQuery(BaseModel):
+    """Request body for Neo4j Cypher queries."""
+
+    query: str = Field(..., description="Read-only Cypher statement")
+
+
+# In-memory storage
+workflows_db: Dict[str, Workflow] = {}
+logs_db: List[LogEntry] = []
+hitl_requests_db: Dict[str, HITLRequest] = {}
+
+
 # WebSocket connection manager
 class ConnectionManager:
     def __init__(self):
@@ -262,6 +274,14 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 neo4j_graph = Neo4jGraph()
+
+# Initialize Neo4j graph adapter
+neo4j_graph = None
+if Neo4jGraph:
+    try:
+        neo4j_graph = Neo4jGraph()
+    except Exception as exc:
+        logger.warning("Neo4jGraph initialization failed: %s", exc)
 
 # Initialize Cerebro (Real Multi-Agent Orchestrator)
 cerebro_orchestrator = None
@@ -463,7 +483,7 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0",
-        "neo4j_active": neo4j_graph.is_alive(),
+        "neo4j_active": neo4j_graph.is_alive() if neo4j_graph else False,
     }
 
 
@@ -654,6 +674,26 @@ async def get_logs(request: Request, session_id: Optional[str] = Query(None), li
     ]
     return [log.dict() for log in logs[:limit]]
 
+
+# Graph endpoints
+@app.post("/api/graph/cypher")
+async def run_cypher(query: CypherQuery, current_user: Any = Depends(get_current_user)) -> Dict[str, Any]:
+    """Execute a read-only Cypher query against the Neo4j graph."""
+
+    if neo4j_graph is None:
+        raise HTTPException(status_code=503, detail="Neo4j graph unavailable")
+
+    try:
+        results = neo4j_graph.query(query.query)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ServiceUnavailable as exc:
+        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
+    except TransientError as exc:
+        raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
+    except Exception as exc:
+        logger.error(f"Failed to execute knowledge query: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 # HITL endpoints
 @app.get("/api/hitl/pending", dependencies=[Depends(get_current_user)])

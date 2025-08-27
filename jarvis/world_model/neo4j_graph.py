@@ -49,7 +49,10 @@ class Neo4jGraph:
 
     # ------------------------------------------------------------------
     def add_node(
-        self, node_id: str, node_type: str, attributes: Optional[Dict[str, Any]] = None
+        self,
+        node_id: str,
+        node_type: str,
+        attributes: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Create or update a node in Neo4j.
 
@@ -105,12 +108,80 @@ class Neo4jGraph:
             raise ValueError("Invalid relationship type")
         with self.driver.session() as session:
             session.run(
-                f"MATCH (a:Node {{id: $source}}), (b:Node {{id: $target}}) "
-                f"MERGE (a)-[r:{rel}]->(b) SET r += $props",
+                (
+                    "MATCH (a:Node {id: $source}), "
+                    "(b:Node {id: $target}) "
+                    f"MERGE (a)-[r:{rel}]->(b) SET r += $props"
+                ),
                 source=source_id,
                 target=target_id,
                 props=props,
             )
+
+    # ------------------------------------------------------------------
+    _READ_ONLY_START = re.compile(
+        r"^\s*(MATCH|RETURN)\b",
+        re.IGNORECASE,
+    )
+    _WRITE_CLAUSES = re.compile(
+        r"\b(CREATE|MERGE|DELETE|SET|DROP)\b",
+        re.IGNORECASE,
+    )
+
+    def _validate_cypher(self, query: str) -> None:
+        """Ensure ``query`` is read-only and contains a single statement.
+
+        Parameters
+        ----------
+        query:
+            Cypher statement to validate.
+
+        Raises
+        ------
+        ValueError
+            If the query performs write operations or contains multiple
+            statements.
+        """
+
+        if ";" in query:
+            raise ValueError("Multiple Cypher statements are not allowed")
+
+        if not self._READ_ONLY_START.match(query):
+            raise ValueError("Query must start with MATCH or RETURN")
+
+        if self._WRITE_CLAUSES.search(query):
+            raise ValueError("Write operations are not permitted")
+
+    # ------------------------------------------------------------------
+    def query(
+        self,
+        query: str,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> list[Dict[str, Any]]:
+        """Execute a validated read-only Cypher query.
+
+        Parameters
+        ----------
+        query:
+            Cypher statement restricted to read-only operations.
+        parameters:
+            Optional mapping of query parameters.
+
+        Returns
+        -------
+        list[Dict[str, Any]]
+            Result rows represented as dictionaries.
+
+        Raises
+        ------
+        ValueError
+            If the query fails validation.
+        """
+
+        self._validate_cypher(query)
+        with self.driver.session() as session:
+            result = session.run(query, parameters or {})
+            return [record.data() for record in result]
 
     # ------------------------------------------------------------------
     def _sanitize_properties(self, props: Dict[str, Any]) -> Dict[str, Any]:
