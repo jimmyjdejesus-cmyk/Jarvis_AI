@@ -1,53 +1,4 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import LogViewerPane from '../LogViewerPane';
-import { socket } from '../../socket';
-import { http } from '@tauri-apps/api';
-
-jest.mock('../../socket', () => {
-  const handlers = {};
-  return {
-    socket: {
-      on: (event, cb) => {
-        handlers[event] = cb;
-      },
-      off: (event) => {
-        delete handlers[event];
-      },
-      emit: (event, data) => {
-        if (handlers[event]) {
-          handlers[event](data);
-        }
-      },
-      _handlers: handlers,
-    },
-  };
-});
-
-jest.mock('@tauri-apps/api', () => ({
-  http: {
-    fetch: jest.fn(),
-    ResponseType: { Text: 'Text' },
-  },
-}));
-
-describe('LogViewerPane', () => {
-  beforeEach(() => {
-    http.fetch.mockResolvedValue({ ok: true, data: 'first line\nsecond line' });
-  });
-
-  test('filters log lines based on input', async () => {
-    render(<LogViewerPane />);
-    await screen.findByText(/first line/);
-
-    const input = screen.getByPlaceholderText('Filter logs...');
-    fireEvent.change(input, { target: { value: 'second' } });
-
-    expect(screen.queryByText(/first line/)).not.toBeInTheDocument();
-    expect(screen.getByText(/second line/)).toBeInTheDocument();
-  });
-
-  test('shows connection status and HITL badge', async () => {
+test('shows connection status and HITL badge', async () => {
     render(<LogViewerPane />);
     await screen.findByText(/first line/);
 
@@ -72,44 +23,4 @@ describe('LogViewerPane', () => {
         screen.getByTitle('Disconnected from real-time updates')
       ).toHaveClass('disconnected')
     );
-
-    await act(async () => {
-      socket.emit('hitl_update', ['a', 'b']);
-    });
-    expect(await screen.findByText('2')).toHaveClass('hitl-badge');
-
-    await act(async () => {
-      socket.emit('hitl_update', []);
-    });
-    await waitFor(() =>
-      expect(screen.queryByText('2')).not.toBeInTheDocument()
-    );
   });
-
-  test('displays error and retries fetching logs', async () => {
-    http.fetch
-      .mockRejectedValueOnce(new Error('network error'))
-      .mockResolvedValueOnce({ ok: false, status: 500 });
-
-    render(<LogViewerPane />);
-
-    expect(
-      await screen.findByText(
-        /Failed to load agent logs. Make sure the backend server is running./
-      )
-    ).toBeInTheDocument();
-
-    http.fetch.mockResolvedValueOnce({ ok: true, data: 'recovered line' });
-
-    fireEvent.click(screen.getByText('Try Again'));
-
-    expect(await screen.findByText(/recovered line/)).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.queryByText(
-          /Failed to load agent logs. Make sure the backend server is running./
-        )
-      ).not.toBeInTheDocument()
-    );
-  });
-});

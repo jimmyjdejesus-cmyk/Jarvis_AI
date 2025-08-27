@@ -64,18 +64,17 @@ docker run -p 8501:8501 \
   jarvis-ai
 ```
 
-To configure Neo4j, set the following environment variables:
+To configure Neo4j, store credentials in the OS keyring using ``keyring``:
 
 ```bash
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=test
+python -m keyring set jarvis NEO4J_URI bolt://localhost:7687
+python -m keyring set jarvis NEO4J_USER neo4j
+python -m keyring set jarvis NEO4J_PASSWORD test
 ```
 
-For production deployments, load these values from a secrets manager such as
-AWS Secrets Manager or HashiCorp Vault rather than exporting plain
-environment variables. The desktop application also provides fields in its
-settings panel where users can enter Neo4j credentials at runtime.
+Rotate these secrets regularly and update the keyring entries accordingly.
+The desktop application also provides fields in its settings panel where users
+can enter Neo4j credentials at runtime.
 
 ### 3. One-Click Installer
 

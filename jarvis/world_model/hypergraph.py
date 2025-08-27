@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-"""Persistent hierarchical hypergraph backed by Neo4j with in-memory fallback."""
+"""Persistent hierarchical hypergraph backed by Neo4j with in-memory
+fallback."""
 
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 import json
-import os
 import re
 import time
-from neo4j import GraphDatabase, Driver
+from neo4j import GraphDatabase
+
+from jarvis.security.secret_manager import get_secret
 
 
 class HierarchicalHypergraph:
@@ -26,16 +28,16 @@ class HierarchicalHypergraph:
         ----------
         uri, user, password:
             Optional overrides for Neo4j connection settings. When omitted,
-            the function will look for ``NEO4J_URI``, ``NEO4J_USER`` and
-            ``NEO4J_PASSWORD`` environment variables. If none are supplied the
-            hypergraph runs in in-memory mode.
+            values are loaded from the OS keyring via ``keyring`` using the
+            service name ``jarvis``. If none are supplied the hypergraph runs
+            in in-memory mode.
         """
 
-        uri = uri or os.environ.get("NEO4J_URI")
-        user = user or os.environ.get("NEO4J_USER")
-        password = password or os.environ.get("NEO4J_PASSWORD")
+        uri = uri or get_secret("NEO4J_URI")
+        user = user or get_secret("NEO4J_USER")
+        password = password or get_secret("NEO4J_PASSWORD")
         if uri and user and password:
-            self.driver: Optional[Driver] = GraphDatabase.driver(uri, auth=(user, password))
+            self.driver = GraphDatabase.driver(uri, auth=(user, password))
             self.layers = None
         else:
             self.driver = None
@@ -91,7 +93,9 @@ class HierarchicalHypergraph:
         return self.layers.get(layer, {}).get(node)
 
     # ------------------------------------------------------------------
-    def add_causal_belief(self, intervention: str, result: str, confidence: float) -> str:
+    def add_causal_belief(
+        self, intervention: str, result: str, confidence: float
+    ) -> str:
         """Record a causal belief in Layer 3.
 
         Parameters
@@ -119,7 +123,10 @@ class HierarchicalHypergraph:
         return key
 
     def add_strategy(
-        self, steps: List[str], confidence: float, dependencies: List[str] | None = None
+        self,
+        steps: List[str],
+        confidence: float,
+        dependencies: List[str] | None = None,
     ) -> str:
         """Create a strategy node in Layer 2 from reasoning steps.
 
@@ -175,7 +182,9 @@ class HierarchicalHypergraph:
         self.update_node(2, key, data)
         return key
 
-    def get_low_confidence_nodes(self, threshold: float) -> List[Tuple[int, str, Dict[str, Any]]]:
+    def get_low_confidence_nodes(
+        self, threshold: float
+    ) -> List[Tuple[int, str, Dict[str, Any]]]:
         """Return nodes across layers with confidence below ``threshold``.
 
         Parameters
@@ -192,7 +201,10 @@ class HierarchicalHypergraph:
         if self.driver:
             with self.driver.session() as session:
                 result = session.run(
-                    "MATCH (n) WHERE n.confidence < $th RETURN n.layer AS layer, n.key AS key, n",
+                    (
+                        "MATCH (n) WHERE n.confidence < $th "
+                        "RETURN n.layer AS layer, n.key AS key, n"
+                    ),
                     th=threshold,
                 )
                 return [

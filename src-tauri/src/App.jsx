@@ -6,13 +6,20 @@ import LogViewerPane from './components/LogViewerPane';
 import HitlOraclePane from './components/HitlOraclePane';
 import DeadEndShelf from './components/DeadEndShelf';
 import MissionHistoryView from './components/MissionHistoryView';
+import LoginForm from './components/LoginForm';
+import { getAuthToken } from './auth';
 import './styles.css';
 
 // Enhanced App component with dynamic pane management and view switching
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!getAuthToken());
   const [activeView, setActiveView] = useState('galaxy'); // 'galaxy', 'crew', 'agent', 'deadend'
   const [paneLayout, setPaneLayout] = useState('default'); // 'default', 'focus', 'split'
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
 
   // Load layout preferences from localStorage
   useEffect(() => {
@@ -52,6 +59,11 @@ function App() {
   const handleLayoutChange = (layout) => {
     setPaneLayout(layout);
   };
+
+  // Show login form when no auth token is present
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
 
   // Render main content based on active view
   const renderMainContent = () => {
