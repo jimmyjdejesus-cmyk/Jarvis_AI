@@ -2462,6 +2462,17 @@ Inserted experience into replay buffer.
 ```
 ---
 
+
+## Agent Log 2025-08-31
+- Updated CLI to use ExecutiveAgent.execute_mission and handle mission planning/graph output.
+- Added unit tests for multi-step mission execution.
+Note: root agent.md is extremely long; consider archiving old logs.
+
+## Agent Log 2025-09-01
+- Added CLI error handling and docstrings.
+- Added tests for mission planning and execution failures.
+- Ran flake8 to ensure PEP 8 compliance.
+=======
 ## Dev Log
 - Added CuriosityRouter and wired curiosity routing with configuration flags. Noting: root agent.md is very long; consider archiving older entries.
 
@@ -2495,4 +2506,3 @@ Note: root agent.md file is large; consider archival for future entries.
 ```json
 {}
 ```
----
