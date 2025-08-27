@@ -1,11 +1,13 @@
 // Centralized configuration for backend API endpoints
 const storedHttp = localStorage.getItem('jarvis-backend-url') || 'http://localhost:8000';
 const storedWs = localStorage.getItem('jarvis-backend-ws') || 'ws://localhost:8000';
+const storedApiKey = localStorage.getItem('jarvis-api-key') || '';
 
 const API_CONFIG = {
   // Backend base URLs
   HTTP_BASE_URL: storedHttp,
   WS_BASE_URL: storedWs,
+  API_KEY: storedApiKey,
   
   // API endpoints
   ENDPOINTS: {
@@ -18,7 +20,8 @@ const API_CONFIG = {
     HITL_DENY: (requestId) => `/api/hitl/${requestId}/deny`,
     DEAD_ENDS: (sessionId) => `/api/dead-ends?session_id=${sessionId}`,
     DEAD_END_RETRY: (taskId) => `/api/dead-ends/${taskId}/retry`,
-    HEALTH: '/health'
+    HEALTH: '/health',
+    NEO4J_CONFIG: '/api/neo4j/config'
   }
 };
 
@@ -38,6 +41,21 @@ export const setBackendBaseUrl = (url) => {
   API_CONFIG.WS_BASE_URL = url.replace(/^http/i, 'ws');
   localStorage.setItem('jarvis-backend-url', API_CONFIG.HTTP_BASE_URL);
   localStorage.setItem('jarvis-backend-ws', API_CONFIG.WS_BASE_URL);
+};
+
+// Update API key at runtime
+export const setApiKey = (key) => {
+  API_CONFIG.API_KEY = key;
+  localStorage.setItem('jarvis-api-key', key);
+};
+
+// Helper to perform fetch with API key header
+export const apiFetch = (endpoint, options = {}) => {
+  const headers = options.headers ? { ...options.headers } : {};
+  if (API_CONFIG.API_KEY) {
+    headers['x-api-key'] = API_CONFIG.API_KEY;
+  }
+  return fetch(getApiUrl(endpoint), { ...options, headers });
 };
 
 // Fetch backend and Neo4j health status

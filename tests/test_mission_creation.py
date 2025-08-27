@@ -1,7 +1,6 @@
 import os
 import importlib.util
 import pathlib
-from enum import Enum
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,11 +11,7 @@ spec = importlib.util.spec_from_file_location(
 mi = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mi)
 
-
-class WorkflowStatus(str, Enum):
-    PENDING = "pending"
-
-
+from jarvis.workflows.engine import WorkflowStatus
 mi.WorkflowStatus = WorkflowStatus
 
 

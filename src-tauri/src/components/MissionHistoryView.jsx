@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import API_CONFIG, { getApiUrl, setBackendBaseUrl, getHealthStatus } from '../config';
+import API_CONFIG, { setBackendBaseUrl, getHealthStatus, apiFetch } from '../config';
 
 const MissionHistoryView = () => {
   const [missionId, setMissionId] = useState('');
@@ -40,7 +40,7 @@ const MissionHistoryView = () => {
       return;
     }
     try {
-      const res = await fetch(getApiUrl(`/missions/${encodeURIComponent(sanitized)}/history`));
+      const res = await apiFetch(`/missions/${encodeURIComponent(sanitized)}/history`);
       if (!res.ok) {
         throw new Error('Request failed');
       }

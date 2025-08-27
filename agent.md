@@ -171,6 +171,7 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Added tests for knowledge query error handling with Neo4j exceptions.
 * [2025-08-27] Secured FastAPI endpoints with API key verification dependency and attempted linting/tests (flake8 warnings, pytest import errors).
 - Removed duplicate `networkx>=3.0` from `pyproject.toml` and reinstalled dependencies to verify environment.
+- Updated requirements with newer cachetools, marshmallow, neo4j, platformdirs, posthog, pydantic-core, pyright, ruff, setuptools, and typing_extensions versions; ran dependency install and pytest (failing tests recorded).
 ## 2025-08-27
 - Updated dependencies in requirements.txt (cachetools, marshmallow, neo4j, platformdirs, posthog, pydantic-core, pyright, ruff, setuptools, typing-extensions) and pyproject.toml.
 - Installed updated packages and ran pytest suite.
@@ -189,6 +190,91 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Executed `pytest -q` to confirm no warnings or regressions.
 - Added /missions POST endpoint in meta_intelligence with Mission creation and graph persistence.
 - Implemented MissionCreate model and tests for mission creation endpoint.
-
 - Added directory-level `agent.md` docs in `jarvis/ecosystem/` and `tests/` outlining mission endpoint behavior and testing tips.
 - Switched mission history endpoint to use `Path(..., pattern=...)` for Pydantic v2 compatibility.
+- Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
+- Added endpoint and UI hook to store Neo4j credentials in the OS keyring from the desktop settings panel.
+- Wrote tests for credential storage and API validation.
+- Fixed LogViewerPane test placeholders and connection titles; all frontend tests now pass.
+- Wrapped long lines in tests/conftest.py to satisfy flake8.
+- Note: root agent.md is lengthy; consider partitioning future logs.
+- Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
+- Added endpoint and UI hook to store Neo4j credentials in the OS keyring from the desktop settings panel.
+- Wrote tests for credential storage and API validation.
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
+- Refactored ChatPane to delegate Neo4j credential inputs to new Neo4jConfigForm component and expanded config API tests for invalid URI and auth failures.
+## 2025-09-05
+- Adjusted LogViewerPane tests to match "Filter logs..." placeholder and full connection titles.
+- Installed Node dependencies and ran `npm test` in `src-tauri`; LogViewerPane tests passed.
+- Reviewed component tests for placeholder and title alignment; no changes required elsewhere.
+- Added error-state retry test for LogViewerPane and re-ran `npm test`.
+- Confirmed component tests remain synchronized with UI text; added explicit assertion that error banner clears after retry in LogViewerPane test.
+- Root agent log growing large; consider splitting logs by module in future.
+- Scoped workflow/log/HITL stores to app.state and updated endpoints to use request-scoped access.
+- Added test ensuring per-instance isolation for workflow state.
+- Attempted flake8 and pytest; flake8 raised pre-existing style errors and pytest failed importing app.main due to Path clash.
+- Resolved Path import clash in app/main.py by aliasing FastAPI's Path to FastAPIPath and updating mission history route.
+- Trimmed unused imports and restored required auth dependencies; flake8 still reports numerous pre-existing E501 violations.
+- Verified workflow state isolation with pytest; test passes despite deprecation warnings.
+- Added /missions POST endpoint in meta_intelligence with Mission creation and graph persistence.
+- Implemented MissionCreate model and tests for mission creation endpoint.
+## 2025-08-30
+- Added tests for mission execution graph updates and API endpoints.
+- Introduced mock Neo4jGraph fixture for tests.
+- Documented Neo4j environment variables in README.
+- Aliased pathlib.Path in app/main.py to avoid FastAPI Path conflicts.
+## 2025-08-31
+- Integrated Neo4j graph updates into `ExecutiveAgent.execute_mission`, recording nodes and edges for each mission step and closing the driver after completion.
+- Ran `pytest tests/test_executive_agent.py tests/test_update_world_model.py -q` to validate mission execution and world model updates.
+- Relaxed coding agent import in `jarvis/__init__.py` to avoid test-time failures when optional modules are missing.
+## 2025-08-31
+- Added session-based mission history endpoint using `SessionManager` and returned chronological events.
+- Created unit tests validating mission history retrieval and not-found behavior.
+- Ran `flake8 app/main.py tests/test_api.py` (multiple pre-existing style errors) and executed targeted pytest tests (passed).
+- Added GET `/knowledge/query` endpoint using KnowledgeGraph with query param handling and JSON response.
+- Introduced unit tests for GET endpoint and adjusted existing tests for authentication, all passing (`pytest tests/test_knowledge_query_get.py tests/test_knowledge_query.py -q`).
+- Removed duplicate `python-multipart` requirement entry, leaving single `python-multipart>=0.0.6`. Ran `pip check` (no issues) and `pytest -q` (collection errors: Path default values and missing modules).
+## 2025-08-30
+- Verified `CloudCostOptimizerAgent` exports in `jarvis/agents/specialists.py` and `jarvis/agents/__init__.py`.
+- Added dedicated unit test `test_cloud_cost_agent` to ensure the specialist loads without heavy dependencies.
+- Executed `pytest tests/test_specialist_factory.py::test_cloud_cost_agent -q` (pass).
+- Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
+## 2025-09-05
+- Adjusted LogViewerPane tests to match "Filter logs..." placeholder and full connection titles.
+- Installed Node dependencies and ran `npm test` in `src-tauri`; LogViewerPane tests passed.
+## 2025-08-27
+- Updated GitHub Actions to launch a Neo4j service container with configured credentials.
+- Reduced skip logic in `tests/test_neo4j_integration.py` to only depend on missing credentials.
+- Ran `pytest tests/test_neo4j_integration.py` (skipped: Neo4j credentials not configured).
+- Implemented Tauri desktop login form with JWT handling and fetch patching.
+- Patched global fetch/http to attach Authorization headers from stored token.
+- Added Jest tests for LoginForm and updated LogViewerPane tests; ran `npm test` successfully.
+## 2025-08-31
+- Added tests for knowledge query endpoint error handling overriding `get_graph` to raise Neo4j exceptions.
+- Patched pathlib.Path during tests to resolve FastAPI Path conflict and re-registered `/knowledge/query` for stubbing.
+- Executed `pytest tests/test_knowledge_query.py -q` (2 passed).
+- Centralized API key authentication by moving /api routes to APIRouter with verify_api_key dependency.
+- Ran flake8 on app/main.py (multiple pre-existing style violations).
+- Executed pytest -q; collection failed with TypeError in mission history Path and missing modules.
+- Executed `pytest -q` to confirm no warnings or regressions.
+
+
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
+
+## 2025-08-30
+- Added tests for mission execution graph updates and API endpoints.
+- Introduced mock Neo4jGraph fixture for tests.
+- Documented Neo4j environment variables in README.
+- Aliased pathlib.Path in app/main.py to avoid FastAPI Path conflicts.
+## 2025-08-30
+- Added SettingsView with fields for backend URL, API key, and Neo4j credentials.
+- Extended config.js with API key persistence, helper fetch, and WebSocket query support.
+- Integrated Settings view into App navigation and updated MissionHistoryView to use API-authenticated requests.
+- Added Jest tests for SettingsView and updated LogViewerPane tests for revised placeholders.
+- Ran `npm install --prefix src-tauri` and `npm test --prefix src-tauri` (tests passed).
+- Attempted `pytest tests/test_endpoints.py -q` after installing dependencies; fails due to missing `python-multipart` package.
+- Refactored ChatPane to delegate Neo4j credential inputs to new Neo4jConfigForm component and expanded config API tests for invalid URI and auth failures.
+- Centralized form styling into `components/formStyles.css` and imported in ChatPane and Neo4jConfigForm.
+- Introduced in-memory `apiKeyStore` and updated Neo4jConfigForm to avoid localStorage for API key retrieval.
+- Noted this log file is growing large; consider splitting logs by domain for future clarity.

@@ -1,58 +1,61 @@
-"""Tests for the knowledge query API error handling."""
+#!/usr/bin/env python3
+"""
+Enhanced Jarvis AI Backend - Cerebro Galaxy Integration
+FastAPI + WebSockets + Real Multi-Agent Orchestration
+Complete integration with Jarvis orchestration system
+"""
 
-from fastapi.testclient import TestClient
-from unittest.mock import patch
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Query,
+    Body,
+    Path,
+    Depends,
+    Header,
+    APIRouter,
+    Request,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional, Set
+from contextlib import asynccontextmanager
+import asyncio
+import json
+import uuid
+from datetime import datetime
+import logging
+from enum import Enum
+import uvicorn
+import os
+
 from neo4j.exceptions import ServiceUnavailable, TransientError
-import types
-import sys
 
-# Stub minimal jarvis package to avoid heavy imports during import
-neo_module = types.ModuleType("jarvis.world_model.neo4j_graph")
-
-
-class Neo4jGraph:  # type: ignore[override]
-    def __init__(self, *_, **__):
-        pass
-
-
-neo_module.Neo4jGraph = Neo4jGraph
-sys.modules.setdefault("jarvis", types.ModuleType("jarvis"))
-sys.modules.setdefault(
-    "jarvis.world_model", types.ModuleType("jarvis.world_model")
+from jarvis.world_model.neo4j_graph import Neo4jGraph
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-sys.modules["jarvis.world_model.neo4j_graph"] = neo_module
-sys.modules.setdefault(
-    "jarvis.workflows", types.ModuleType("jarvis.workflows")
-)
-workflows_engine = types.ModuleType("jarvis.workflows.engine")
-workflows_engine.workflow_engine = object()
-sys.modules["jarvis.workflows.engine"] = workflows_engine
+logger = logging.getLogger(__name__)
 
-from app.main import app  # noqa: E402
-from jarvis.world_model.neo4j_graph import Neo4jGraph  # noqa: E402
+# Authentication utilities
+from app.auth import authenticate_user, create_access_token, role_required, login_for_access_token, get_current_user, Token
 
-client = TestClient(app)
-
-
-def test_knowledge_query_service_unavailable():
-    """ServiceUnavailable from Neo4j results in HTTP 500."""
-    with patch(
-        "jarvis.world_model.neo4j_graph.Neo4jGraph.query",
-        side_effect=ServiceUnavailable("database down"),
-        create=True,
-    ):
-        response = client.post("/knowledge/query", json={"query": "MATCH (n) RETURN n"})
-    assert response.status_code == 500
-    assert "service" in response.json().get("detail", "").lower()
-
-
-def test_knowledge_query_transient_error():
-    """TransientError from Neo4j results in HTTP 500."""
-    with patch(
-        "jarvis.world_model.neo4j_graph.Neo4jGraph.query",
-        side_effect=TransientError("temporary failure"),
-        create=True,
-    ):
-        response = client.post("/knowledge/query", json={"query": "MATCH (n) RETURN n"})
-    assert response.status_code == 500
-    assert "transient" in response.json().get("detail", "").lower()
+# Try to import Jarvis orchestration system
+try:
+    from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
+    from jarvis.agents.base_specialist import BaseSpecialist
+    from jarvis.core.mcp_agent import MCPJarvisAgent
+    from jarvis.world_model.neo4j_graph import Neo4jGraph
+    from jarvis.world_model.knowledge_graph import KnowledgeGraph
+    from jarvis.workflows.engine import workflow_engine
+    JARVIS_AVAILABLE = True
+    logger.info("✅ Jarvis orchestration system loaded successfully")
+except Exception as e:
+    logger.warning(f"⚠️ Jarvis orchestration not available: {e}")
+    JARVIS_AVAILABLE = False

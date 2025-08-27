@@ -17,7 +17,8 @@ class EnhancedWebSocket {
 
   connect() {
     try {
-      const wsUrl = `${this.url}/ws/${this.clientId}`;
+      const apiKey = API_CONFIG.API_KEY ? `?api_key=${encodeURIComponent(API_CONFIG.API_KEY)}` : '';
+      const wsUrl = `${this.url}/ws/${this.clientId}${apiKey}`;
       console.log('Connecting to WebSocket:', wsUrl);
       
       this.ws = new WebSocket(wsUrl);
@@ -123,7 +124,7 @@ class EnhancedWebSocket {
   }
 }
 
-import { getWebSocketUrl } from './config.js';
+import API_CONFIG, { getWebSocketUrl } from './config.js';
 
 // Create and export the socket instance
 const socket = new EnhancedWebSocket(getWebSocketUrl());
