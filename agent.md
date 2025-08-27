@@ -171,8 +171,10 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Added tests for knowledge query error handling with Neo4j exceptions.
 * [2025-08-27] Secured FastAPI endpoints with API key verification dependency and attempted linting/tests (flake8 warnings, pytest import errors).
 - Removed duplicate `networkx>=3.0` from `pyproject.toml` and reinstalled dependencies to verify environment.
+- Removed `sys.path` manipulations from tests and switched to package imports.
+- Installed package in editable mode and ran `pytest tests`; collection failed with 10 errors (TypeError in test_api/test_auth, etc.).
+=======
 * [2025-08-30] Updated FastAPI Path params in app/main.py and app/test_harness.py to use "pattern" instead of deprecated "regex". Ran pytest -q but collection failed due to missing "jose" module and other import errors.
 ## 2025-08-30
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
-
