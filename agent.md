@@ -188,6 +188,8 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 ## 2025-08-30
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
+- Added GET `/knowledge/query` endpoint using KnowledgeGraph with query param handling and JSON response.
+- Introduced unit tests for GET endpoint and adjusted existing tests for authentication, all passing (`pytest tests/test_knowledge_query_get.py tests/test_knowledge_query.py -q`).
 - Removed duplicate `python-multipart` requirement entry, leaving single `python-multipart>=0.0.6`. Ran `pip check` (no issues) and `pytest -q` (collection errors: Path default values and missing modules).
 ## 2025-08-30
 - Verified `CloudCostOptimizerAgent` exports in `jarvis/agents/specialists.py` and `jarvis/agents/__init__.py`.
