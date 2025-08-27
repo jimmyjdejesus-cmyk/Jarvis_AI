@@ -225,6 +225,9 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Updated GitHub Actions to launch a Neo4j service container with configured credentials.
 - Reduced skip logic in `tests/test_neo4j_integration.py` to only depend on missing credentials.
 - Ran `pytest tests/test_neo4j_integration.py` (skipped: Neo4j credentials not configured).
+- Implemented Tauri desktop login form with JWT handling and fetch patching.
+- Patched global fetch/http to attach Authorization headers from stored token.
+- Added Jest tests for LoginForm and updated LogViewerPane tests; ran `npm test` successfully.
 ## 2025-08-31
 - Added tests for knowledge query endpoint error handling overriding `get_graph` to raise Neo4j exceptions.
 - Patched pathlib.Path during tests to resolve FastAPI Path conflict and re-registered `/knowledge/query` for stubbing.
