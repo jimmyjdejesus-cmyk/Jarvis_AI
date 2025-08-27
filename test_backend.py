@@ -6,23 +6,26 @@ Quick test to verify the Cerebro backend integration works
 import asyncio
 import sys
 import os
-sys.path.insert(0, 'app')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../app')))
+
 
 async def test_cerebro():
     print("🧠 Testing Cerebro Integration...")
     
     try:
-        from app.main import cerebro_orchestrator, specialist_agents, initialize_cerebro
+        # Import the app module to access its globals
+        import app.main as main_app
         
         # Initialize Cerebro
-        await initialize_cerebro()
+        await main_app.initialize_cerebro()
         
-        print(f"✅ Cerebro initialized with {len(specialist_agents)} specialists")
-        print(f"📋 Available specialists: {list(specialist_agents.keys())}")
+        print(f"✅ Cerebro initialized with {len(main_app.specialist_agents)} specialists")
+        print(f"📋 Available specialists: {list(main_app.specialist_agents.keys())}")
         
         # Test orchestrator
-        if cerebro_orchestrator:
-            result = await cerebro_orchestrator.coordinate_specialists(
+        if main_app.cerebro_orchestrator:
+            result = await main_app.cerebro_orchestrator.coordinate_specialists(
                 "Test security analysis of authentication system"
             )
             
@@ -32,7 +35,13 @@ async def test_cerebro():
             print(f"   Confidence: {result.get('confidence')}")
             print(f"   Response: {result.get('synthesized_response', '')[:100]}...")
             
-            return True
+            # Check if at least one specialist was used
+            if result.get('specialists_used'):
+                print("✅ Test PASSED: Specialist coordination successful.")
+                return True
+            else:
+                print("❌ Test FAILED: No specialists were used.")
+                return False
         else:
             print("❌ Cerebro orchestrator not initialized")
             return False

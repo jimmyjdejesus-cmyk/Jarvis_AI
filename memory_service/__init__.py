@@ -1,5 +1,3 @@
-# memory_service/__init__.py
-
 """
 Main entry point for the Memory Service module.
 Provides access to the core MemoryService client and other sub-modules.
@@ -7,9 +5,10 @@ Provides access to the core MemoryService client and other sub-modules.
 
 from .models import Metrics, NegativeCheck, Outcome, PathRecord, PathSignature
 from .client import MemoryService
+from .vector_store import VectorStore
 
-# Placeholder for vector store
-vector_store = None
+# Shared vector store instance
+vector_store = VectorStore()
 
 # Placeholders for path memory functions
 def avoid_negative(check: NegativeCheck):
@@ -36,7 +35,6 @@ def get_path_memory_summary():
     """Placeholder for getting a summary of path memory."""
     print("INFO: Path memory summary is not yet implemented.")
     return {}
-
 
 __all__ = [
     "MemoryService",

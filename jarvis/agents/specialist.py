@@ -4,6 +4,7 @@ Foundation for all specialist AI agents
 """
 import asyncio
 import logging
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import json
@@ -14,6 +15,9 @@ from jarvis.world_model.knowledge_graph import KnowledgeGraph
 
 logger = logging.getLogger(__name__)
 
+# Directory containing specialization prompt templates
+PROMPTS_DIR = Path(__file__).with_name("prompts")
+
 class SpecialistAgent(AIAgent):
     """Concrete implementation of :class:`AIAgent` for specialized tasks.
 
@@ -23,35 +27,48 @@ class SpecialistAgent(AIAgent):
 
     def __init__(
         self,
-        agent_id: str,
         specialization: str,
-        capabilities: List[AgentCapability],
-        knowledge_graph: Optional[KnowledgeGraph],
         mcp_client: Any,
+        *,
+        agent_id: Optional[str] = None,
+        capabilities: Optional[List[AgentCapability]] = None,
+        knowledge_graph: Optional[KnowledgeGraph] = None,
         preferred_models: Optional[List[str]] = None,
-    ):
-        """
-        Initialize specialist agent
+    ) -> None:
+        """Initialize a specialist agent.
 
         Args:
-            agent_id: The unique identifier for the agent.
-            specialization: Domain of expertise (e.g., 'code_review', 'security')
-            capabilities: A list of capabilities for the agent.
-            knowledge_graph: The knowledge graph instance for the agent to use.
-            mcp_client: MCP client for model communication
-            preferred_models: List of models in order of preference
+            specialization: Domain of expertise (e.g. ``"code_review"``).
+            mcp_client: MCP client for model communication.
+            agent_id: Optional unique identifier; defaults to ``"{specialization}_agent"``.
+            capabilities: Optional list of capabilities; defaults to ``[AgentCapability.ANALYSIS]``.
+            knowledge_graph: Optional knowledge graph instance.
+            preferred_models: List of models in order of preference.
         """
+        agent_id = agent_id or f"{specialization}_agent"
+        capabilities = capabilities or [AgentCapability.ANALYSIS]
         super().__init__(agent_id, capabilities, knowledge_graph)
         self.specialization = specialization
         self.preferred_models = preferred_models or []
         self.mcp_client = mcp_client
-        self.context_memory = []
+        self.context_memory: List[str] = []
         self.expertise_prompt = self._get_expertise_prompt()
-        self.task_history = []
+        self.task_history: List[Dict[str, Any]] = []
         self.confidence_threshold = 0.7
         
     def _get_expertise_prompt(self) -> str:
-        """Get specialization-specific system prompt"""
+        """Get specialization-specific system prompt.
+
+        The prompt is loaded from ``jarvis/agents/prompts/<specialization>.md`` if
+        present.  This allows new specialists to be added simply by dropping a
+        template file in the prompts directory without modifying source code.
+        Falls back to built-in defaults for legacy specializations.
+        """
+
+        prompt_file = PROMPTS_DIR / f"{self.specialization}.md"
+        if prompt_file.exists():
+            return prompt_file.read_text().strip()
+
         prompts = {
             "code_review": """You are an expert code reviewer with years of experience. Focus on:
 
