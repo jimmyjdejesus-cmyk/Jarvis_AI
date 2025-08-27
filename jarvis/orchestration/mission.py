@@ -3,11 +3,15 @@ from __future__ import annotations
 import json
 import os
 import time
+import logging
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Tuple
 
+from jarvis.world_model.neo4j_graph import Neo4jGraph
+
 
 MISSION_DIR = os.path.join("data", "missions")
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -88,11 +92,16 @@ class Mission:
         }
 
 
-def save_mission(mission: Mission) -> None:
+def save_mission(mission: Mission, graph: Optional[Neo4jGraph] = None) -> None:
     os.makedirs(MISSION_DIR, exist_ok=True)
     path = os.path.join(MISSION_DIR, f"{mission.id}.json")
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(mission.to_dict(), fh, indent=2)
+    graph = graph or Neo4jGraph()
+    try:
+        graph.write_mission_dag(mission.dag)
+    except Exception as exc:  # pragma: no cover - neo4j optional
+        logger.warning("Neo4j persistence failed: %s", exc)
 
 
 def load_mission(mission_id: str) -> Mission:
@@ -108,6 +117,13 @@ def load_mission(mission_id: str) -> Mission:
         risk_level=data.get("risk_level", "low"),
         dag=dag,
     )
+
+
+def load_mission_dag_from_neo4j(mission_id: str, graph: Optional[Neo4jGraph] = None) -> MissionDAG:
+    """Retrieve a mission DAG from Neo4j."""
+
+    graph = graph or Neo4jGraph()
+    return graph.read_mission_dag(mission_id)
 
 
 def update_node_state(
