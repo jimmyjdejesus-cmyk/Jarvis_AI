@@ -16,16 +16,18 @@ from fastapi import (
     Depends,
     Header,
     APIRouter,
+    Request,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional, Set
+from contextlib import asynccontextmanager
 import asyncio
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from enum import Enum
 import uvicorn
@@ -56,6 +58,10 @@ try:
     from jarvis.core.mcp_agent import MCPJarvisAgent
     from jarvis.world_model.neo4j_graph import Neo4jGraph
     from jarvis.workflows.engine import workflow_engine, from_mission_dag, WorkflowStatus
+    from jarvis.agents.mission_planner import MissionPlanner
+    from jarvis.agents.curiosity_agent import CuriosityAgent
+    from jarvis.world_model.hypergraph import HierarchicalHypergraph
+    from jarvis.orchestration.mission import Mission, MissionDAG
     JARVIS_AVAILABLE = True
     logger.info("✅ Jarvis orchestration system loaded successfully")
 except Exception as e:
@@ -97,6 +103,7 @@ async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str
     if not expected_key or x_api_key != expected_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return x_api_key
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -458,19 +465,27 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0",
-        "neo4j_active": neo4j_graph.is_alive(),
+        "neo4j_active": neo4j_graph.is_alive() if neo4j_graph else False,
     }
 
 
 # Workflow endpoints
-@app.get("/api/workflow/{session_id}", dependencies=[Depends(get_current_user)])
-async def get_workflow(session_id: str):
-    """Get current workflow state for a session with real Cerebro data"""
+@app.get("/api/workflow/{session_id}")
+async def get_workflow(request: Request, session_id: str):
+    """Get current workflow state for a session with real Cerebro data."""
     if not cerebro_orchestrator:
         raise HTTPException(status_code=503, detail="Cerebro orchestrator not initialized")
 
+    workflows_db = request.app.state.workflows_db
+    if session_id in workflows_db:
+        return workflows_db[session_id]
+
     # Get real orchestrator status
-    orchestrator_count = len(cerebro_orchestrator.child_orchestrators) if hasattr(cerebro_orchestrator, 'child_orchestrators') else 3
+    orchestrator_count = (
+        len(cerebro_orchestrator.child_orchestrators)
+        if hasattr(cerebro_orchestrator, "child_orchestrators")
+        else 3
+    )
     specialist_count = len(specialist_agents)
 
     # Build galaxy structure with real data
@@ -489,9 +504,9 @@ async def get_workflow(session_id: str):
             "totalAgents": specialist_count,
             "activeConversations": len(active_orchestrators),
             "lastMessage": "",
-            "level": "cerebro"
+            "level": "cerebro",
         },
-        "status": "running"
+        "status": "running",
     }
     nodes.append(cerebro_node)
 
@@ -516,7 +531,9 @@ async def get_workflow(session_id: str):
             "data": {
                 "label": name,
                 "purpose": f"Specialized {name.split()[0].lower()} coordination",
-                "status": "active" if orchestrator_id in active_orchestrators else "idle",
+                "status": "active"
+                if f"orchestrator-{i+1}" in active_orchestrators
+                else "idle",
                 "spawnTime": "2 min ago",
                 "activeTasks": len(agents_for_orchestrator),
                 "agents": [
@@ -526,9 +543,9 @@ async def get_workflow(session_id: str):
                         "status": "active"
                     } for agent_name in agents_for_orchestrator
                 ],
-                "level": "orchestrator"
+                "level": "orchestrator",
             },
-            "status": "running"
+            "status": "running",
         }
         nodes.append(orchestrator_node)
 
@@ -568,9 +585,9 @@ async def get_workflow(session_id: str):
                             "confidence": 0.85
                         }
                     ],
-                    "level": "agent"
+                    "level": "agent",
                 },
-                "status": "running"
+                "status": "running",
             }
             nodes.append(agent_node)
 
@@ -602,6 +619,7 @@ async def get_workflow(session_id: str):
             } for i, name in enumerate(orchestrator_names)
         ]
     }
+    workflows_db[session_id] = workflow
     return workflow
 
 # Import workflow engine with graceful fallback
@@ -628,32 +646,46 @@ async def get_workflow_status(workflow_id: str):
 
 # Logs endpoints
 @app.get("/api/logs", dependencies=[Depends(role_required("admin"))])
-async def get_logs(session_id: Optional[str] = Query(None), limit: int = Query(100)):
+async def get_logs(request: Request, session_id: Optional[str] = Query(None), limit: int = Query(100)):
     """Get logs with optional filters. Requires admin role."""
-    sample_logs = [
-        {
-            "id": str(uuid.uuid4()),
-            "session_id": session_id or "default-session",
-            "level": "info",
-            "message": "Cerebro galaxy initialized successfully",
-            "timestamp": datetime.now().isoformat()
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "session_id": session_id or "default-session",
-            "level": "info",
-            "message": "Backend connected and ready for real-time updates",
-            "timestamp": datetime.now().isoformat()
-        }
+    logs_db = request.app.state.logs_db
+    logs = [
+        log
+        for log in logs_db
+        if session_id is None or log.session_id == session_id
     ]
-    return sample_logs
+    return [log.dict() for log in logs[:limit]]
 
+
+# Graph endpoints
+@app.post("/api/graph/cypher")
+async def run_cypher(query: CypherQuery, current_user: Any = Depends(get_current_user)) -> Dict[str, Any]:
+    """Execute a read-only Cypher query against the Neo4j graph."""
+
+    if neo4j_graph is None:
+        raise HTTPException(status_code=503, detail="Neo4j graph unavailable")
+
+    try:
+        results = neo4j_graph.query(query.query)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ServiceUnavailable as exc:
+        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
+    except TransientError as exc:
+        raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
+    except Exception as exc:
+        logger.error(f"Failed to execute knowledge query: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 # HITL endpoints
-@api_router.get("/hitl/pending")
-async def get_pending_hitl_requests(session_id: Optional[str] = Query(None)):
-    """Get pending HITL requests"""
-    return []  # No pending requests for demo
+@app.get("/api/hitl/pending", dependencies=[Depends(get_current_user)])
+async def get_pending_hitl_requests(request: Request, session_id: Optional[str] = Query(None)):
+    """Get pending HITL requests."""
+    hitl_db = request.app.state.hitl_requests_db
+    requests = list(hitl_db.values())
+    if session_id is not None:
+        requests = [r for r in requests if r.session_id == session_id]
+    return [r.dict() for r in requests]
 
 
 # Mission history endpoint
@@ -862,7 +894,7 @@ if __name__ == "__main__":
     print("📚 API Docs: http://localhost:8000/docs")
     print("🔌 WebSocket: ws://localhost:8000/ws/{client_id}")
     print("=" * 50)
-    
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

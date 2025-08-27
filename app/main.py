@@ -81,6 +81,7 @@ except Exception as e:
         def get_workflow_status(self, workflow_id):
             return None
 
+
 # Lifespan context to initialize application state
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,6 +90,7 @@ async def lifespan(app: FastAPI):
     app.state.logs_db = []
     app.state.hitl_requests_db = {}
     yield
+
 
 # Security
 async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
@@ -107,6 +109,7 @@ async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str
     if not expected_key or x_api_key != expected_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return x_api_key
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -639,6 +642,7 @@ async def get_workflow(request: Request, session_id: str):
     }
     workflows_db[session_id] = workflow
     return workflow
+
 
 # Import workflow engine with graceful fallback
 try:

@@ -118,6 +118,7 @@ Please provide a detailed code review with specific recommendations.
     
     def debug_assistance(self, error_message: str, code: str = "", language: str = "python") -> str:
         """Help debug code issues"""
+        code_block = f"""```{language}\n{code}\n```""" if code else ""
         prompt = f"""
 {self.system_prompts['debug_helper']}
 
@@ -125,7 +126,7 @@ Language: {language}
 Error message: {error_message}
 
 {"Code context:" if code else ""}
-{f"```{language}\n{code}\n```" if code else ""}
+{code_block}
 
 Please help identify the issue and provide a solution.
 """
