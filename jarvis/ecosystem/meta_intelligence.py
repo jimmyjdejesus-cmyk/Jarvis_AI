@@ -20,8 +20,19 @@ from typing import Any, Dict, List, Optional, Set
 
 # Third-party imports
 import uvicorn
-from fastapi import (APIRouter, Body, Depends, FastAPI, Header, HTTPException,
-                     Path, Query, Request, WebSocket, WebSocketDisconnect)
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Path as FPath,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from neo4j.exceptions import ServiceUnavailable, TransientError
@@ -29,7 +40,11 @@ from pydantic import BaseModel, Field
 
 # --- Add Jarvis to Python Path ---
 # This allows for importing the local jarvis module
-jarvis_path = Path(__file__).parent.parent / "jarvis"
+try:
+    _current_file = Path(__file__)
+except NameError:  # pragma: no cover - execution via `exec` lacks __file__
+    _current_file = Path("jarvis/ecosystem/meta_intelligence.py")
+jarvis_path = _current_file.parent.parent / "jarvis"
 if jarvis_path.exists():
     sys.path.insert(0, str(jarvis_path.parent))
 
@@ -80,6 +95,134 @@ except ImportError as e:
 
     class BaseSpecialist:
         pass # Base class for mock specialist
+
+# --- Executive Agent Implementation ---
+class ExecutiveAgent:
+    """High-level orchestrator that records mission progress in Neo4j."""
+
+    def __init__(self, agent_id: str) -> None:
+        self.agent_id = agent_id
+        self.mission_planner = MissionPlanner()
+        self.neo4j_graph: Optional[Neo4jGraph] = None
+
+    def manage_directive(
+        self, directive: str, context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Plan a directive into tasks and a mission graph.
+
+        This lightweight implementation is primarily a stub and is patched in
+        tests. It returns a structure compatible with
+        :class:`MissionPlanner` outputs.
+        """
+
+        tasks = self.mission_planner.plan(directive)
+        graph = self.mission_planner.to_graph(tasks)
+        return {"success": True, "tasks": tasks, "graph": graph}
+
+    async def execute_mission(
+        self, objective: str, context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Execute a mission and update the world model.
+
+        A :class:`Neo4jGraph` is instantiated for the mission and closed when
+        execution completes. After each mission step the graph is updated with
+        new nodes and edges describing progress and discovered facts.
+        """
+
+        plan = self.manage_directive(objective, context)
+        if not plan.get("success"):
+            message = plan.get("critique", {}).get("message", "")
+            return {
+                "success": False,
+                "error": f"Mission planning failed: {message}",
+            }
+
+        dag = MissionDAG.from_dict(plan["graph"])
+        workflow = from_mission_dag(dag)
+
+        self.neo4j_graph = Neo4jGraph()
+        try:
+            completed = await workflow_engine.execute_workflow(workflow)
+
+            mission = Mission(
+                id=dag.mission_id,
+                title=objective,
+                goal=objective,
+                inputs=context,
+                risk_level=context.get("risk_level", "low"),
+                dag=dag,
+            )
+
+            for step_id, step_result in completed.context.results.items():
+                step_info = {
+                    "step_id": step_id,
+                    "success": True,
+                    "facts": getattr(step_result, "facts", []),
+                    "relationships": getattr(step_result, "relationships", []),
+                }
+                try:
+                    self._update_world_model(mission, [step_info])
+                except Exception as exc:  # pragma: no cover - best effort
+                    logger.warning(
+                        "World model update failed for step %s: %s", step_id, exc
+                    )
+
+            status = (
+                completed.status.value
+                if isinstance(completed.status, Enum)
+                else str(completed.status)
+            )
+            return {
+                "success": True,
+                "results": {
+                    "workflow_id": completed.workflow_id,
+                    "status": status.lower(),
+                },
+            }
+        finally:
+            if self.neo4j_graph:
+                self.neo4j_graph.close()
+
+    def _update_world_model(
+        self, mission: Mission, results: List[Dict[str, Any]]
+    ) -> None:
+        """Persist mission and step data to the Neo4j graph."""
+
+        if not self.neo4j_graph:
+            return
+
+        # Mission context
+        self.neo4j_graph.add_node(
+            mission.id,
+            "mission",
+            {"goal": mission.goal, "rationale": mission.dag.rationale},
+        )
+
+        for step_id, node in mission.dag.nodes.items():
+            self.neo4j_graph.add_node(
+                step_id,
+                "step",
+                {"capability": node.capability, "team_scope": node.team_scope},
+            )
+            self.neo4j_graph.add_edge(mission.id, step_id, "HAS_STEP")
+
+        for result in results:
+            step_id = result["step_id"]
+            status = "COMPLETED" if result.get("success") else "FAILED"
+            self.neo4j_graph.add_node(step_id, "step", {"status": status})
+            self.neo4j_graph.add_edge(mission.id, step_id, status)
+
+            for fact in result.get("facts", []):
+                self.neo4j_graph.add_node(
+                    fact["id"], fact.get("type", "fact"), fact.get("attributes")
+                )
+                self.neo4j_graph.add_edge(step_id, fact["id"], "DISCOVERED")
+
+            for rel in result.get("relationships", []):
+                self.neo4j_graph.add_edge(rel["source"], rel["target"], rel["type"])
+
+
+__all__ = ["ExecutiveAgent"]
 
 # --- Security and API Key Verification ---
 async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
@@ -454,7 +597,7 @@ async def run_cypher_query(query: CypherQuery, current_user: Any = Depends(get_c
         raise HTTPException(status_code=500, detail="Internal server error during query execution.")
 
 @api_router.get("/missions/{mission_id}/history")
-async def get_mission_history(mission_id: str = Path(..., regex=r"^[\w-]+$")):
+async def get_mission_history(mission_id: str = FPath(..., pattern=r"^[\w-]+$")):
     """Returns mission history including steps and discovered facts."""
     try:
         history = neo4j_graph.get_mission_history(mission_id)
