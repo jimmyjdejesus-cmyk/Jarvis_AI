@@ -33,11 +33,11 @@ from enum import Enum
 import uvicorn
 import sys
 import os
-from pathlib import Path
+from pathlib import Path as FilePath
 from neo4j.exceptions import ServiceUnavailable, TransientError
 
 # Add jarvis to Python path
-jarvis_path = Path(__file__).parent.parent / "jarvis"
+jarvis_path = FilePath(__file__).parent.parent / "jarvis"
 if jarvis_path.exists():
     sys.path.insert(0, str(jarvis_path.parent))
 
@@ -228,6 +228,14 @@ class CypherQuery(BaseModel):
     """Request body for Neo4j Cypher queries."""
 
     query: str = Field(..., description="Read-only Cypher statement")
+
+
+class Neo4jCredentials(BaseModel):
+    """Payload for updating Neo4j credentials."""
+
+    uri: str
+    user: str
+    password: str
 
 
 # In-memory storage
@@ -488,6 +496,28 @@ async def health_check():
         "version": "2.0.0",
         "neo4j_active": neo4j_graph.is_alive() if neo4j_graph else False,
     }
+
+
+@app.post("/settings/neo4j", dependencies=[Depends(verify_api_key)])
+async def update_neo4j_credentials(payload: Neo4jCredentials) -> Dict[str, str]:
+    """Persist Neo4j credentials to the keyring.
+
+    Parameters
+    ----------
+    payload:
+        Credential bundle containing ``uri``, ``user`` and ``password``.
+
+    Returns
+    -------
+    Dict[str, str]
+        Confirmation message on successful storage.
+    """
+    from jarvis.security.secret_manager import set_secret
+
+    set_secret("NEO4J_URI", payload.uri)
+    set_secret("NEO4J_USER", payload.user)
+    set_secret("NEO4J_PASSWORD", payload.password)
+    return {"status": "stored"}
 
 
 # Workflow endpoints

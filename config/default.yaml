@@ -63,8 +63,8 @@ auth:
 
 # Neo4j Database Connection
 neo4j:
-  uri: "bolt://localhost:7687"    # override with NEO4J_URI
-  user: "neo4j"                  # override with NEO4J_USER
-  password: "test"                # override with NEO4J_PASSWORD
-  # For production, retrieve credentials from a secrets manager or the
-  # desktop app settings rather than storing them in plain text.
+  uri: null       # retrieved from keyring service "jarvis"
+  user: null      # retrieved from keyring service "jarvis"
+  password: null  # retrieved from keyring service "jarvis"
+  # For production, store credentials in the OS keyring and rotate them
+  # regularly rather than committing them to configuration files.

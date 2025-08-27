@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { socket } from '../socket';
+import API_CONFIG, { getApiUrl } from '../config';
 
 // Chat customization settings with defaults
 const DEFAULT_SETTINGS = {
@@ -20,7 +21,9 @@ const DEFAULT_SETTINGS = {
 const loadSettings = () => {
   try {
     const saved = localStorage.getItem('jarvis-chat-settings');
-    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    const loaded = saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    loaded.neo4jPassword = '';
+    return loaded;
   } catch (e) {
     console.error('Failed to load chat settings:', e);
     return DEFAULT_SETTINGS;
@@ -30,7 +33,8 @@ const loadSettings = () => {
 // Save settings to localStorage
 const saveSettings = (settings) => {
   try {
-    localStorage.setItem('jarvis-chat-settings', JSON.stringify(settings));
+    const { neo4jPassword, ...persistable } = settings;
+    localStorage.setItem('jarvis-chat-settings', JSON.stringify(persistable));
   } catch (e) {
     console.error('Failed to save chat settings:', e);
   }
@@ -208,6 +212,18 @@ const ChatPane = () => {
   const handleSettingsChange = useCallback((key, value) => {
     const newSettings = { ...settings, [key]: value };
     applySettings(newSettings);
+
+    if (['neo4jUri', 'neo4jUser', 'neo4jPassword'].includes(key)) {
+      fetch(getApiUrl(API_CONFIG.ENDPOINTS.NEO4J_CREDENTIALS), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': localStorage.getItem('jarvis-api-key') || '' },
+        body: JSON.stringify({
+          uri: newSettings.neo4jUri,
+          user: newSettings.neo4jUser,
+          password: newSettings.neo4jPassword,
+        })
+      }).catch(err => console.error('Failed to update Neo4j credentials:', err));
+    }
   }, [settings, applySettings]);
 
   // Clear chat messages

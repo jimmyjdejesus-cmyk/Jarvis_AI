@@ -18,7 +18,8 @@ const API_CONFIG = {
     HITL_DENY: (requestId) => `/api/hitl/${requestId}/deny`,
     DEAD_ENDS: (sessionId) => `/api/dead-ends?session_id=${sessionId}`,
     DEAD_END_RETRY: (taskId) => `/api/dead-ends/${taskId}/retry`,
-    HEALTH: '/health'
+    HEALTH: '/health',
+    NEO4J_CREDENTIALS: '/settings/neo4j'
   }
 };
 
