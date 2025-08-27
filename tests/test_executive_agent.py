@@ -1,60 +1,53 @@
-import unittest
 import asyncio
-from unittest.mock import patch, MagicMock
-
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import unittest
+from unittest.mock import MagicMock, patch
 
 from jarvis.ecosystem.meta_intelligence import ExecutiveAgent
-from jarvis.orchestration.mission import MissionDAG, MissionNode
 from jarvis.workflows.engine import WorkflowStatus
 
+
 class TestExecutiveAgent(unittest.TestCase):
+    """Tests for :class:`ExecutiveAgent` mission execution."""
 
-    @patch('jarvis.ecosystem.meta_intelligence.WorkflowEngine')
-    @patch('jarvis.ecosystem.meta_intelligence.MissionPlanner')
-    def test_execute_mission(self, mock_mission_planner, mock_workflow_engine):
-        # Mock MissionPlanner
-        mock_planner_instance = mock_mission_planner.return_value
-        nodes = {
-            "task_1": MissionNode(step_id="task_1", capability="test", team_scope="test", details="details 1"),
-        }
-        dag = MissionDAG(mission_id="test_mission", nodes=nodes)
-        mock_planner_instance.plan.return_value = dag
+    @patch("jarvis.ecosystem.meta_intelligence.workflow_engine.execute_workflow")
+    @patch("jarvis.ecosystem.meta_intelligence.MissionDAG.from_dict")
+    @patch.object(ExecutiveAgent, "manage_directive")
+    def test_execute_mission_success(
+        self, mock_manage_directive, mock_from_dict, mock_execute
+    ) -> None:
+        """Mission executes successfully when planning succeeds."""
+        mock_manage_directive.return_value = {"success": True, "tasks": [], "graph": {}}
+        mock_from_dict.return_value = MagicMock()
 
-        # Mock WorkflowEngine
-        mock_engine_instance = mock_workflow_engine.return_value
+        completed = MagicMock()
+        completed.status = WorkflowStatus.COMPLETED
+        completed.workflow_id = "wf1"
+        completed.context.results = {"step": MagicMock(output="ok")}
 
-        # Create a mock for the completed workflow object
-        completed_workflow_mock = MagicMock()
-        completed_workflow_mock.status = WorkflowStatus.COMPLETED
-        completed_workflow_mock.workflow_id = "test_workflow"
+        async def _run(_workflow):
+            return completed
 
-        # Set up the context and results as they would be in the real object
-        completed_workflow_mock.context.results = {
-            "task_1": MagicMock(output="task 1 output")
-        }
+        mock_execute.side_effect = _run
 
-        async def mock_execute_workflow(*args, **kwargs):
-            return completed_workflow_mock
-
-        mock_engine_instance.execute_workflow.side_effect = mock_execute_workflow
-
-        # Instantiate ExecutiveAgent
-        agent = ExecutiveAgent(agent_id="test_agent")
-
-        # Run the async execute_mission method
-        result = asyncio.run(agent.execute_mission("test mission", {}))
-
-        # Assertions
+        agent = ExecutiveAgent("agent")
+        result = asyncio.run(agent.execute_mission("do things", {}))
         self.assertTrue(result["success"])
         self.assertEqual(result["results"]["status"], "completed")
-        mock_planner_instance.plan.assert_called_once_with("test mission", {})
-        mock_workflow_engine.assert_called_once()
-        mock_engine_instance.execute_workflow.assert_called_once()
+        mock_manage_directive.assert_called_once()
+        mock_execute.assert_called_once()
+
+    @patch.object(ExecutiveAgent, "manage_directive")
+    def test_execute_mission_planning_failure(self, mock_manage_directive) -> None:
+        """Mission returns error information when planning fails."""
+        mock_manage_directive.return_value = {
+            "success": False,
+            "critique": {"message": "bad"},
+        }
+        agent = ExecutiveAgent("agent")
+        result = asyncio.run(agent.execute_mission("do", {}))
+        self.assertFalse(result["success"])
+        self.assertIn("Mission planning failed", result["error"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()
