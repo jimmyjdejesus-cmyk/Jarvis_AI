@@ -60,7 +60,6 @@ PyJWT>=2.0.0
 psutil>=5.9.0
 bleach>=6.0.0
 python-jose>=3.3.0
-python-multipart>=0.0.6
 
 # --- Utilities & Analytics ---
 cachetools>=6.2.0
