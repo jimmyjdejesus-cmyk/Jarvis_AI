@@ -43,7 +43,7 @@ except ImportError:
 
 try:
     from jarvis.agents.coding_agent import CodingAgent
-except Exception:  # pragma: no cover - optional dependency
+except ImportError:  # pragma: no cover - optional dependency
     CodingAgent = None
 
 try:
