@@ -1,6 +1,14 @@
 
 # Agent Log
 
+- Initialized work on Neo4j knowledge graph integration for ExecutiveAgent.
+- Added environment-aware Neo4j graph initialization with in-memory fallback.
+- Propagated knowledge graph to mission planner and potential sub-agents.
+- Ran pytest; encountered missing async plugin for test execution.
+=======
+
+# Agent Log
+
 - Created agent.md to document changes and actions.
 - Added `get_mission_history` method to `jarvis/world_model/neo4j_graph.py` with sanitization.
 - Created FastAPI endpoint `/missions/{mission_id}/history` in `app/main.py`.
@@ -121,3 +129,4 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 * [2025-08-27] Added docs, database, security, and localization specialists with modular prompt loading and dynamic registry; updated orchestrator and tests.
 * [2025-08-27] Refactored `SpecialistAgent` for backward compatibility and updated auction orchestrator test stubs.
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
+
