@@ -23,6 +23,10 @@ security:
     require_lowercase: true
     require_numbers: true
     require_special: true
+  auth:
+    secret_key: "CHANGE_ME"
+    algorithm: "HS256"
+    access_token_expire_minutes: 30
 
 # Performance Settings
 performance:
