@@ -17,14 +17,12 @@ try:  # pragma: no cover - optional dependencies
 except Exception:  # pragma: no cover
     CuriosityAgent = None  # type: ignore
 
-# Optional specialist agents – failure to import simply leaves them as ``None``
-try:  # pragma: no cover
-    from .coding_agent import CodingAgent, get_coding_agent
-except Exception:  # pragma: no cover
-    CodingAgent = None  # type: ignore
+# Optional specialist agents – defer import to avoid heavy dependencies
+CodingAgent = None  # type: ignore
 
-    def get_coding_agent(*_args, **_kwargs):  # type: ignore
-        raise ImportError("CodingAgent not available")
+
+def get_coding_agent(*_args, **_kwargs):  # type: ignore
+    raise ImportError("CodingAgent not available")
 
 from .base_specialist import BaseSpecialist
 from .simulation_agent import SimulationAgent

@@ -8,14 +8,11 @@ If the database is unavailable the tests are skipped.
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 
 import pytest
 from neo4j.exceptions import ServiceUnavailable
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "jarvis" / "world_model"))
-from neo4j_graph import Neo4jGraph
+from jarvis.world_model.neo4j_graph import Neo4jGraph
 
 
 @pytest.mark.integration

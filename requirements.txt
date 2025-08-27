@@ -44,6 +44,14 @@ beautifulsoup4>=4.12.0
 pydantic
 pydantic-core>=2.39.0
 
+# --- Utility Libraries ---
+cachetools>=6.2.0
+marshmallow>=4.0.0
+platformdirs>=4.4.0
+posthog>=6.7.0
+pydantic-core>=2.39.0
+typing-extensions>=4.15.0
+
 # --- Security & System ---
 # Cryptography, password hashing, system monitoring
 cryptography>=40.0.0
@@ -72,6 +80,9 @@ pyright>=1.1.404
 ruff>=0.12.10
 setuptools>=80.9.0
 fakeredis>=2.0.0
+pyright>=1.1.404
+ruff>=0.12.10
+setuptools>=80.9.0
 
 # --- Optional & Tooling ---
 # Web automation, image processing
@@ -79,3 +90,4 @@ playwright>=1.35.0
 pillow>=10.0.0
 keyring>=24.0.0
 chromadb>=0.4.0
+
