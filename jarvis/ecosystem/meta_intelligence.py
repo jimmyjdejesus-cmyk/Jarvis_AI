@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -51,6 +52,7 @@ from jarvis.persistence.session import SessionManager
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
 from jarvis.workflows.engine import workflow_engine, from_mission_dag, WorkflowStatus
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
+from jarvis.orchestration.mission import Mission, MissionDAG
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +125,23 @@ class ExecutiveAgent(AIAgent):
         logger.info(f"Event '{event}': {payload}")
 
     def _initialize_knowledge_graph(self):
-        # Placeholder for KG initialization
+        """Configure the knowledge graph and Neo4j connection.
+
+        Connection credentials are sourced from environment variables to
+        avoid hard-coding secrets. If the graph cannot be initialised the
+        agent falls back to in-memory operation. The resulting driver is
+        stored for reuse across mission executions.
+        """
+        from jarvis.world_model.neo4j_graph import Neo4jGraph
+
+        uri = os.getenv("NEO4J_URI")
+        user = os.getenv("NEO4J_USER")
+        password = os.getenv("NEO4J_PASSWORD")
+        try:
+            self.neo4j_graph = Neo4jGraph(uri=uri, user=user, password=password)
+        except Exception as exc:  # pragma: no cover - optional service
+            logger.warning("Neo4jGraph initialization failed: %s", exc)
+            self.neo4j_graph = None
         self.knowledge_graph = KnowledgeGraph()
 
     def manage_directive(self, directive_text: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
@@ -168,8 +186,44 @@ class ExecutiveAgent(AIAgent):
         tasks = plan_result.get("tasks", [])
         logger.info(f"Mission '{directive}' planned with {len(tasks)} steps.")
 
-        # 2. Execute the mission using the WorkflowEngine
-        logger.info(f"Executing mission '{directive}' with WorkflowEngine.")
+<<<<<<< HEAD
+        mission_id = uuid.uuid4().hex
+        mission = Mission(
+            id=mission_id,
+            title=directive,
+            goal=directive,
+            inputs=context,
+            risk_level=context.get("risk_level", "low"),
+            dag=MissionDAG(mission_id=mission_id),
+        )
+=======
+        mission_id = uuid.uuid4().hex
+        mission = Mission(
+            id=mission_id,
+            title=directive,
+            goal=directive,
+            inputs=context,
+            risk_level=context.get("risk_level", "low"),
+            dag=MissionDAG(mission_id=mission_id),
+        )
+
+        # 2. Execute the mission steps
+        mission_results = []
+        for i, task_def in enumerate(tasks):
+            step_id = task_def.get("id", f"step_{i}")
+            logger.info(f"Executing mission step {i+1}/{len(tasks)}: {step_id}")
+
+            # Prepare the task for the execute_task method
+            task = {
+                "type": "mission_step",
+                "step_id": step_id,
+                "request": task_def.get("details", ""),
+                "specialists": task_def.get("specialists", []),
+                # Pass any other relevant info from the plan to the step
+                "code": task_def.get("code"),
+                "user_context": task_def.get("user_context"),
+            }
+>>>>>>> a6ede2b69915ab06fffc4fcb020e1ed9eb86d5dd
 
         dag = MissionDAG.from_dict(plan_result['graph'])
         workflow = from_mission_dag(dag)
@@ -184,6 +238,8 @@ class ExecutiveAgent(AIAgent):
 
         # 3. Finalize and return results
         logger.info(f"Mission '{directive}' completed with status: {completed_workflow.status.value}.")
+
+        self._update_world_model(mission, mission_results)
 
         # 4. Consider curiosity
         if self.enable_curiosity:
@@ -203,6 +259,89 @@ class ExecutiveAgent(AIAgent):
             # To prevent potential loops, we'll just log the question for now.
             # A full implementation might queue this as a lower-priority mission.
             self.log_event("curiosity_triggered", {"question": question})
+
+    def _update_world_model(self, mission: Mission, results: List[Dict[str, Any]]) -> None:
+        """Persist mission execution details to the world model.
+
+        The method creates mission and step nodes based on the mission plan and
+        augments them with execution results. Facts and relationships discovered
+        during execution are also stored. Any failure in graph persistence is
+        logged but does not interrupt mission execution.
+        """
+        from jarvis.world_model.neo4j_graph import Neo4jGraph
+
+        graph = getattr(self, "neo4j_graph", None)
+        created_temp_graph = False
+        if graph is None:
+            try:
+                graph = Neo4jGraph()
+                created_temp_graph = True
+            except Exception as exc:  # pragma: no cover - optional service
+                logger.warning("Neo4jGraph initialization failed: %s", exc)
+                return
+
+        try:
+            graph.add_node(
+                mission.id,
+                "mission",
+                {"goal": mission.goal, "rationale": mission.dag.rationale},
+            )
+
+            # Record planned steps and their dependencies for richer metadata
+            for step_id, node in mission.dag.nodes.items():
+                graph.add_node(
+                    step_id,
+                    "step",
+                    {
+                        "capability": node.capability,
+                        "team_scope": node.team_scope,
+                    },
+                )
+                graph.add_edge(mission.id, step_id, "HAS_STEP")
+            for src, dst in mission.dag.edges:
+                graph.add_edge(src, dst, "DEPENDS_ON")
+
+            # Update step status and persist discovered knowledge
+            for step in results:
+                step_id = step.get("step_id")
+                if not step_id:
+                    continue
+                status = "COMPLETED" if step.get("success") else "FAILED"
+                graph.add_node(step_id, "step", {"status": status})
+                graph.add_edge(mission.id, step_id, status)
+
+                for fact in step.get("facts", []):
+                    fact_id = fact.get("id") or uuid.uuid4().hex
+                    node_type = fact.get("type", "fact")
+                    attributes = fact.get("attributes")
+                    graph.add_node(fact_id, node_type, attributes)
+                    graph.add_edge(step_id, fact_id, "DISCOVERED")
+
+                for rel in step.get("relationships", []):
+                    source = rel.get("source")
+                    target = rel.get("target")
+                    rel_type = rel.get("type", "RELATED_TO")
+                    attributes = rel.get("attributes")
+                    if source and target:
+                        graph.add_edge(source, target, rel_type, attributes)
+        except Exception as exc:  # pragma: no cover - graph failures shouldn't crash
+            logger.warning("Failed to update world model: %s", exc)
+        finally:
+            # Close ephemeral connections to avoid leaking credentials
+            if created_temp_graph:
+                try:
+                    graph.close()
+                except Exception:  # pragma: no cover - close best effort
+                    pass
+
+    def close(self) -> None:
+        """Release external resources such as database connections."""
+        graph = getattr(self, "neo4j_graph", None)
+        if graph is not None:
+            try:
+                graph.close()
+            except Exception:  # pragma: no cover - close best effort
+                pass
 
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Execute meta-level coordination tasks with optional risk critique."""
