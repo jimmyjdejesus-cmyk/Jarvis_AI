@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { socket } from '../socket';
+import Neo4jConfigForm from './Neo4jConfigForm';
+import './formStyles.css';
 
 // Chat customization settings with defaults
 const DEFAULT_SETTINGS = {
@@ -11,16 +13,15 @@ const DEFAULT_SETTINGS = {
   soundEnabled: true,
   compactMode: false,
   chatMode: 'chat', // 'chat', 'research', 'agent'
-  neo4jUri: '',
-  neo4jUser: '',
-  neo4jPassword: '',
 };
 
 // Load settings from localStorage
 const loadSettings = () => {
   try {
     const saved = localStorage.getItem('jarvis-chat-settings');
-    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    if (!saved) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(saved);
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch (e) {
     console.error('Failed to load chat settings:', e);
     return DEFAULT_SETTINGS;
@@ -204,6 +205,7 @@ const ChatPane = () => {
     inputRef.current?.focus();
   }, [input, isConnected, settings.chatMode, sessionId]);
 
+  // Send Neo4j credentials to backend
   // Handle settings change
   const handleSettingsChange = useCallback((key, value) => {
     const newSettings = { ...settings, [key]: value };
@@ -392,38 +394,7 @@ const ChatPane = () => {
             </label>
           </div>
 
-          <div className="settings-section">
-            <label>
-              Neo4j URI:
-              <input
-                type="text"
-                value={settings.neo4jUri}
-                onChange={(e) => handleSettingsChange('neo4jUri', e.target.value)}
-              />
-            </label>
-          </div>
-
-          <div className="settings-section">
-            <label>
-              Neo4j User:
-              <input
-                type="text"
-                value={settings.neo4jUser}
-                onChange={(e) => handleSettingsChange('neo4jUser', e.target.value)}
-              />
-            </label>
-          </div>
-
-          <div className="settings-section">
-            <label>
-              Neo4j Password:
-              <input
-                type="password"
-                value={settings.neo4jPassword}
-                onChange={(e) => handleSettingsChange('neo4jPassword', e.target.value)}
-              />
-            </label>
-          </div>
+          <Neo4jConfigForm />
         </div>
       )}
 

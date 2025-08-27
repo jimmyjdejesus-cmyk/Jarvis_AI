@@ -176,3 +176,10 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
 
+
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
+
+- Refactored ChatPane to delegate Neo4j credential inputs to new Neo4jConfigForm component and expanded config API tests for invalid URI and auth failures.
+- Centralized form styling into `components/formStyles.css` and imported in ChatPane and Neo4jConfigForm.
+- Introduced in-memory `apiKeyStore` and updated Neo4jConfigForm to avoid localStorage for API key retrieval.
+- Noted this log file is growing large; consider splitting logs by domain for future clarity.

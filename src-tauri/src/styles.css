@@ -403,39 +403,6 @@ body {
   gap: var(--spacing-md);
 }
 
-.settings-section {
-  display: flex;
-  flex-direction: column;
-}
-
-.settings-section label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.settings-section select,
-.settings-section input[type="number"],
-.settings-section input[type="range"] {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 4px;
-  font-size: var(--font-size-sm);
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-  margin: 0;
-}
-
 /* Chat Messages */
 .chat-messages {
   padding: 0;

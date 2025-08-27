@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles.css';
+import { setApiKey } from './apiKeyStore';
+
+setApiKey(import.meta.env.VITE_JARVIS_API_KEY || '');
 
 // DEV-COMMENT: This is the standard entry point for a React application.
 // It finds the 'root' DOM element (defined in index.html) and renders our main <App /> component into it.
