@@ -102,13 +102,24 @@ def install_dependencies_windows():
                 # Try different npm commands for Windows
                 for npm_cmd in ["npm", "npm.cmd"]:
                     try:
+                        # First try normal install
                         subprocess.run([npm_cmd, "install"], cwd=frontend_path, check=True, shell=True)
                         print("✅ Node.js dependencies installed")
                         return True
-                    except (subprocess.CalledProcessError, FileNotFoundError):
+                    except subprocess.CalledProcessError:
+                        # If normal install fails, try with --legacy-peer-deps
+                        try:
+                            print("⚠️ Retrying with --legacy-peer-deps...")
+                            subprocess.run([npm_cmd, "install", "--legacy-peer-deps"], cwd=frontend_path, check=True, shell=True)
+                            print("✅ Node.js dependencies installed (with legacy peer deps)")
+                            return True
+                        except subprocess.CalledProcessError:
+                            continue
+                    except FileNotFoundError:
                         continue
                 
                 print("❌ Failed to install Node.js dependencies")
+                print("💡 Try manually running: npm install --legacy-peer-deps")
                 return False
             except Exception as e:
                 print(f"❌ Error installing dependencies: {e}")

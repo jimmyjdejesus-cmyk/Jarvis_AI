@@ -70,12 +70,20 @@ def check_dependencies():
         if not node_modules.exists():
             print("📦 Installing Node.js dependencies...")
             try:
+                # First try normal install
                 result = subprocess.run(["npm", "install"], cwd=frontend_path, capture_output=True, text=True, check=True)
                 print("✅ Node.js dependencies installed successfully")
             except subprocess.CalledProcessError as e:
-                print(f"❌ Failed to install Node.js dependencies:")
-                print(f"Error: {e.stderr}")
-                return False
+                # If normal install fails, try with --legacy-peer-deps
+                try:
+                    print("⚠️ Retrying with --legacy-peer-deps...")
+                    result = subprocess.run(["npm", "install", "--legacy-peer-deps"], cwd=frontend_path, capture_output=True, text=True, check=True)
+                    print("✅ Node.js dependencies installed successfully (with legacy peer deps)")
+                except subprocess.CalledProcessError as e2:
+                    print(f"❌ Failed to install Node.js dependencies:")
+                    print(f"Error: {e2.stderr}")
+                    print("💡 Try manually running: npm install --legacy-peer-deps")
+                    return False
             except FileNotFoundError:
                 print("❌ npm command not found. Please ensure Node.js and npm are properly installed.")
                 return False
