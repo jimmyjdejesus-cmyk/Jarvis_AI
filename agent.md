@@ -145,10 +145,12 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
 
 
+* [2025-08-27] Added verify_api_key dependency to /api routes, updated API tests with required headers, and implemented API key validation in app/main.py. Ran pytest (collection failed due to existing syntax errors).
+
+
 ## 2025-08-28
 - Starting authentication integration with OAuth2 and role-based permissions.
 - Implemented JWT-based auth with role checks and added tests for token flow (failing due to upstream import issue).
-=======
 
 ## 2025-08-29
 - Added tests for knowledge query error handling with Neo4j exceptions.
@@ -157,3 +159,4 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 
 
 - Removed duplicate `networkx>=3.0` from `pyproject.toml` and reinstalled dependencies to verify environment.
+

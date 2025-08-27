@@ -67,6 +67,25 @@ except ImportError as e:
     class workflow_engine:
         def get_workflow_status(self, workflow_id): return None
 
+
+# Security
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
+    """Validate the `X-API-Key` header against the expected key.
+
+    Args:
+        x_api_key: API key provided by the client.
+
+    Raises:
+        HTTPException: If the key is missing or does not match the expected value.
+
+    Returns:
+        The validated API key.
+    """
+    expected_key = os.getenv("JARVIS_API_KEY")
+    if not expected_key or x_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
+
 # Create FastAPI app
 app = FastAPI(
     title="Jarvis AI Orchestrator Backend",
@@ -92,25 +111,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# API key verification
-def verify_api_key(api_key: str = Header(..., alias="X-API-Key")) -> str:
-    """Verify request API key against the expected environment value.
-
-    Args:
-        api_key: API key provided via the ``X-API-Key`` header.
-
-    Returns:
-        The validated API key.
-
-    Raises:
-        HTTPException: If the key is missing or invalid.
-    """
-    expected_key = os.getenv("JARVIS_API_KEY")
-    if not expected_key or api_key != expected_key:
-        raise HTTPException(status_code=401, detail="Invalid or missing API Key")
-    return api_key
-
 
 # Router with global API key dependency
 api_router = APIRouter(prefix="/api", dependencies=[Depends(verify_api_key)])
@@ -250,7 +250,7 @@ class MockMCPClient:
     async def generate_response_batch(self, server: str, model: str, prompts: List[str]) -> List[str]:
         return [f"Mock batch response {i+1}" for i in range(len(prompts))]
 
-class MockSpecialist:
+class MockSpecialist(BaseSpecialist if JARVIS_AVAILABLE else object):
     """Mock specialist agent for demonstration"""
     def __init__(self, name: str, role: str):
         self.name = name
@@ -577,7 +577,6 @@ async def get_workflow(session_id: str):
         ]
     }
     return workflow
-
 
 @api_router.get("/workflow/status/{workflow_id}")
 async def get_workflow_status(workflow_id: str):
