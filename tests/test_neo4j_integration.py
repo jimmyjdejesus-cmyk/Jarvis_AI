@@ -8,13 +8,11 @@ They are skipped when these credentials are missing.
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 
 import pytest
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "jarvis" / "world_model"))
-from neo4j_graph import Neo4jGraph
+from neo4j.exceptions import ServiceUnavailable
 
+from jarvis.world_model.neo4j_graph import Neo4jGraph
 NEO4J_URI = os.getenv("NEO4J_URI")
 NEO4J_USER = os.getenv("NEO4J_USER")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
