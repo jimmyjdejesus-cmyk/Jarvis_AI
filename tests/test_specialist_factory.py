@@ -99,3 +99,25 @@ def test_specialist_factory(monkeypatch, name, method, args, header):
 
     assert result == {"ok": True}
     assert header in captured["task"]
+
+
+def test_cloud_cost_agent(monkeypatch):
+    """Ensure the CloudCostOptimizerAgent loads without heavy deps."""
+    captured = {}
+
+    async def fake_process(self, task):
+        captured["task"] = task
+        return {"ok": True}
+
+    specialist_cls = registry.SPECIALIST_REGISTRY["cloud_cost"]
+    monkeypatch.setattr(specialist_cls, "process_task", fake_process, raising=False)
+
+    class _StubMCP:
+        async def call_model(self, *_args, **_kwargs):
+            return {}
+
+    agent = create_specialist("cloud_cost", mcp_client=_StubMCP())
+    result = asyncio.run(agent.analyze_usage("usage data"))
+
+    assert result == {"ok": True}
+    assert "CLOUD COST ANALYSIS REQUEST" in captured["task"]

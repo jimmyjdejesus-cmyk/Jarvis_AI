@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { socket } from '../socket';
+import API_CONFIG, { getApiUrl } from '../config';
 
 // Chat customization settings with defaults
 const DEFAULT_SETTINGS = {
@@ -16,21 +17,27 @@ const DEFAULT_SETTINGS = {
   neo4jPassword: '',
 };
 
-// Load settings from localStorage
+// Load settings from localStorage, excluding sensitive Neo4j credentials
 const loadSettings = () => {
   try {
     const saved = localStorage.getItem('jarvis-chat-settings');
-    return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    if (!saved) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(saved);
+    delete parsed.neo4jUri;
+    delete parsed.neo4jUser;
+    delete parsed.neo4jPassword;
+    return { ...DEFAULT_SETTINGS, ...parsed };
   } catch (e) {
     console.error('Failed to load chat settings:', e);
     return DEFAULT_SETTINGS;
   }
 };
 
-// Save settings to localStorage
+// Save settings to localStorage without Neo4j credentials
 const saveSettings = (settings) => {
   try {
-    localStorage.setItem('jarvis-chat-settings', JSON.stringify(settings));
+    const { neo4jUri, neo4jUser, neo4jPassword, ...toStore } = settings;
+    localStorage.setItem('jarvis-chat-settings', JSON.stringify(toStore));
   } catch (e) {
     console.error('Failed to save chat settings:', e);
   }
@@ -204,11 +211,34 @@ const ChatPane = () => {
     inputRef.current?.focus();
   }, [input, isConnected, settings.chatMode, sessionId]);
 
+  // Send Neo4j credentials to backend
+  const sendNeo4jConfig = useCallback(async (uri, user, password) => {
+    try {
+      await fetch(getApiUrl(API_CONFIG.ENDPOINTS.NEO4J_CONFIG), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': localStorage.getItem('jarvis-api-key') || '',
+        },
+        body: JSON.stringify({ uri, user, password }),
+      });
+    } catch (e) {
+      console.error('Failed to update Neo4j configuration:', e);
+    }
+  }, []);
+
   // Handle settings change
   const handleSettingsChange = useCallback((key, value) => {
     const newSettings = { ...settings, [key]: value };
     applySettings(newSettings);
-  }, [settings, applySettings]);
+
+    if (['neo4jUri', 'neo4jUser', 'neo4jPassword'].includes(key)) {
+      const { neo4jUri, neo4jUser, neo4jPassword } = newSettings;
+      if (neo4jUri && neo4jUser && neo4jPassword) {
+        sendNeo4jConfig(neo4jUri, neo4jUser, neo4jPassword);
+      }
+    }
+  }, [settings, applySettings, sendNeo4jConfig]);
 
   // Clear chat messages
   const handleClearChat = useCallback(() => {

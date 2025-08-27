@@ -1,11 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
-import json
-import sys
-import os
+from app.main import app
 
-# Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import jarvis.memory.project_memory as project_memory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.project_memory import ProjectMemory
 
 from jarvis.agents.mission_planner import MissionPlanner
 
@@ -35,3 +34,4 @@ class TestMissionPlanner(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

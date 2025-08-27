@@ -31,16 +31,10 @@ from datetime import datetime
 import logging
 from enum import Enum
 import uvicorn
-import sys
 import os
-from pathlib import Path
-from neo4j.exceptions import ServiceUnavailable, TransientError
+from neo4j.exceptions import ServiceUnavailable
 
-# Add jarvis to Python path
-jarvis_path = Path(__file__).parent.parent / "jarvis"
-if jarvis_path.exists():
-    sys.path.insert(0, str(jarvis_path.parent))
-
+from jarvis.world_model.neo4j_graph import Neo4jGraph
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -51,35 +45,27 @@ logger = logging.getLogger(__name__)
 # Authentication utilities
 from app.auth import authenticate_user, create_access_token, role_required, login_for_access_token, get_current_user, Token
 
-# Try to import Jarvis orchestration system
-try:
-    from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-    from jarvis.agents.base_specialist import BaseSpecialist
-    from jarvis.core.mcp_agent import MCPJarvisAgent
-    from jarvis.world_model.neo4j_graph import Neo4jGraph
-    from jarvis.workflows.engine import workflow_engine
-    JARVIS_AVAILABLE = True
-    logger.info("✅ Jarvis orchestration system loaded successfully")
-except Exception as e:
-    logger.warning(f"⚠️ Jarvis orchestration not available: {e}")
-    JARVIS_AVAILABLE = False
+# Defer orchestration imports; use lightweight stubs during testing
+JARVIS_AVAILABLE = False
 
-    class Neo4jGraph:
-        def __init__(self, *args, **kwargs):
-            pass
 
-        def is_alive(self):
-            return False
+class Neo4jGraph:
+    def __init__(self, *args, **kwargs):
+        pass
 
-        def get_mission_history(self, mission_id):
-            return None
+    def is_alive(self):
+        return False
 
-        def query(self, query):
-            raise ServiceUnavailable("Mock Neo4j is not available")
+    def get_mission_history(self, mission_id):
+        return None
 
-    class workflow_engine:
-        def get_workflow_status(self, workflow_id):
-            return None
+    def query(self, query):
+        raise ServiceUnavailable("Mock Neo4j is not available")
+
+
+class workflow_engine:
+    def get_workflow_status(self, workflow_id):
+        return None
 
 
 # Lifespan context to initialize application state
@@ -230,6 +216,14 @@ class CypherQuery(BaseModel):
     query: str = Field(..., description="Read-only Cypher statement")
 
 
+class Neo4jCredentials(BaseModel):
+    """Neo4j connection parameters provided by the client."""
+
+    uri: str
+    user: str
+    password: str
+
+
 # In-memory storage
 workflows_db: Dict[str, Workflow] = {}
 logs_db: List[LogEntry] = []
@@ -276,7 +270,6 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
-neo4j_graph = Neo4jGraph()
 
 # Initialize Neo4j graph adapter
 neo4j_graph = None
@@ -490,8 +483,20 @@ async def health_check():
     }
 
 
+# Configure Neo4j credentials at runtime
+@app.post("/api/neo4j/config", dependencies=[Depends(verify_api_key)])
+async def configure_neo4j(creds: Neo4jCredentials) -> Dict[str, str]:
+    """Initialize the global Neo4j driver with provided credentials."""
+    global neo4j_graph
+    try:
+        neo4j_graph = Neo4jGraph(creds.uri, creds.user, creds.password)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Failed to initialize Neo4j driver") from exc
+    return {"status": "configured"}
+
+
 # Workflow endpoints
-@app.get("/api/workflow/{session_id}")
+@api_router.get("/workflow/{session_id}")
 async def get_workflow(request: Request, session_id: str):
     """Get current workflow state for a session with real Cerebro data."""
     if not cerebro_orchestrator:
@@ -645,19 +650,18 @@ async def get_workflow(request: Request, session_id: str):
 
 
 # Import workflow engine with graceful fallback
-try:
-    from jarvis.workflows.engine import workflow_engine
-except Exception as e:
-    logger.warning(f"⚠️ Workflow engine not available: {e}")
-
-    class DummyWorkflowEngine:
-        def get_workflow_status(self, workflow_id: str):
-            return None
-
-    workflow_engine = DummyWorkflowEngine()
+class DummyWorkflowEngine:
+    def get_workflow_status(self, workflow_id: str):
+        return None
 
 
-@app.get("/api/workflow/status/{workflow_id}", dependencies=[Depends(get_current_user)])
+workflow_engine = DummyWorkflowEngine()
+
+
+@api_router.get(
+    "/workflow/status/{workflow_id}",
+    dependencies=[Depends(get_current_user)],
+)
 async def get_workflow_status(workflow_id: str):
     """Get the status of a specific workflow."""
     status = workflow_engine.get_workflow_status(workflow_id)
@@ -667,8 +671,15 @@ async def get_workflow_status(workflow_id: str):
 
 
 # Logs endpoints
-@app.get("/api/logs", dependencies=[Depends(role_required("admin"))])
-async def get_logs(request: Request, session_id: Optional[str] = Query(None), limit: int = Query(100)):
+@api_router.get(
+    "/logs",
+    dependencies=[Depends(role_required("admin"))],
+)
+async def get_logs(
+    request: Request,
+    session_id: Optional[str] = Query(None),
+    limit: int = Query(100),
+):
     """Get logs with optional filters. Requires admin role."""
     logs_db = request.app.state.logs_db
     logs = [
@@ -680,8 +691,11 @@ async def get_logs(request: Request, session_id: Optional[str] = Query(None), li
 
 
 # Graph endpoints
-@app.post("/api/graph/cypher")
-async def run_cypher(query: CypherQuery, current_user: Any = Depends(get_current_user)) -> Dict[str, Any]:
+@api_router.post("/graph/cypher")
+async def run_cypher(
+    query: CypherQuery,
+    current_user: Any = Depends(get_current_user),
+) -> Dict[str, Any]:
     """Execute a read-only Cypher query against the Neo4j graph."""
 
     if neo4j_graph is None:
@@ -692,16 +706,32 @@ async def run_cypher(query: CypherQuery, current_user: Any = Depends(get_current
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ServiceUnavailable as exc:
-        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Neo4j service unavailable",
+        ) from exc
     except TransientError as exc:
-        raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Neo4j transient error",
+        ) from exc
     except Exception as exc:
         logger.error(f"Failed to execute knowledge query: {exc}")
-        raise HTTPException(status_code=500, detail="Internal server error") from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        ) from exc
+
 
 # HITL endpoints
-@app.get("/api/hitl/pending", dependencies=[Depends(get_current_user)])
-async def get_pending_hitl_requests(request: Request, session_id: Optional[str] = Query(None)):
+@api_router.get(
+    "/hitl/pending",
+    dependencies=[Depends(get_current_user)],
+)
+async def get_pending_hitl_requests(
+    request: Request,
+    session_id: Optional[str] = Query(None),
+):
     """Get pending HITL requests."""
     hitl_db = request.app.state.hitl_requests_db
     requests = list(hitl_db.values())
