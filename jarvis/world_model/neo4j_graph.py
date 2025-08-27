@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import re
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
 from neo4j import GraphDatabase, Driver
+
+from jarvis.security.secret_manager import get_secret
 
 
 class Neo4jGraph:
@@ -26,9 +27,9 @@ class Neo4jGraph:
         Parameters
         ----------
         uri, user, password:
-            Optional overrides for connection information. If omitted, values
-            fall back to ``NEO4J_URI``, ``NEO4J_USER`` and ``NEO4J_PASSWORD``
-            environment variables.
+            Optional overrides for connection information. When omitted, values
+            are loaded from the OS keyring via ``keyring`` using the service
+            name ``jarvis``.
         driver:
             Pre-configured :class:`neo4j.Driver` instance to reuse instead of
             creating a new connection.
@@ -37,9 +38,9 @@ class Neo4jGraph:
         if driver is not None:
             self.driver = driver
         else:
-            uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
-            user = user or os.getenv("NEO4J_USER", "neo4j")
-            password = password or os.getenv("NEO4J_PASSWORD", "test")
+            uri = uri or get_secret("NEO4J_URI", "bolt://localhost:7687")
+            user = user or get_secret("NEO4J_USER", "neo4j")
+            password = password or get_secret("NEO4J_PASSWORD", "test")
             self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
     def close(self) -> None:
@@ -187,7 +188,11 @@ class Neo4jGraph:
     def _sanitize_properties(self, props: Dict[str, Any]) -> Dict[str, Any]:
         """Remove sensitive fields from a properties dictionary."""
 
-        return {k: v for k, v in props.items() if k.lower() not in self.SENSITIVE_FIELDS}
+        return {
+            k: v
+            for k, v in props.items()
+            if k.lower() not in self.SENSITIVE_FIELDS
+        }
 
     # ------------------------------------------------------------------
     def get_mission_history(self, mission_id: str) -> Dict[str, Any]:
@@ -197,9 +202,9 @@ class Neo4jGraph:
             mission_id: The ID of the mission to retrieve.
 
         Returns:
-            A dictionary containing mission properties and lists of related steps
-            and facts. Sensitive fields are removed. If the mission is not
-            found, an empty dictionary is returned.
+            A dictionary containing mission properties and lists of related
+            steps and facts. Sensitive fields are removed. If the mission is
+            not found, an empty dictionary is returned.
         """
 
         if not re.fullmatch(r"[\w-]+", mission_id):
@@ -221,8 +226,16 @@ class Neo4jGraph:
                 return {}
 
             mission = self._sanitize_properties(dict(record["m"]))
-            steps = [self._sanitize_properties(dict(step)) for step in record["steps"] if step]
-            facts = [self._sanitize_properties(dict(fact)) for fact in record["facts"] if fact]
+            steps = [
+                self._sanitize_properties(dict(step))
+                for step in record["steps"]
+                if step
+            ]
+            facts = [
+                self._sanitize_properties(dict(fact))
+                for fact in record["facts"]
+                if fact
+            ]
 
             return {"mission": mission, "steps": steps, "facts": facts}
 

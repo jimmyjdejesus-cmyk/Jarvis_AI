@@ -1,35 +1,18 @@
-import sys
-import pathlib
 import random
 import os
-from collections import deque
 from dataclasses import dataclass
-from typing import List, Any
+from typing import Any, List
+
 import pytest
 import unittest
 from unittest.mock import patch
-from pathlib import Path
 from fastapi.testclient import TestClient
 from app.main import app
 
-# Ensure repository root on path for `jarvis` package
-root = Path(__file__).resolve().parents[1]
-sys.path.append(str(root / "jarvis"))
-
-# Import ProjectMemory without executing the full jarvis package
-import importlib.util
-
-project_memory_spec = importlib.util.spec_from_file_location(
-    "project_memory",
-    pathlib.Path(__file__).resolve().parents[1] / "jarvis" / "memory" / "project_memory.py",
-)
-project_memory = importlib.util.module_from_spec(project_memory_spec)
-sys.modules["project_memory"] = project_memory
-project_memory_spec.loader.exec_module(project_memory)
-ProjectMemory = project_memory.ProjectMemory
-
-from memory.memory_bus import MemoryBus
-from memory.replay_memory import ReplayMemory
+import jarvis.memory.project_memory as project_memory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.project_memory import ProjectMemory
+from jarvis.memory.replay_memory import ReplayMemory
 
 
 @dataclass

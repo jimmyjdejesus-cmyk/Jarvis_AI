@@ -40,7 +40,7 @@ describe('LogViewerPane', () => {
     render(<LogViewerPane />);
     await screen.findByText(/first line/);
 
-    const input = screen.getByPlaceholderText('Filter');
+    const input = screen.getByPlaceholderText('Filter logs...');
     fireEvent.change(input, { target: { value: 'second' } });
 
     expect(screen.queryByText(/first line/)).not.toBeInTheDocument();
@@ -51,20 +51,26 @@ describe('LogViewerPane', () => {
     render(<LogViewerPane />);
     await screen.findByText(/first line/);
 
-    expect(screen.getByTitle('Disconnected')).toHaveClass('disconnected');
+    expect(
+      screen.getByTitle('Disconnected from real-time updates')
+    ).toHaveClass('disconnected');
 
     await act(async () => {
       socket.emit('connect');
     });
     await waitFor(() =>
-      expect(screen.getByTitle('Connected')).toHaveClass('connected')
+      expect(
+        screen.getByTitle('Connected to real-time updates')
+      ).toHaveClass('connected')
     );
 
     await act(async () => {
       socket.emit('disconnect');
     });
     await waitFor(() =>
-      expect(screen.getByTitle('Disconnected')).toHaveClass('disconnected')
+      expect(
+        screen.getByTitle('Disconnected from real-time updates')
+      ).toHaveClass('disconnected')
     );
 
     await act(async () => {
