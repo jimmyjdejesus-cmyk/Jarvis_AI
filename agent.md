@@ -188,6 +188,11 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 ## 2025-08-30
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
+## 2025-09-05
+- Adjusted LogViewerPane tests to match "Filter logs..." placeholder and full connection titles.
+- Installed Node dependencies and ran `npm test` in `src-tauri`; LogViewerPane tests passed.
+- Reviewed component tests for placeholder and title alignment; no changes required elsewhere.
+- Added error-state retry test for LogViewerPane and re-ran `npm test`.
 - Scoped workflow/log/HITL stores to app.state and updated endpoints to use request-scoped access.
 - Added test ensuring per-instance isolation for workflow state.
 - Attempted flake8 and pytest; flake8 raised pre-existing style errors and pytest failed importing app.main due to Path clash.
