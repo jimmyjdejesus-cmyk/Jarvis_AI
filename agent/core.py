@@ -2,17 +2,10 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any
 
-# Import memory modules without triggering heavy jarvis package imports
-jarvis_path = Path(__file__).resolve().parents[1] / "jarvis"
-if str(jarvis_path) not in sys.path:
-    sys.path.append(str(jarvis_path))
-
-from memory.memory_bus import MemoryBus
-from memory.replay_memory import ReplayMemory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.replay_memory import ReplayMemory
 
 
 class JarvisAgent:
