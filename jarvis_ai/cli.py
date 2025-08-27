@@ -3,11 +3,31 @@
 import argparse
 import asyncio
 import json
+from typing import Optional, Dict, Any
 
 from jarvis.ecosystem import ExecutiveAgent
 
+def _run_command(args, mcp_client) -> None:
+    """Execute a mission using the ExecutiveAgent."""
+    code_context = None
+    if args.code:
+        with open(args.code) as f:
+            code_context = f.read()
 
-def main(mcp_client=None) -> dict | None:
+    agent = ExecutiveAgent("cli", mcp_client=mcp_client)
+    context: Dict[str, Any] = {}
+    if code_context:
+        context["code"] = code_context
+    if args.context:
+        context["user_context"] = args.context
+
+    async def run_agent() -> None:
+        result = await agent.execute_mission(args.objective, context)
+        print(json.dumps(result, indent=2))
+
+    asyncio.run(run_agent())
+
+def main(mcp_client: Optional[object] = None) -> None:
     """Run the Jarvis CLI.
 
     Parameters
@@ -17,88 +37,23 @@ def main(mcp_client=None) -> dict | None:
 
     Returns
     -------
-    dict | None
-        Mission result dictionary if execution succeeds; otherwise ``None``.
+    None
     """
     if mcp_client is None:
         from jarvis.mcp.client import McpClient
         mcp_client = McpClient()
 
-    parser = argparse.ArgumentParser(description="Run the Jarvis V2 engine.")
-    parser.add_argument(
-        "objective",
-        type=str,
-        help="The main objective for the AI.",
-    )
-    parser.add_argument(
-        "--code",
-        type=str,
-        help="Path to a code file to be used as context.",
-    )
-    parser.add_argument(
-        "--context",
-        type=str,
-        help="Additional context for the objective.",
-    )
+    parser = argparse.ArgumentParser(description="Jarvis AI command line interface")
+    subparsers = parser.add_subparsers(dest="command")
+
+    run_parser = subparsers.add_parser("run", help="Execute a mission objective")
+    run_parser.add_argument("objective", type=str, help="The main objective for the AI")
+    run_parser.add_argument("--code", type=argparse.FileType("r"), help="Path to a code file to be used as context")
+    run_parser.add_argument("--context", type=str, help="Additional context for the objective")
+    run_parser.set_defaults(func=_run_command)
 
     args = parser.parse_args()
-
-    if args.code:
-        with open(args.code, "r") as f:
-            code_context = f.read()
-    else:
-        code_context = None
-
-    context = {}
-    if code_context is not None:
-        context["code"] = code_context
-    if args.context:
-        context["user_context"] = args.context
-
-    meta_agent = ExecutiveAgent("cli_meta", mcp_client=mcp_client)
-
-    async def run_meta_agent() -> dict | None:
-        """Execute the mission and print results and execution graph.
-
-        Returns
-        -------
-        dict | None
-            Mission result if execution succeeds; otherwise ``None`` when
-            planning or execution fails.
-        """
-        try:
-            plan = meta_agent.manage_directive(args.objective, context)
-        except Exception as exc:  # pragma: no cover - defensive programming
-            print(f"Mission planning failed: {exc}")
-            return
-
-        if not plan.get("success", True):
-            print("Mission planning failed:")
-            print(plan.get("error", "Unknown error"))
-            return
-
-        try:
-            result = await meta_agent.execute_mission(args.objective, context)
-        except Exception as exc:  # pragma: no cover - defensive programming
-            print(f"Mission execution failed: {exc}")
-            return
-
-        if not result.get("success", True):
-            print("Mission execution failed:")
-            print(result.get("error", "Unknown error"))
-            return
-
-        print("Mission Results:")
-        print(json.dumps(result, indent=2))
-        if plan.get("graph"):
-            print("Execution Graph:")
-            print(json.dumps(plan["graph"], indent=2))
-
-        return result
-
-    mission_result = asyncio.run(run_meta_agent())
-    return mission_result
-
-
-if __name__ == "__main__":
-    main()
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return
+    args.func(args, mcp_client)

@@ -1,8 +1,9 @@
 import os
 import sys
-from pathlib import Path
 import types
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -20,100 +21,61 @@ from jarvis_ai import cli  # noqa: E402
 
 
 @pytest.fixture
-def mock_meta_agent():
-    """Fixture providing a stubbed ExecutiveAgent with a two-step plan."""
-
+def mock_agent():
     mock = MagicMock()
-
-    def plan(objective, context):
-        return {
-            "success": True,
-            "graph": {
-                "nodes": ["step1", "step2"],
-                "edges": [],
-            },
-        }
-
-    async def execute(objective, context):
-        return {"success": True, "results": ["step1 result", "step2 result"]}
-
-    mock.manage_directive = MagicMock(side_effect=plan)
-    mock.execute_mission = MagicMock(side_effect=execute)
+    mock.execute_mission = AsyncMock(return_value={"result": "success"})
     return mock
 
 
-def test_cli_with_objective(mock_meta_agent, capsys):
-    with patch("jarvis_ai.cli.ExecutiveAgent", return_value=mock_meta_agent):
-        with patch("sys.argv", ["jarvis", "test objective"]):
-            result = cli.main(mcp_client=MagicMock())
-            captured = capsys.readouterr()
-            assert result == {
-                "success": True,
-                "results": ["step1 result", "step2 result"],
-            }
-            assert "Mission Results" in captured.out
-            mock_meta_agent.execute_mission.assert_called_once()
+def test_cli_with_objective(mock_agent):
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        cli._run_command(
+            types.SimpleNamespace(objective="test objective", code=None, context=None),
+            None,
+        )
 
+    mock_agent.execute_mission.assert_called_once_with("test objective", {})
 
-def test_cli_with_code_and_context(mock_meta_agent, capsys):
-    with patch("jarvis_ai.cli.ExecutiveAgent", return_value=mock_meta_agent):
-        with open("test_code.py", "w") as f:
-            f.write("print('hello')")
-        with patch(
-            "sys.argv",
-            [
-                "jarvis",
-                "test objective",
-                "--code",
-                "test_code.py",
-                "--context",
-                "test context",
-            ],
-        ):
-            cli.main(mcp_client=MagicMock())
-            captured = capsys.readouterr()
-            assert "Execution Graph" in captured.out
-            mock_meta_agent.manage_directive.assert_called_with(
-                "test objective",
-                {"code": "print('hello')", "user_context": "test context"},
-            )
-        os.remove("test_code.py")
+def test_cli_with_code(mock_agent, tmp_path):
+    code_file = tmp_path / "code.py"
+    code_file.write_text("print('hello world')")
 
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        cli._run_command(
+            types.SimpleNamespace(objective="test objective", code=open(code_file), context=None),
+            None,
+        )
 
-def test_cli_multi_step_mission(mock_meta_agent, capsys):
-    with patch("jarvis_ai.cli.ExecutiveAgent", return_value=mock_meta_agent):
-        with patch("sys.argv", ["jarvis", "multi step objective"]):
-            cli.main(mcp_client=MagicMock())
-            captured = capsys.readouterr()
-            assert "step1 result" in captured.out
-            assert "step2 result" in captured.out
-            assert "Execution Graph" in captured.out
-            assert '"step1"' in captured.out and '"step2"' in captured.out
+    mock_agent.execute_mission.assert_called_once_with(
+        "test objective", {"code": "print('hello world')"}
+    )
 
+def test_cli_with_context(mock_agent):
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        cli._run_command(
+            types.SimpleNamespace(
+                objective="test objective", code=None, context="user context"
+            ),
+            None,
+        )
 
-def test_cli_plan_failure(capsys):
-    """CLI prints planning errors when manage_directive fails."""
+    mock_agent.execute_mission.assert_called_once_with(
+        "test objective", {"user_context": "user context"}
+    )
 
-    failing_agent = MagicMock()
-    failing_agent.manage_directive.side_effect = RuntimeError("plan boom")
-    with patch("jarvis_ai.cli.ExecutiveAgent", return_value=failing_agent):
-        with patch("sys.argv", ["jarvis", "bad objective"]):
-            cli.main(mcp_client=MagicMock())
-            captured = capsys.readouterr()
-            assert "Mission planning failed" in captured.out
+def test_cli_main_with_run_command(monkeypatch, capsys):
+    test_args = ["run", "test objective"]
+    monkeypatch.setattr(sys, "argv", ["jarvis", *test_args])
 
+    def mock_run_command(args, mcp_client):
+        assert args.objective == "test objective"
+        print("Mock run command executed")
 
-def test_cli_execution_failure(capsys):
-    """CLI reports errors when execute_mission returns unsuccessfully."""
-
-    failing_agent = MagicMock()
-    failing_agent.manage_directive.return_value = {"success": True}
-    failing_agent.execute_mission.return_value = {
-        "success": False,
-        "error": "boom",
-    }
-    with patch("jarvis_ai.cli.ExecutiveAgent", return_value=failing_agent):
-        with patch("sys.argv", ["jarvis", "bad objective"]):
-            cli.main(mcp_client=MagicMock())
-            captured = capsys.readouterr()
-            assert "Mission execution failed" in captured.out
+    with patch("jarvis_ai.cli._run_command", new=mock_run_command):
+        cli.main()
+    
+    captured = capsys.readouterr()
+    assert "Mock run command executed" in captured.out
