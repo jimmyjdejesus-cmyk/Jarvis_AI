@@ -20,6 +20,8 @@ import uvicorn
 import sys
 import os
 from pathlib import Path
+from neo4j.exceptions import ServiceUnavailable, TransientError
+from jarvis.world_model.neo4j_graph import Neo4jGraph
 
 # Add jarvis to Python path
 jarvis_path = Path(__file__).parent.parent / "jarvis"
@@ -721,6 +723,21 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str, session_id: O
             
     except WebSocketDisconnect:
         manager.disconnect(client_id)
+
+
+neo4j_graph = Neo4jGraph(driver=object())
+
+
+@app.post("/knowledge/query")
+async def knowledge_query(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Query the Neo4j graph and handle connection errors."""
+    query = payload.get("query", "")
+    try:
+        return {"results": neo4j_graph.query(query)}
+    except ServiceUnavailable as exc:
+        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
+    except TransientError as exc:
+        raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
 
 if __name__ == "__main__":
     print("🚀 Starting Enhanced Jarvis AI Backend Server")

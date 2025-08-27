@@ -107,3 +107,4 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 * [2025-08-27] Added docs, database, security, and localization specialists with modular prompt loading and dynamic registry; updated orchestrator and tests.
 * [2025-08-27] Refactored `SpecialistAgent` for backward compatibility and updated auction orchestrator test stubs.
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
+\n* [2025-08-27] Added tests for knowledge query endpoint error handling and implemented endpoint with Neo4j exception handling.
