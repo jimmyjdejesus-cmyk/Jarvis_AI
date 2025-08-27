@@ -42,10 +42,11 @@ try:
     from .specialist import SpecialistAgent
     from .specialists import (
         CodeReviewAgent,
-        SecurityAgent,
         ArchitectureAgent,
         TestingAgent,
-        DevOpsAgent
+        DevOpsAgent,
+        CloudCostOptimizerAgent,
+        UserFeedbackAgent,
     )
     from .critics import RedTeamCritic
     
@@ -62,10 +63,11 @@ try:
         'LiveTestAgent',
         'SpecialistAgent',
         'CodeReviewAgent',
-        'SecurityAgent',
         'ArchitectureAgent',
         'TestingAgent',
         'DevOpsAgent',
+        'CloudCostOptimizerAgent',
+        'UserFeedbackAgent',
         'RedTeamCritic',
         'DecentralizedActor'
     ]
@@ -81,5 +83,5 @@ except Exception:  # pragma: no cover
         'CuriosityAgent',
         'BenchmarkRewardAgent',
         'LiveTestAgent',
-        'DecentralizedActor'
+        'DecentralizedActor',
     ]
