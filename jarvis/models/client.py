@@ -10,10 +10,6 @@ from typing import List, Optional, Generator
 from pathlib import Path
 from urllib.parse import urlparse
 
-# Import legacy model client
-import sys
-legacy_path = Path(__file__).parent.parent.parent / "legacy"
-sys.path.insert(0, str(legacy_path))
 
 try:
     from scripts.ollama_client import *

@@ -29,7 +29,7 @@ from .semantic_cache import SemanticCache
 from .message_bus import HierarchicalMessageBus
 from jarvis.memory.project_memory import ProjectMemory
 from jarvis.agents.specialist_registry import (
-    SPECIALIST_REGISTRY,
+    get_specialist_registry,
     create_specialist,
 )
 
@@ -102,7 +102,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         if specialists is None:
             self.specialists = {
                 name: create_specialist(name, mcp_client, knowledge_graph=knowledge_graph)
-                for name in SPECIALIST_REGISTRY
+                for name in get_specialist_registry()
             }
         else:
             self.specialists = specialists
@@ -114,6 +114,9 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.exploration_stats: List[Dict[str, float]] = []
         self.message_bus = message_bus or HierarchicalMessageBus()
         self.budgets = budgets or {}
+        from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
+        from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
+        self.critic = ConstitutionalCritic(mcp_client=self.mcp_client)
 
     async def log_event(
         self,
@@ -301,6 +304,8 @@ JSON Response:
         context: Any | None = None,
         user_context: str | None = None,
         models: List[str] | None = None,
+        timeout: int = 60,
+        retries: int = 3,
     ) -> Dict[str, Any]:
         """Execute a task with the requested specialist."""
         cache_key = f"{specialist_type}:{task}"

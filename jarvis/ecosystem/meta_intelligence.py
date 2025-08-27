@@ -77,7 +77,7 @@ class ExecutiveAgent(AIAgent):
         self.orchestrator_cls = orchestrator_cls
         self.mission_planner = mission_planner or MissionPlanner()
         self.session_manager = SessionManager()
-        self.constitutional_critic = ConstitutionalCritic()
+        self.constitutional_critic = ConstitutionalCritic(mcp_client=self.mcp_client)
         self.memory: MemoryManager = memory_manager or ProjectMemory()
         self.managed_agents: Dict[str, AIAgent] = {}
         self.evolution_plans: List[SystemEvolutionPlan] = []

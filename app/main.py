@@ -21,10 +21,6 @@ import sys
 import os
 from pathlib import Path
 
-# Add jarvis to Python path
-jarvis_path = Path(__file__).parent.parent / "jarvis"
-if jarvis_path.exists():
-    sys.path.insert(0, str(jarvis_path.parent))
 
 # Configure logging
 logging.basicConfig(

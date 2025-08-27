@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import List, Dict, Any, TYPE_CHECKING
 import time
 
-from jarvis.tools import github
+import sys
+from pathlib import Path
+root = Path(__file__).resolve().parents[2]
+sys.path.append(str(root))
+import jarvis.tools.github as github
 
 if TYPE_CHECKING:  # pragma: no cover - import for type checking only
     from jarvis.agents.benchmark_agent import BenchmarkRewardAgent

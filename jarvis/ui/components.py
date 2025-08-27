@@ -7,10 +7,6 @@ import pandas as pd
 from typing import Any, Dict
 from pathlib import Path
 
-# Import legacy UI components
-import sys
-legacy_path = Path(__file__).parent.parent.parent / "legacy"
-sys.path.insert(0, str(legacy_path))
 
 try:
     from ui.sidebar import sidebar as legacy_sidebar

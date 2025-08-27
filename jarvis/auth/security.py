@@ -11,10 +11,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 from pathlib import Path
 
-# Import legacy security functions
-import sys
-legacy_path = Path(__file__).parent.parent.parent / "legacy"
-sys.path.insert(0, str(legacy_path))
 
 try:
     from agent.features.security import *
