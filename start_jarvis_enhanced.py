@@ -11,6 +11,14 @@ import time
 import webbrowser
 from pathlib import Path
 
+def check_npm_available():
+    """Check if npm is available"""
+    try:
+        result = subprocess.run(["npm", "--version"], capture_output=True, text=True)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+
 def check_dependencies():
     """Check if required dependencies are installed"""
     print("🔍 Checking dependencies...")
@@ -25,7 +33,12 @@ def check_dependencies():
     except ImportError as e:
         print(f"❌ Missing Python dependency: {e}")
         print("📦 Installing Python dependencies...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn", "websockets", "redis", "pydantic"])
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn", "websockets", "redis", "pydantic"], check=True)
+            print("✅ Python dependencies installed successfully")
+        except subprocess.CalledProcessError:
+            print("❌ Failed to install Python dependencies")
+            return False
     
     # Check if Node.js is available
     try:
@@ -34,10 +47,21 @@ def check_dependencies():
             print(f"✅ Node.js found: {result.stdout.strip()}")
         else:
             print("❌ Node.js not found. Please install Node.js to run the frontend.")
+            print("📥 Download from: https://nodejs.org/")
             return False
     except FileNotFoundError:
         print("❌ Node.js not found. Please install Node.js to run the frontend.")
+        print("📥 Download from: https://nodejs.org/")
+        print("💡 Make sure to add Node.js to your system PATH during installation")
         return False
+    
+    # Check if npm is available
+    if not check_npm_available():
+        print("❌ npm not found. npm should be installed with Node.js.")
+        print("💡 Try reinstalling Node.js from https://nodejs.org/")
+        return False
+    else:
+        print("✅ npm found")
     
     # Check if npm dependencies are installed
     frontend_path = Path("src-tauri")
@@ -45,9 +69,20 @@ def check_dependencies():
         node_modules = frontend_path / "node_modules"
         if not node_modules.exists():
             print("📦 Installing Node.js dependencies...")
-            subprocess.run(["npm", "install"], cwd=frontend_path)
+            try:
+                result = subprocess.run(["npm", "install"], cwd=frontend_path, capture_output=True, text=True, check=True)
+                print("✅ Node.js dependencies installed successfully")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Failed to install Node.js dependencies:")
+                print(f"Error: {e.stderr}")
+                return False
+            except FileNotFoundError:
+                print("❌ npm command not found. Please ensure Node.js and npm are properly installed.")
+                return False
         else:
             print("✅ Node.js dependencies found")
+    else:
+        print("⚠️ Frontend directory 'src-tauri' not found. Frontend features will not be available.")
     
     return True
 
@@ -97,13 +132,20 @@ def start_frontend():
         print("❌ Frontend directory 'src-tauri' not found!")
         return None
     
+    # Check if npm is available before trying to start
+    if not check_npm_available():
+        print("❌ npm not found. Cannot start frontend server.")
+        print("💡 Please install Node.js from https://nodejs.org/")
+        return None
+    
     try:
         # Start the frontend server
         process = subprocess.Popen(
             ["npm", "run", "dev"],
             cwd=frontend_path,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
+            shell=True if os.name == 'nt' else False  # Use shell on Windows
         )
         
         # Give it a moment to start
@@ -120,6 +162,10 @@ def start_frontend():
             print(f"STDERR: {stderr.decode()}")
             return None
             
+    except FileNotFoundError:
+        print("❌ npm command not found. Please ensure Node.js and npm are properly installed.")
+        print("📥 Download from: https://nodejs.org/")
+        return None
     except Exception as e:
         print(f"❌ Error starting frontend: {e}")
         return None
@@ -133,10 +179,24 @@ def build_tauri_executable():
         print("❌ Frontend directory 'src-tauri' not found!")
         return False
     
+    # Check if npm is available before trying to build
+    if not check_npm_available():
+        print("❌ npm not found. Cannot build Tauri executable.")
+        print("💡 Please install Node.js from https://nodejs.org/")
+        return False
+    
     try:
         # Install Tauri CLI if not present
         print("📦 Installing Tauri CLI...")
-        subprocess.run(["npm", "install", "@tauri-apps/cli"], cwd=frontend_path)
+        result = subprocess.run(
+            ["npm", "install", "@tauri-apps/cli"], 
+            cwd=frontend_path, 
+            capture_output=True, 
+            text=True,
+            shell=True if os.name == 'nt' else False,
+            check=True
+        )
+        print("✅ Tauri CLI installed successfully")
         
         # Build the executable
         print("🔨 Building executable (this may take several minutes)...")
@@ -144,7 +204,8 @@ def build_tauri_executable():
             ["npm", "run", "tauri:build"],
             cwd=frontend_path,
             capture_output=True,
-            text=True
+            text=True,
+            shell=True if os.name == 'nt' else False
         )
         
         if result.returncode == 0:
@@ -165,6 +226,14 @@ def build_tauri_executable():
             print(f"STDERR: {result.stderr}")
             return False
             
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to install Tauri CLI:")
+        print(f"Error: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("❌ npm command not found. Please ensure Node.js and npm are properly installed.")
+        print("📥 Download from: https://nodejs.org/")
+        return False
     except Exception as e:
         print(f"❌ Error building executable: {e}")
         return False
