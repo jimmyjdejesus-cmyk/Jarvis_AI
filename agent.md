@@ -2461,3 +2461,8 @@ Inserted experience into replay buffer.
 }
 ```
 ---
+
+## Dev Log
+- Added CuriosityRouter and wired curiosity routing with configuration flags. Noting: root agent.md is very long; consider archiving older entries.
+
+- [2025-08-27T20:19:04+00:00] Enhanced curiosity routing with sanitization and debug logging.
