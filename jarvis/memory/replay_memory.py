@@ -1,69 +1,95 @@
-"""Replay memory for storing agent reasoning trajectories."""
+"""Replay memory utilities for storing agent experiences."""
+
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Any, Deque, Iterable, List, Tuple
 import random
 
 from .memory_bus import MemoryBus
 
-Transition = Tuple[Any, Any, float, Any, bool]
-
 
 @dataclass
+class Experience:
+    """Container for a single agent-environment interaction."""
+    state: Any
+    action: Any
+    reward: float
+    next_state: Any
+    done: bool
+    priority: float = 1.0
+
+
 class ReplayMemory:
-    """Simple replay buffer with optional logging via :class:`MemoryBus`."""
-    capacity: int = 1000
-    memory_bus: MemoryBus | None = None
+    """Ring-buffer replay memory with prioritized sampling and logging."""
 
-    def __post_init__(self) -> None:
-        self._memory: Deque[Transition] = deque(maxlen=self.capacity)
-        if self.memory_bus is None:
-            # Default to local memory bus in current directory
-            self.memory_bus = MemoryBus()
+    def __init__(
+        self, capacity: int = 1000, alpha: float = 0.6, log_dir: str = "."
+    ) -> None:
+        """Create a replay memory.
 
-    # -- core API ---------------------------------------------------------
-    def push(self, state: Any, action: Any, reward: float, next_state: Any, done: bool) -> None:
-        """Store a transition and log the interaction."""
-        transition: Transition = (state, action, reward, next_state, done)
-        self._memory.append(transition)
-        if self.memory_bus:
-            self.memory_bus.log_interaction(
-                agent_id="replay_memory",
-                team="system",
-                message="push",
-                data={
-                    "state": state,
-                    "action": action,
-                    "reward": reward,
-                    "next_state": next_state,
-                    "done": done,
-                },
-            )
+        Args:
+            capacity: Maximum number of experiences to store.
+            alpha: How much prioritization to apply (0=no prioritization).
+            log_dir: Directory where memory interactions should be logged.
+        """
+        self.capacity = capacity
+        self.alpha = alpha
+        self._storage: list[Experience] = []
+        self._priorities: list[float] = []
+        self._position = 0
+        self._bus = MemoryBus(log_dir)
 
-    def recall(self, state: Any, top_k: int = 1) -> List[Transition]:
-        """Retrieve transitions with matching state and log the recall."""
-        matches = [t for t in reversed(self._memory) if t[0] == state][:top_k]
-        if self.memory_bus:
-            for t in matches:
-                self.memory_bus.log_interaction(
+    def add(
+        self, experience: Experience, priority: float | None = None
+    ) -> None:
+        """Add a new experience to memory and log the insertion."""
+        if priority is None:
+            priority = max(self._priorities, default=1.0)
+        experience.priority = priority
+
+        if len(self._storage) < self.capacity:
+            self._storage.append(experience)
+            self._priorities.append(priority)
+        else:
+            self._storage[self._position] = experience
+            self._priorities[self._position] = priority
+        self._position = (self._position + 1) % self.capacity
+
+        self._bus.log_interaction(
+            agent_id="replay_memory",
+            team="memory",
+            message="Inserted experience into replay buffer.",
+            data=asdict(experience),
+        )
+
+    def sample(self, batch_size: int) -> list[Experience]:
+        """Sample experiences using prioritized sampling."""
+        if not self._storage:
+            return []
+
+        scaled = [p ** self.alpha for p in self._priorities]
+        indices = random.choices(
+            range(len(self._storage)), weights=scaled, k=batch_size
+        )
+        return [self._storage[i] for i in indices]
+
+    def recall(self, state: Any, top_k: int = 1) -> List[Experience]:
+        """Retrieve experiences with matching state and log the recall."""
+        matches = [
+            exp for exp in reversed(self._storage) if exp.state == state
+        ][:top_k]
+        if self._bus:
+            for exp in matches:
+                self._bus.log_interaction(
                     agent_id="replay_memory",
-                    team="system",
-                    message="recall",
-                    data={
-                        "state": t[0],
-                        "action": t[1],
-                        "reward": t[2],
-                        "next_state": t[3],
-                        "done": t[4],
-                    },
+                    team="memory",
+                    message="Recall experience from replay buffer.",
+                    data=asdict(exp),
                 )
         return matches
 
-    def sample(self, batch_size: int) -> List[Transition]:
-        """Randomly sample a batch of transitions."""
-        return random.sample(list(self._memory), batch_size)
-
-    def __len__(self) -> int:  # pragma: no cover - trivial
-        return len(self._memory)
+    def __len__(self) -> int:
+        """Return the number of stored experiences."""
+        return len(self._storage)
