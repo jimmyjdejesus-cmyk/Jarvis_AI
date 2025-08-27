@@ -52,6 +52,9 @@ def run_python_code(_code: str, timeout: int = 10) -> _ExecResult:
 exec_mod.run_python_code = run_python_code
 sys.modules["jarvis.tools.execution_sandbox"] = exec_mod
 
+# Ensure stale modules from previous tests don't interfere
+sys.modules.pop("jarvis.agents.specialists", None)
+
 # Import domain specialists and registry
 spec_ds = importlib.util.spec_from_file_location(
     "jarvis.agents.domain_specialists", ROOT / "jarvis" / "agents" / "domain_specialists.py"

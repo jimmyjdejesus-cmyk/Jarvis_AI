@@ -141,6 +141,8 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-25]** Added Documentation, Database, Localization, EthicalHacker, CloudCostOptimizer, and UserFeedback specialist agents with prompts, methods, and tests.
 * [2025-08-27] Added docs, database, security, and localization specialists with modular prompt loading and dynamic registry; updated orchestrator and tests.
 * [2025-08-27] Refactored `SpecialistAgent` for backward compatibility and updated auction orchestrator test stubs.
+
+* [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests
 * [2025-08-27] Replaced print/return logic with assertions in `test_backend.py` and removed manual execution block for pytest.
 
@@ -153,6 +155,12 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Resolved merge conflict in jarvis/ecosystem/meta_intelligence.py and simplified execute_mission workflow.
 - Ran pytest (fails: AgentCapability missing REASONING attribute) to verify environment after conflict resolution.
 
+- Cleaned non-ASCII spaces in `jarvis/memory/__init__.py` to fix import errors.
+- Refactored `coding_agent.debug` to avoid backslashes in f-string expressions.
+- Rewrote tool registry with `ToolMeta` alias and stable `__all__`.
+- Added unit tests for `ExecutiveAgent.execute_mission` covering success and planning failure paths.
+- Ensured specialist factory test resets cached modules for isolation.
+- Ran `pip install -e .` and `pytest -q` (remaining failures in replay memory and orchestration components).
 * [2025-08-27] Integrated OAuth2 JWT authentication with role-based access; updated config, docs, and added tests verifying token flow.
  [2025-08-27] Added tests for knowledge query endpoint error handling and implemented endpoint with Neo4j exception handling.
 * [2025-08-27] Added verify_api_key dependency to /api routes, updated API tests with required headers, and implemented API key validation in app/main.py. Ran pytest (collection failed due to existing syntax errors).
@@ -161,7 +169,10 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Implemented JWT-based auth with role checks and added tests for token flow (failing due to upstream import issue).
 ## 2025-08-29
 - Added tests for knowledge query error handling with Neo4j exceptions.
-
 * [2025-08-27] Secured FastAPI endpoints with API key verification dependency and attempted linting/tests (flake8 warnings, pytest import errors).
 - Removed duplicate `networkx>=3.0` from `pyproject.toml` and reinstalled dependencies to verify environment.
 * [2025-08-30] Updated FastAPI Path params in app/main.py and app/test_harness.py to use "pattern" instead of deprecated "regex". Ran pytest -q but collection failed due to missing "jose" module and other import errors.
+## 2025-08-30
+- Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
+- Executed `pytest -q` to confirm no warnings or regressions.
+
