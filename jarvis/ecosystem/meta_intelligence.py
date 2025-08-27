@@ -13,11 +13,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
 
 from jarvis.agents.agent_resources import (
     AgentCapability,
@@ -50,11 +51,19 @@ from jarvis.persistence.session import SessionManager
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
 from jarvis.world_model.hypergraph import HierarchicalHypergraph
 
+try:  # pragma: no cover - optional neo4j dependency
+    from jarvis.world_model.neo4j_graph import Neo4jGraph
+except Exception:  # pragma: no cover
+    Neo4jGraph = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
 class ExecutiveAgent(AIAgent):
     """Executive agent that manages other AI agents."""
+
+    _shared_knowledge_graph: KnowledgeGraph | None = None
+
     def __init__(
         self,
         agent_id: str,
@@ -75,7 +84,6 @@ class ExecutiveAgent(AIAgent):
         ])
         self.mcp_client = mcp_client
         self.orchestrator_cls = orchestrator_cls
-        self.mission_planner = mission_planner or MissionPlanner()
         self.session_manager = SessionManager()
         self.constitutional_critic = ConstitutionalCritic()
         self.memory: MemoryManager = memory_manager or ProjectMemory()
@@ -111,6 +119,12 @@ class ExecutiveAgent(AIAgent):
         if self.mcp_client:
             self.mcp_client.monitor = self.system_monitor
         self._initialize_knowledge_graph()
+        if mission_planner is not None:
+            self.mission_planner = mission_planner
+            if getattr(self.mission_planner, "knowledge_graph", None) is None:
+                self.mission_planner.knowledge_graph = self.knowledge_graph
+        else:
+            self.mission_planner = MissionPlanner(knowledge_graph=self.knowledge_graph)
         self.learning_history: List[Dict[str, Any]] = []
         self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
         self.critic_merger = CriticInsightMerger()
@@ -120,9 +134,52 @@ class ExecutiveAgent(AIAgent):
         """Log an event."""
         logger.info(f"Event '{event}': {payload}")
 
-    def _initialize_knowledge_graph(self):
-        # Placeholder for KG initialization
-        self.knowledge_graph = KnowledgeGraph()
+    def _initialize_knowledge_graph(self) -> None:
+        """Initialize a shared knowledge graph instance.
+
+        Connection details are read from environment variables or the loaded
+        configuration. If valid Neo4j credentials are available and the driver
+        is installed, a :class:`Neo4jGraph` is created and shared across all
+        ``ExecutiveAgent`` instances. Otherwise, an in-memory
+        :class:`KnowledgeGraph` is used and a warning is logged.
+        """
+
+        if ExecutiveAgent._shared_knowledge_graph is None:
+            try:
+                from config.config_loader import load_config
+                cfg = load_config()
+            except Exception:
+                cfg = {}
+
+            uri = os.getenv("NEO4J_URI") or cfg.get("NEO4J_URI")
+            user = os.getenv("NEO4J_USER") or cfg.get("NEO4J_USER")
+            password = os.getenv("NEO4J_PASSWORD") or cfg.get("NEO4J_PASSWORD")
+
+            graph = None
+            if Neo4jGraph and uri and user and password:
+                try:
+                    graph = Neo4jGraph(uri=uri, user=user, password=password)
+                    logger.info("Initialized Neo4j knowledge graph at %s", uri)
+                except Exception as exc:  # pragma: no cover - network failure
+                    logger.warning(
+                        "Neo4j initialization failed (%s); using in-memory graph.", exc,
+                    )
+
+            if graph is None:
+                logger.warning(
+                    "Neo4j credentials missing or driver unavailable; using in-memory knowledge graph.")
+                graph = KnowledgeGraph()
+
+            ExecutiveAgent._shared_knowledge_graph = graph
+
+        self.knowledge_graph = ExecutiveAgent._shared_knowledge_graph
+
+        for agent in self.managed_agents.values():
+            if hasattr(agent, "set_knowledge_graph"):
+                agent.set_knowledge_graph(self.knowledge_graph)
+
+        for orchestrator in getattr(self, "sub_orchestrators", {}).values():
+            orchestrator.knowledge_graph = self.knowledge_graph
 
     def manage_directive(self, directive_text: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
         """Break a directive into tasks and store the mission plan."""
