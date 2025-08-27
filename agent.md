@@ -188,15 +188,16 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 ## 2025-08-30
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
+- Added /missions POST endpoint in meta_intelligence with Mission creation and graph persistence.
+- Implemented MissionCreate model and tests for mission creation endpoint.
+- Added directory-level `agent.md` docs in `jarvis/ecosystem/` and `tests/` outlining mission endpoint behavior and testing tips.
+- Switched mission history endpoint to use `Path(..., pattern=...)` for Pydantic v2 compatibility.
 - Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
 - Added endpoint and UI hook to store Neo4j credentials in the OS keyring from the desktop settings panel.
 - Wrote tests for credential storage and API validation.
-
-
 - Fixed LogViewerPane test placeholders and connection titles; all frontend tests now pass.
 - Wrapped long lines in tests/conftest.py to satisfy flake8.
 - Note: root agent.md is lengthy; consider partitioning future logs.
-
 - Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
 - Added endpoint and UI hook to store Neo4j credentials in the OS keyring from the desktop settings panel.
 - Wrote tests for credential storage and API validation.

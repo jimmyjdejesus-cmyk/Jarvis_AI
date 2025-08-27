@@ -1,87 +1,71 @@
-from fastapi import (
-    FastAPI,
-    Header,
-    HTTPException,
-    Path as FPath,
-    Query,
-    Request,
-    WebSocket,
-    WebSocketDisconnect,
-)
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-from neo4j.exceptions import ServiceUnavailable, TransientError
-from pydantic import BaseModel, Field
+"""Test configuration to ensure package imports and keyring isolation."""
 
-# --- Add Jarvis to Python Path ---
-# This allows for importing the local jarvis module
-try:
-    _current_file = Path(__file__)
-except NameError:  # pragma: no cover - execution via `exec` lacks __file__
-    _current_file = Path("jarvis/ecosystem/meta_intelligence.py")
-jarvis_path = _current_file.parent.parent / "jarvis"
+import pytest
+import keyring
+from keyring.backend import KeyringBackend
+import importlib.util
+import types
+from pathlib import Path
+import sys
+from unittest.mock import MagicMock
 
-if jarvis_path.exists():
-    sys.path.insert(0, str(jarvis_path.parent))
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-# --- Logging Configuration ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
-# --- Application-specific Imports ---
-# Authentication utilities
-from app.auth import (Token, authenticate_user, create_access_token,
-                      get_current_user, login_for_access_token, role_required)
+@pytest.fixture
+def mock_neo4j_graph(monkeypatch):
+    """Provide a mock Neo4j graph for tests.
 
-# Attempt to import the full Jarvis orchestration system
-# If it fails, create mock objects to allow the server to run for frontend development
-try:
-    from jarvis.agents.base_specialist import BaseSpecialist
-    from jarvis.agents.curiosity_agent import CuriosityAgent
-    from jarvis.agents.mission_planner import MissionPlanner
-    from jarvis.core.mcp_agent import MCPJarvisAgent
-    from jarvis.orchestration.mission import Mission, MissionDAG
-    from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-    from jarvis.world_model.hypergraph import HierarchicalHypergraph
-    from jarvis.world_model.neo4j_graph import Neo4jGraph
-    from jarvis.workflows.engine import WorkflowStatus, from_mission_dag, workflow_engine
-    JARVIS_AVAILABLE = True
-    logger.info("✅ Jarvis orchestration system loaded successfully")
-except ImportError as e:
-    logger.warning(f"⚠️ Jarvis orchestration not available, using mock objects: {e}")
-    JARVIS_AVAILABLE = False
+    This fixture patches both the Neo4jGraph class used by core modules and the
+    instantiated ``neo4j_graph`` in ``app.main`` so tests can run without a
+    real database connection.
+    """
 
-    # --- Mock Jarvis Components ---
-    class Neo4jGraph:
-        def __init__(self, *args, **kwargs):
-            pass
-        def is_alive(self):
-            return False
-        def get_mission_history(self, mission_id):
-            return None
-        def query(self, query):
-            raise ServiceUnavailable("Mock Neo4j is not available")
+    mock_graph = MagicMock()
 
-    class workflow_engine:
-        def get_workflow_status(self, workflow_id):
-            return None
+    try:
+        import jarvis.world_model.neo4j_graph as neo_module
+        monkeypatch.setattr(neo_module, "Neo4jGraph", MagicMock(return_value=mock_graph))
+    except Exception:
+        pass
 
-    class BaseSpecialist:
-        pass # Base class for mock specialist
+    try:
+        import app.main as main_app
+        monkeypatch.setattr(main_app, "neo4j_graph", mock_graph)
+    except Exception:
+        pass
 
-# --- Executive Agent Implementation ---
-class ExecutiveAgent:
-    """High-level orchestrator that records mission progress in Neo4j."""
+    return mock_graph
 
-    def __init__(self, agent_id: str) -> None:
-        self.agent_id = agent_id
-        self.mission_planner = MissionPlanner()
-        self.neo4j_graph: Optional[Neo4jGraph] = None
+# Stub minimal ``jarvis.security.secret_manager`` to avoid heavy package imports
+SEC_PATH = ROOT / "jarvis" / "security" / "secret_manager.py"
+spec = importlib.util.spec_from_file_location("jarvis.security.secret_manager", SEC_PATH)
+secret_manager = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(secret_manager)
+jarvis_pkg = types.ModuleType("jarvis")
+security_pkg = types.ModuleType("jarvis.security")
+security_pkg.secret_manager = secret_manager
+jarvis_pkg.security = security_pkg
+sys.modules.setdefault("jarvis", jarvis_pkg)
+sys.modules.setdefault("jarvis.security", security_pkg)
+sys.modules["jarvis.security.secret_manager"] = secret_manager
 
-    def manage_directive(
-        self, directive: str, context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Plan a directive into tasks and a mission graph.
+
+class _MemoryKeyring(KeyringBackend):
+    """In-memory keyring backend for tests."""
+
+    priority = 1
+
+    def __init__(self) -> None:
+        self._store: dict[tuple[str, str], str] = {}
+
+    def get_password(self, service: str, username: str) -> str | None:
+        return self._store.get((service, username))
+
+    def set_password(self, service: str, username: str, password: str) -> None:
+        self._store[(service, username)] = password
+
+    def delete_password(self, service: str, username: str) -> None:
+        self._store.pop((service, username), None)
