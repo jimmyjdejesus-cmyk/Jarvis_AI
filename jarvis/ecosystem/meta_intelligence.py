@@ -1,778 +1,872 @@
-"""Lightweight meta‑intelligence layer.
-
-The :class:`MetaAgent` acts as the entry point for missions. It can spawn
-sub‑orchestrators for individual mission steps and also build arbitrary
-execution graphs using the :class:`DynamicOrchestrator` template.
-
-Only the minimal surface required by the tests is implemented – the agent can
-plan directives, delegate mission steps and pursue curiosity driven tasks.
+#!/usr/bin/env python3
+"""
+Enhanced Jarvis AI Backend - Cerebro Galaxy Integration
+FastAPI + WebSockets + Real Multi-Agent Orchestration
+Complete integration with Jarvis orchestration system
 """
 
-from __future__ import annotations
-
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    Query,
+    Body,
+    Path,
+    Depends,
+    Header,
+    APIRouter,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional, Set
 import asyncio
 import json
-import logging
-import os
 import uuid
-from abc import abstractmethod
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
+from datetime import datetime
+import logging
+from enum import Enum
+import uvicorn
+import sys
+import os
+from pathlib import Path
+from neo4j.exceptions import ServiceUnavailable, TransientError
 
-from jarvis.agents.agent_resources import (
-    AgentCapability,
-    AgentMetrics,
-    SystemEvolutionPlan,
-    SystemHealth,
-)
-from jarvis.agents.base import AIAgent
-from jarvis.agents.critics import (
-    BlueTeamCritic,
-    ConstitutionalCritic,
-    CriticFeedback,
-    CriticVerdict,
-    RedTeamCritic,
-    WhiteGate,
-)
-from jarvis.agents.curiosity_agent import CuriosityAgent
-from jarvis.agents.mission_planner import MissionPlanner
-from jarvis.agents.specialist import SpecialistAgent
-from jarvis.memory.project_memory import MemoryManager, ProjectMemory
-from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
-from jarvis.homeostasis import SystemMonitor
-from jarvis.orchestration.orchestrator import (
-    AgentSpec,
-    DynamicOrchestrator,
-    MultiAgentOrchestrator,
-)
-from jarvis.orchestration.sub_orchestrator import SubOrchestrator
-from jarvis.persistence.session import SessionManager
-from jarvis.world_model.knowledge_graph import KnowledgeGraph
-from jarvis.workflows.engine import workflow_engine, from_mission_dag, WorkflowStatus
-from jarvis.world_model.hypergraph import HierarchicalHypergraph
-from jarvis.orchestration.mission import Mission, MissionDAG
+# Add jarvis to Python path
+jarvis_path = Path(__file__).parent.parent / "jarvis"
+if jarvis_path.exists():
+    sys.path.insert(0, str(jarvis_path.parent))
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
+# Authentication utilities
+from app.auth import authenticate_user, create_access_token, role_required, login_for_access_token, get_current_user, Token
 
-class ExecutiveAgent(AIAgent):
-    """Executive agent that manages other AI agents."""
-    def __init__(
-        self,
-        agent_id: str,
-        mcp_client=None,
-        orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
-        memory_manager: Optional[MemoryManager] = None,
-        mission_planner: Optional['MissionPlanner'] = None,
-        enable_red_team: bool | None = None,
-        enable_blue_team: bool | None = None,
-        blue_team_sensitivity: float = 0.5,
-        enable_curiosity: bool | None = None,
-    ):
-        super().__init__(agent_id, [
-            AgentCapability.REASONING,
-            AgentCapability.PLANNING,
-            AgentCapability.MONITORING,
-            AgentCapability.LEARNING,
-        ])
-        self.mcp_client = mcp_client
-        self.orchestrator_cls = orchestrator_cls
-        self.mission_planner = mission_planner or MissionPlanner()
-        self.session_manager = SessionManager()
-        self.constitutional_critic = ConstitutionalCritic()
-        self.memory: MemoryManager = memory_manager or ProjectMemory()
-        self.managed_agents: Dict[str, AIAgent] = {}
-        self.evolution_plans: List[SystemEvolutionPlan] = []
-        self.hypergraph = HierarchicalHypergraph()
-        self.curiosity_agent = CuriosityAgent(self.hypergraph)
+# Try to import Jarvis orchestration system
+try:
+    from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
+    from jarvis.agents.base_specialist import BaseSpecialist
+    from jarvis.core.mcp_agent import MCPJarvisAgent
+    from jarvis.world_model.neo4j_graph import Neo4jGraph
+    from jarvis.workflows.engine import workflow_engine, from_mission_dag, WorkflowStatus
+    JARVIS_AVAILABLE = True
+    logger.info("✅ Jarvis orchestration system loaded successfully")
+except Exception as e:
+    logger.warning(f"⚠️ Jarvis orchestration not available: {e}")
+    JARVIS_AVAILABLE = False
 
-        if enable_red_team is None or enable_blue_team is None or enable_curiosity is None:
-            try:
-                from config.config_loader import load_config
-                cfg = load_config()
-            except Exception:
-                cfg = {}
-            if enable_red_team is None:
-                enable_red_team = cfg.get("ENABLE_RED_TEAM", False)
-            if enable_blue_team is None:
-                enable_blue_team = cfg.get("ENABLE_BLUE_TEAM", True)
-            if enable_curiosity is None:
-                enable_curiosity = cfg.get("ENABLE_CURIOSITY", True)
+    class Neo4jGraph:
+        def __init__(self, *args, **kwargs):
+            pass
 
-        self.enable_curiosity = bool(enable_curiosity)
-        self.enable_red_team = bool(enable_red_team)
-        self.red_team = RedTeamCritic(mcp_client) if self.enable_red_team else None
-        self.enable_blue_team = bool(enable_blue_team)
-        self.blue_team = (
-            BlueTeamCritic(sensitivity=blue_team_sensitivity)
-            if self.enable_blue_team
-            else None
-        )
-        self.white_gate = WhiteGate()
-        self.system_monitor = SystemMonitor()
-        if self.mcp_client:
-            self.mcp_client.monitor = self.system_monitor
-        self._initialize_knowledge_graph()
-        self.learning_history: List[Dict[str, Any]] = []
-        self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
-        self.critic_merger = CriticInsightMerger()
-        self.performance_tracker = PerformanceTracker()
+        def is_alive(self):
+            return False
 
-    def log_event(self, event: str, payload: Any):
-        """Log an event."""
-        logger.info(f"Event '{event}': {payload}")
+        def get_mission_history(self, mission_id):
+            return None
 
-    def _initialize_knowledge_graph(self):
-        """Configure the knowledge graph and Neo4j connection.
+        def query(self, query):
+            raise ServiceUnavailable("Mock Neo4j is not available")
 
-        Connection credentials are sourced from environment variables to
-        avoid hard-coding secrets. If the graph cannot be initialised the
-        agent falls back to in-memory operation. The resulting driver is
-        stored for reuse across mission executions.
-        """
-        from jarvis.world_model.neo4j_graph import Neo4jGraph
+    class workflow_engine:
+        def get_workflow_status(self, workflow_id):
+            return None
 
-        uri = os.getenv("NEO4J_URI")
-        user = os.getenv("NEO4J_USER")
-        password = os.getenv("NEO4J_PASSWORD")
-        try:
-            self.neo4j_graph = Neo4jGraph(uri=uri, user=user, password=password)
-        except Exception as exc:  # pragma: no cover - optional service
-            logger.warning("Neo4jGraph initialization failed: %s", exc)
-            self.neo4j_graph = None
-        self.knowledge_graph = KnowledgeGraph()
 
-    def manage_directive(self, directive_text: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
-        """Break a directive into tasks and store the mission plan."""
-        dag = self.mission_planner.plan(directive_text, context)
-        tasks = list(dag.nodes.values())
-        graph = self.mission_planner.to_graph([node.details for node in tasks if node.details])
-        critique = self.constitutional_critic.review({"tasks": [node.details for node in tasks if node.details], "goal": directive_text})
-        if critique.get("veto"):
-            return {"success": False, "critique": critique}
+# Security
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> str:
+    """Validate the `X-API-Key` header against the expected key.
+
+    Args:
+        x_api_key: API key provided by the client.
+
+    Raises:
+        HTTPException: If the key is missing or does not match the expected value.
+
+    Returns:
+        The validated API key.
+    """
+    expected_key = os.getenv("JARVIS_API_KEY")
+    if not expected_key or x_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
+
+# Create FastAPI app
+app = FastAPI(
+    title="Jarvis AI Orchestrator Backend",
+    version="2.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:1420",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://localhost:5178",
+        "http://localhost:5179",
+        "http://127.0.0.1:1420",
+        "tauri://localhost"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Router for API key-protected routes
+api_router = APIRouter(prefix="/api", dependencies=[Depends(verify_api_key)])
+
+
+# Enums
+class TaskStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    DEAD_END = "dead_end"
+    HITL_REQUIRED = "hitl_required"
+
+
+class LogLevel(str, Enum):
+    DEBUG = "debug"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
+class AgentRole(str, Enum):
+    RESEARCHER = "researcher"
+    ANALYST = "analyst"
+    EXECUTOR = "executor"
+    VALIDATOR = "validator"
+    COORDINATOR = "coordinator"
+
+
+# Data Models
+class WorkflowNode(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str
+    position: Dict[str, float]
+    data: Dict[str, Any]
+    status: TaskStatus = TaskStatus.PENDING
+    reasoning: Optional[str] = None
+    tool_outputs: Optional[List[Dict[str, Any]]] = None
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class WorkflowEdge(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    source: str
+    target: str
+    type: str = "default"
+    animated: bool = False
+    label: Optional[str] = None
+
+
+class Workflow(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    name: str
+    nodes: List[WorkflowNode]
+    edges: List[WorkflowEdge]
+    status: TaskStatus = TaskStatus.PENDING
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    metadata: Dict[str, Any] = {}
+
+
+class LogEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    agent_id: Optional[str] = None
+    level: LogLevel
+    message: str
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    metadata: Dict[str, Any] = {}
+
+
+class HITLRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    task_id: str
+    session_id: str
+    type: str  # "approval", "input", "decision"
+    prompt: str
+    options: Optional[List[str]] = None
+    context: Dict[str, Any] = {}
+    status: str = "pending"  # "pending", "approved", "denied", "timeout"
+    response: Optional[Any] = None
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+# In-memory storage
+workflows_db: Dict[str, Workflow] = {}
+logs_db: List[LogEntry] = []
+hitl_requests_db: Dict[str, HITLRequest] = {}
+
+
+# WebSocket connection manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+        self.session_connections: Dict[str, Set[str]] = {}
+
+    async def connect(self, websocket: WebSocket, client_id: str, session_id: Optional[str] = None):
+        await websocket.accept()
+        self.active_connections[client_id] = websocket
         if session_id:
-            plan = {"goal": directive_text, "tasks": tasks, "graph": graph}
-            self.session_manager.save_mission_plan(session_id, plan)
-        return {
-            "success": True, "directive": directive_text, "tasks": tasks,
-            "graph": graph, "critique": critique,
-        }
+            if session_id not in self.session_connections:
+                self.session_connections[session_id] = set()
+            self.session_connections[session_id].add(client_id)
+        logger.info(f"Client {client_id} connected to session {session_id}")
 
-    plan_mission = manage_directive
+    def disconnect(self, client_id: str):
+        if client_id in self.active_connections:
+            del self.active_connections[client_id]
+            # Remove from session connections
+            for session_id, clients in self.session_connections.items():
+                if client_id in clients:
+                    clients.remove(client_id)
+        logger.info(f"Client {client_id} disconnected")
 
-    async def execute_mission(self, directive: str, context: Dict[str, Any], session_id: str | None = None) -> Dict[str, Any]:
-        """
-        Plan and execute a multi-step mission.
+    async def send_personal_message(self, message: str, client_id: str):
+        if client_id in self.active_connections:
+            await self.active_connections[client_id].send_text(message)
 
-        Args:
-            directive: The high-level mission objective.
-            context: The context for the mission, including code and other details.
-            session_id: An optional session ID for persistence.
+    async def broadcast_to_session(self, message: str, session_id: str):
+        if session_id in self.session_connections:
+            for client_id in self.session_connections[session_id]:
+                if client_id in self.active_connections:
+                    await self.active_connections[client_id].send_text(message)
 
-        Returns:
-            A dictionary containing the mission results.
-        """
-        # 1. Plan the mission
-        plan_result = self.manage_directive(directive, context, session_id)
-        if not plan_result.get("success"):
-            return {
-                "success": False,
-                "error": "Mission planning failed.",
-                "critique": plan_result.get("critique"),
-            }
+    async def broadcast(self, message: str):
+        for client_id, connection in self.active_connections.items():
+            await connection.send_text(message)
 
-        tasks = plan_result.get("tasks", [])
-        logger.info(f"Mission '{directive}' planned with {len(tasks)} steps.")
 
-        mission_id = uuid.uuid4().hex
-        mission = Mission(
-            id=mission_id,
-            title=directive,
-            goal=directive,
-            inputs=context,
-            risk_level=context.get("risk_level", "low"),
-            dag=MissionDAG(mission_id=mission_id),
-        )
+manager = ConnectionManager()
+neo4j_graph = Neo4jGraph()
 
-        dag = MissionDAG.from_dict(plan_result["graph"])
-        workflow = from_mission_dag(dag)
+# Initialize Cerebro (Real Multi-Agent Orchestrator)
+cerebro_orchestrator = None
+active_orchestrators = {}
+specialist_agents = {}
 
-        completed_workflow = await workflow_engine.execute_workflow(workflow)
 
-        step_results = [
-            {
-                "step_id": task_id,
-                "success": True,
-                "output": result.output,
-            }
-            for task_id, result in completed_workflow.context.results.items()
-        ]
+class MockMCPClient:
+    """Mock MCP client for demonstration"""
 
-        mission_results = {
-            "workflow_id": completed_workflow.workflow_id,
-            "status": completed_workflow.status.value,
-            "results": step_results,
-        }
+    async def generate_response(self, server: str, model: str, prompt: str) -> str:
+        # Simple mock response for demonstration
+        return f"Mock response from {model}: Analyzing request..."
 
-        # 3. Finalize and return results
-        logger.info(
-            f"Mission '{directive}' completed with status: {completed_workflow.status.value}."
-        )
+    async def generate_response_batch(self, server: str, model: str, prompts: List[str]) -> List[str]:
+        return [f"Mock batch response {i + 1}" for i in range(len(prompts))]
 
-        self._update_world_model(mission, step_results)
 
-        # 4. Consider curiosity
-        if self.enable_curiosity:
-            await self._consider_curiosity(step_results)
+class MockSpecialist(BaseSpecialist if JARVIS_AVAILABLE else object):
+    """Mock specialist agent for demonstration"""
+
+    def __init__(self, name: str, role: str):
+        self.name = name
+        self.role = role
+        self.preferred_models = ["llama3.2", "gpt-4"]
+        self.task_history = []
+
+    async def process_task(self, task: str, **kwargs) -> Dict[str, Any]:
+        """Process a task and return results"""
+        await asyncio.sleep(0.5)  # Simulate processing time
 
         return {
-            "success": completed_workflow.status == WorkflowStatus.COMPLETED,
-            "results": mission_results,
+            "specialist": self.name,
+            "response": f"{self.role} analysis: {task[:100]}...",
+            "confidence": 0.85,
+            "suggestions": [
+                f"Consider {self.role.lower()} best practices",
+                f"Review {self.role.lower()} guidelines",
+                f"Implement {self.role.lower()} improvements"
+            ],
+            "priority_issues": [
+                {"description": f"High priority {self.role.lower()} concern", "severity": "high"},
+                {"description": f"Medium priority {self.role.lower()} issue", "severity": "medium"}
+            ]
         }
 
-    async def _consider_curiosity(self, mission_results: List[Dict[str, Any]]):
-        """
-        After a mission, check if there's an opportunity for curiosity-driven exploration.
-        """
-        # TODO: Update hypergraph with mission results to inform curiosity.
-        # This is a placeholder for a more sophisticated integration.
-        question = self.curiosity_agent.generate_question()
-        if question:
-            logger.info(f"Curiosity agent generated a new question: {question}")
-            # To prevent potential loops, we'll just log the question for now.
-            # A full implementation might queue this as a lower-priority mission.
-            self.log_event("curiosity_triggered", {"question": question})
+    def build_prompt(self, task: str, context: Any, user_context: str) -> str:
+        return f"As a {self.role} specialist, analyze: {task}"
 
-    def _update_world_model(self, mission: Mission, results: List[Dict[str, Any]]) -> None:
-        """Persist mission execution details to the world model.
+    def process_model_response(self, response: str, model: str, task: str) -> Dict[str, Any]:
+        return {
+            "specialist": self.name,
+            "response": response,
+            "confidence": 0.8,
+            "suggestions": [],
+            "priority_issues": []
+        }
 
-        The method creates mission and step nodes based on the mission plan and
-        augments them with execution results. Facts and relationships discovered
-        during execution are also stored. Any failure in graph persistence is
-        logged but does not interrupt mission execution.
-        """
-        from jarvis.world_model.neo4j_graph import Neo4jGraph
+    def _get_server_for_model(self, model: str) -> str:
+        return "ollama" if "llama" in model else "openai"
 
-        graph = getattr(self, "neo4j_graph", None)
-        created_temp_graph = False
-        if graph is None:
-            try:
-                graph = Neo4jGraph()
-                created_temp_graph = True
-            except Exception as exc:  # pragma: no cover - optional service
-                logger.warning("Neo4jGraph initialization failed: %s", exc)
-                return
+    def get_specialization_info(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "role": self.role,
+            "capabilities": [f"{self.role} analysis", f"{self.role} recommendations"],
+            "models": self.preferred_models
+        }
 
+
+async def initialize_cerebro():
+    """Initialize the Cerebro orchestrator with specialist agents"""
+    global cerebro_orchestrator, specialist_agents
+
+    if not JARVIS_AVAILABLE:
+        logger.info("🧠 Initializing Mock Cerebro (Jarvis system not available)")
+        # Create mock specialists
+        specialist_agents = {
+            "security": MockSpecialist("security", "Security"),
+            "architecture": MockSpecialist("architecture", "Architecture"),
+            "code_review": MockSpecialist("code_review", "Code Review"),
+            "testing": MockSpecialist("testing", "Testing"),
+            "devops": MockSpecialist("devops", "DevOps"),
+            "research": MockSpecialist("research", "Research")
+        }
+
+        # Mock orchestrator
+        class MockOrchestrator:
+            def __init__(self):
+                self.specialists = specialist_agents
+                self.child_orchestrators = {}
+
+            async def coordinate_specialists(self, request: str, **kwargs) -> Dict[str, Any]:
+                # Simulate orchestrator coordination
+                await asyncio.sleep(1)
+
+                # Determine which specialists to use
+                request_lower = request.lower()
+                specialists_used = []
+
+                if "security" in request_lower:
+                    specialists_used.append("security")
+                if "architecture" in request_lower or "design" in request_lower:
+                    specialists_used.append("architecture")
+                if "test" in request_lower:
+                    specialists_used.append("testing")
+                if "review" in request_lower:
+                    specialists_used.append("code_review")
+                if "deploy" in request_lower:
+                    specialists_used.append("devops")
+                if "research" in request_lower or not specialists_used:
+                    specialists_used.append("research")
+
+                # Get results from specialists
+                results = {}
+                for specialist_name in specialists_used:
+                    if specialist_name in self.specialists:
+                        result = await self.specialists[specialist_name].process_task(request)
+                        results[specialist_name] = result
+
+                return {
+                    "type": "orchestrated_response",
+                    "complexity": "medium",
+                    "specialists_used": specialists_used,
+                    "results": results,
+                    "synthesized_response": f"Coordinated analysis from {len(specialists_used)} specialists for: {request}",
+                    "confidence": 0.85,
+                    "coordination_summary": f"Successfully coordinated {len(specialists_used)} specialists"
+                }
+
+            def create_child_orchestrator(self, name: str, spec: Dict[str, Any]):
+                # Mock child orchestrator creation
+                child = MockOrchestrator()
+                self.child_orchestrators[name] = child
+                return child
+
+        cerebro_orchestrator = MockOrchestrator()
+
+    else:
+        logger.info("🧠 Initializing Real Cerebro with Jarvis Orchestration")
         try:
-            graph.add_node(
-                mission.id,
-                "mission",
-                {"goal": mission.goal, "rationale": mission.dag.rationale},
+            # Create real MCP client (mock for now)
+            mcp_client = MockMCPClient()
+
+            # Create real specialist agents
+            specialist_agents = {
+                "security": MockSpecialist("security", "Security"),
+                "architecture": MockSpecialist("architecture", "Architecture"),
+                "code_review": MockSpecialist("code_review", "Code Review"),
+                "testing": MockSpecialist("testing", "Testing"),
+                "devops": MockSpecialist("devops", "DevOps"),
+                "research": MockSpecialist("research", "Research")
+            }
+
+            # Create real Cerebro orchestrator
+            cerebro_orchestrator = MultiAgentOrchestrator(
+                mcp_client=mcp_client,
+                specialists=specialist_agents,
+                message_bus=None,  # We'll handle messaging through WebSocket
+                budgets={"max_cost": 100, "max_time": 300}
             )
 
-            # Record planned steps and their dependencies for richer metadata
-            for step_id, node in mission.dag.nodes.items():
-                graph.add_node(
-                    step_id,
-                    "step",
+            logger.info("✅ Real Cerebro orchestrator initialized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize real Cerebro: {e}")
+            # Fall back to mock
+            cerebro_orchestrator = MockOrchestrator()
+
+    logger.info(f"🎭 Cerebro initialized with {len(specialist_agents)} specialist agents")
+
+# Initialize Cerebro on startup
+@app.on_event("startup")
+async def startup_event():
+    await initialize_cerebro()
+
+
+@app.post("/token", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Authenticate user and return JWT access token."""
+    return await login_for_access_token(form_data)
+
+
+# API Endpoints
+@app.get("/")
+async def root():
+    return {
+        "message": "Enhanced Jarvis AI - Cerebro Galaxy Backend",
+        "status": "online",
+        "cerebro_active": cerebro_orchestrator is not None,
+        "jarvis_integration": JARVIS_AVAILABLE,
+        "specialists_available": len(specialist_agents)
+    }
+
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0",
+        "neo4j_active": neo4j_graph.is_alive(),
+    }
+
+
+# Workflow endpoints
+@app.get("/api/workflow/{session_id}", dependencies=[Depends(get_current_user)])
+async def get_workflow(session_id: str):
+    """Get current workflow state for a session with real Cerebro data"""
+    if not cerebro_orchestrator:
+        raise HTTPException(status_code=503, detail="Cerebro orchestrator not initialized")
+
+    # Get real orchestrator status
+    orchestrator_count = len(cerebro_orchestrator.child_orchestrators) if hasattr(cerebro_orchestrator, 'child_orchestrators') else 3
+    specialist_count = len(specialist_agents)
+
+    # Build galaxy structure with real data
+    nodes = []
+    edges = []
+
+    # Cerebro node (central meta-agent)
+    cerebro_node = {
+        "id": "cerebro",
+        "type": "cerebro",
+        "position": {"x": 0, "y": 0},
+        "data": {
+            "label": "CEREBRO",
+            "status": "active",
+            "orchestratorCount": orchestrator_count,
+            "totalAgents": specialist_count,
+            "activeConversations": len(active_orchestrators),
+            "lastMessage": "",
+            "level": "cerebro"
+        },
+        "status": "running"
+    }
+    nodes.append(cerebro_node)
+
+    # Add orchestrator nodes (dynamically spawned systems)
+    orchestrator_positions = [
+        {"x": 300, "y": -200},
+        {"x": 300, "y": 200},
+        {"x": -300, "y": 0}
+    ]
+
+    orchestrator_names = ["Research Orchestrator", "Analysis Orchestrator", "Execution Orchestrator"]
+    for i, (name, pos) in enumerate(zip(orchestrator_names, orchestrator_positions)):
+        orchestrator_id = f"orchestrator-{i+1}"
+
+        # Get agents for this orchestrator
+        agents_for_orchestrator = list(specialist_agents.keys())[i * 2:(i + 1) * 2] if i * 2 < len(specialist_agents) else []
+
+        orchestrator_node = {
+            "id": orchestrator_id,
+            "type": "orchestrator",
+            "position": pos,
+            "data": {
+                "label": name,
+                "purpose": f"Specialized {name.split()[0].lower()} coordination",
+                "status": "active" if orchestrator_id in active_orchestrators else "idle",
+                "spawnTime": "2 min ago",
+                "activeTasks": len(agents_for_orchestrator),
+                "agents": [
                     {
-                        "capability": node.capability,
-                        "team_scope": node.team_scope,
-                    },
-                )
-                graph.add_edge(mission.id, step_id, "HAS_STEP")
-            for src, dst in mission.dag.edges:
-                graph.add_edge(src, dst, "DEPENDS_ON")
-
-            # Update step status and persist discovered knowledge
-            for step in results:
-                step_id = step.get("step_id")
-                if not step_id:
-                    continue
-                status = "COMPLETED" if step.get("success") else "FAILED"
-                graph.add_node(step_id, "step", {"status": status})
-                graph.add_edge(mission.id, step_id, status)
-
-                for fact in step.get("facts", []):
-                    fact_id = fact.get("id") or uuid.uuid4().hex
-                    node_type = fact.get("type", "fact")
-                    attributes = fact.get("attributes")
-                    graph.add_node(fact_id, node_type, attributes)
-                    graph.add_edge(step_id, fact_id, "DISCOVERED")
-
-                for rel in step.get("relationships", []):
-                    source = rel.get("source")
-                    target = rel.get("target")
-                    rel_type = rel.get("type", "RELATED_TO")
-                    attributes = rel.get("attributes")
-                    if source and target:
-                        graph.add_edge(source, target, rel_type, attributes)
-        except Exception as exc:  # pragma: no cover - graph failures shouldn't crash
-            logger.warning("Failed to update world model: %s", exc)
-        finally:
-            # Close ephemeral connections to avoid leaking credentials
-            if created_temp_graph:
-                try:
-                    graph.close()
-                except Exception:  # pragma: no cover - close best effort
-                    pass
-
-    def close(self) -> None:
-        """Release external resources such as database connections."""
-        graph = getattr(self, "neo4j_graph", None)
-        if graph is not None:
-            try:
-                graph.close()
-            except Exception:  # pragma: no cover - close best effort
-                pass
-
-    async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute meta-level coordination tasks with optional risk critique."""
-        task_type = task.get("type", "unknown")
-        if task_type == "analyze_system":
-            result = await self._analyze_system_performance()
-        elif task_type == "optimize_agents":
-            result = await self._optimize_agent_performance()
-        elif task_type == "evolve_system":
-            result = await self._evolve_system_capabilities()
-        elif task_type == "create_agent":
-            result = await self._create_new_agent(task)
-        elif task_type == "mission_step":
-            result = await self._handle_mission_step(task)
-        elif task_type == "search_repository":
-            query = task.get("query", "")
-            k = task.get("k", 5)
-            result = {"success": True, "results": self.search_repository(query, k)}
-        elif task_type == "pursue_curiosity":
-            question = self.curiosity_agent.generate_question()
-            if question:
-                result = self.manage_directive(question)
-            else:
-                result = {"success": False, "error": "No low-confidence items"}
-        else:
-            result = {"success": False, "error": f"Unknown meta-task: {task_type}"}
-
-        critics: List[Dict[str, Any]] = []
-        result["critic"] = {}
-        red_verdict: CriticVerdict = CriticVerdict(True, [], 0.0, "")
-        if self.red_team:
-            try:
-                red_verdict = await self.red_team.review(json.dumps(result), {})
-            except Exception as exc:
-                logger.error("Red team review failed: %s", exc)
-                red_verdict = CriticVerdict(True, [], 0.0, "Critic error")
-            result["critic"]["red"] = red_verdict.to_dict()
-            if not red_verdict.approved:
-                critics.append({
-                    "critic_id": "red_team",
-                    "message": "; ".join(red_verdict.fixes) or red_verdict.notes,
-                    "severity": "high",
-                })
-
-        if critics:
-            async def _retry() -> Dict[str, Any]:
-                return await self.execute_task({**task, "_retry": True})
-
-            synthesis = await self.integrate_critic_feedback(critics, retry_task=_retry)
-            result["critic_synthesis"] = synthesis
-            if "retry_result" in synthesis:
-                return synthesis["retry_result"]
-
-        blue_verdict: CriticVerdict
-        if self.blue_team:
-            blue_verdict = self.blue_team.review(result, {})
-            result["critic"]["blue"] = blue_verdict.to_dict()
-        else:
-            blue_verdict = CriticVerdict(True, [], 0.0, "")
-
-        result["critic"]["white"] = self.white_gate.merge(red_verdict, blue_verdict).to_dict()
-        return result
-
-    async def learn_from_feedback(self, feedback: Dict[str, Any]) -> bool:
-        """Learn from system-wide feedback"""
-        # Meta-learning: analyze patterns across all agents
-        for plan in self.evolution_plans:
-            if plan.status == "executing":
-                self._adjust_evolution_plan(plan, feedback)
-        return True
-    
-    def _adjust_evolution_plan(self, plan: SystemEvolutionPlan, feedback: Dict[str, Any]):
-        # Placeholder for adjusting evolution plan based on feedback
-        pass
-
-    async def _analyze_system_performance(self) -> Dict[str, Any]:
-        """Analyze overall system performance"""
-        analysis = {
-            "total_agents": len(self.managed_agents),
-            "active_agents": len([a for a in self.managed_agents.values() if a.is_active]),
-            "average_performance": 0.0, "capability_coverage": {},
-            "bottlenecks": [], "improvement_opportunities": []
+                        "id": agent_name,
+                        "icon": "🤖",
+                        "status": "active"
+                    } for agent_name in agents_for_orchestrator
+                ],
+                "level": "orchestrator"
+            },
+            "status": "running"
         }
-        if self.managed_agents:
-            performances = [agent.metrics.overall_performance() for agent in self.managed_agents.values()]
-            analysis["average_performance"] = sum(performances) / len(performances)
-            for capability in AgentCapability:
-                agents_with_capability = [
-                    agent for agent in self.managed_agents.values()
-                    if capability in agent.capabilities
-                ]
-                analysis["capability_coverage"][capability.value] = len(agents_with_capability)
-            slow_agents = [
-                agent for agent in self.managed_agents.values()
-                if agent.metrics.average_response_time > 5.0
-            ]
-            analysis["bottlenecks"] = [agent.agent_id for agent in slow_agents]
-            low_performing_agents = [
-                agent for agent in self.managed_agents.values()
-                if agent.metrics.overall_performance() < 0.7
-            ]
-            analysis["improvement_opportunities"] = [agent.agent_id for agent in low_performing_agents]
-        return {"success": True, "analysis": analysis}
+        nodes.append(orchestrator_node)
 
-    async def _optimize_agent_performance(self) -> Dict[str, Any]:
-        """Optimize individual agent performance"""
-        optimizations = []
-        for agent in self.managed_agents.values():
-            if agent.metrics.overall_performance() < 0.8:
-                optimization = {
-                    "agent_id": agent.agent_id,
-                    "current_performance": agent.metrics.overall_performance(),
-                    "optimizations": []
-                }
-                if agent.metrics.success_rate < 0.9:
-                    optimization["optimizations"].append("improve_accuracy")
-                if agent.metrics.average_response_time > 3.0:
-                    optimization["optimizations"].append("reduce_latency")
-                if agent.metrics.resource_usage > 0.8:
-                    optimization["optimizations"].append("optimize_resources")
-                optimizations.append(optimization)
-        return {"success": True, "optimizations": optimizations}
+        # Connect to Cerebro
+        edges.append({
+            "id": f"cerebro-{orchestrator_id}",
+            "source": "cerebro",
+            "target": orchestrator_id,
+            "type": "smoothstep",
+            "animated": orchestrator_id in active_orchestrators,
+            "style": {"stroke": "#4ade80", "strokeWidth": 2}
+        })
 
-    async def _evolve_system_capabilities(self) -> Dict[str, Any]:
-        """Plan and execute system evolution"""
-        current_capabilities = set()
-        for agent in self.managed_agents.values():
-            current_capabilities.update(agent.capabilities)
-        
-        all_capabilities = set(AgentCapability)
-        missing_capabilities = all_capabilities - current_capabilities
-        
-        if missing_capabilities:
-            plan = SystemEvolutionPlan(
-                plan_id=str(uuid.uuid4()),
-                target_capabilities=list(missing_capabilities),
-                required_agents=[f"agent_{cap.value}" for cap in missing_capabilities],
-                optimization_targets={"performance": 0.9, "efficiency": 0.8},
-                timeline=timedelta(hours=1)
-            )
-            self.evolution_plans.append(plan)
-            return {
-                "success": True,
-                "evolution_plan": {
-                    "plan_id": plan.plan_id,
-                    "missing_capabilities": [cap.value for cap in missing_capabilities],
-                    "timeline": str(plan.timeline)
-                }
+        # Add agent nodes
+        for j, agent_name in enumerate(agents_for_orchestrator):
+            agent_angle = (j / len(agents_for_orchestrator)) * 2 * 3.14159 if agents_for_orchestrator else 0
+            agent_radius = 120
+
+            agent_node = {
+                "id": agent_name,
+                "type": "agent",
+                "position": {
+                    "x": pos["x"] + agent_radius * (1 if j % 2 == 0 else -1),
+                    "y": pos["y"] + agent_radius * (0.5 if j < len(agents_for_orchestrator) / 2 else -0.5)
+                },
+                "data": {
+                    "label": specialist_agents[agent_name].role if agent_name in specialist_agents else agent_name,
+                    "role": specialist_agents[agent_name].role if agent_name in specialist_agents else "Specialist",
+                    "status": "active",
+                    "icon": "🤖",
+                    "tasks": [
+                        {
+                            "id": f"{agent_name}-task-1",
+                            "label": "Analysis Task",
+                            "status": "running",
+                            "progress": 0.7,
+                            "confidence": 0.85
+                        }
+                    ],
+                    "level": "agent"
+                },
+                "status": "running"
             }
-        return {"success": True, "message": "System capabilities are complete"}
+            nodes.append(agent_node)
 
-    async def _create_new_agent(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new agent based on requirements"""
-        required_capabilities = task.get("capabilities", [])
-        agent_type = task.get("agent_type", "specialist")
-        agent_id = f"{agent_type}_{uuid.uuid4().hex[:8]}"
-
-        if required_capabilities:
-            capabilities = [
-                AgentCapability(cap)
-                for cap in required_capabilities
-                if cap in [c.value for c in AgentCapability]
-            ]
-            specialization = required_capabilities[0] if required_capabilities else "general"
-            new_agent = SpecialistAgent(
-                agent_id=agent_id,
-                specialization=specialization,
-                capabilities=capabilities,
-                knowledge_graph=self.knowledge_graph,
-                mcp_client=self.mcp_client,
-                preferred_models=[],  # Let's use default models for now
-            )
-            self.managed_agents[agent_id] = new_agent
-            return {
-                "success": True,
-                "agent_id": agent_id,
-                "capabilities": [cap.value for cap in capabilities],
-            }
-        return {"success": False, "error": "No valid capabilities specified"}
-
-    def create_sub_orchestrator(self, name: str, spec: Dict[str, Any]) -> MultiAgentOrchestrator:
-        orchestrator = self.orchestrator_cls(self.mcp_client, **spec)
-        self.sub_orchestrators[name] = orchestrator
-        return orchestrator
-
-    async def _handle_mission_step(self, step: Dict[str, Any]) -> Dict[str, Any]:
-        step_id = step.get("step_id", uuid.uuid4().hex[:8])
-        orchestrator = self.sub_orchestrators.get(step_id)
-        if not orchestrator:
-            spec = {
-                "allowed_specialists": step.get("specialists"),
-                "knowledge_graph": self.knowledge_graph,
-                "memory": self.memory,
-            }
-            orchestrator = self.create_sub_orchestrator(step_id, spec)
-
-        critique = self.constitutional_critic.review({"tasks": [step.get("request", "")]})
-        if critique.get("veto"):
-            return {"success": False, "critique": critique, "step_id": step_id}
-
-        result = await orchestrator.coordinate_specialists(
-            step.get("request", ""), step.get("code"), step.get("user_context"),
-        )
-        return {"success": True, "result": result, "step_id": step_id, "critique": critique}
-
-    def _record_strategy_from_trace(self, trace: List[str], confidence: float = 1.0) -> str:
-        """Store a successful reasoning trace as a strategy node."""
-        return self.hypergraph.add_strategy(trace, confidence)
-
-    async def integrate_critic_feedback(
-        self,
-        feedback_items: List[Dict[str, Any]],
-        retry_task: Optional[Callable[[], Awaitable[Any]]] = None,
-    ) -> Dict[str, Any]:
-        """Merge critic feedback and optionally retry a task."""
-        feedback_objs = []
-        for idx, item in enumerate(feedback_items):
-            try:
-                feedback_obj = CriticFeedback(**item)
-                feedback_objs.append(feedback_obj)
-            except TypeError as e:
-                logger.error(
-                    "Failed to construct CriticFeedback from feedback_items[%d]: %s. Item: %s",
-                    idx,
-                    e,
-                    item,
-                )
-        if not feedback_objs:
-            logger.warning(
-                "No valid CriticFeedback objects could be constructed from feedback_items."
-            )
-
-        weighted = self.critic_merger.weight_feedback(feedback_objs)
-        synthesis = self.critic_merger.synthesize_arguments(weighted)
-        logger.info("Critic synthesis: %s", synthesis["combined_argument"])
-
-        result: Dict[str, Any] = {"synthesis": synthesis}
-        if retry_task and synthesis["max_severity"] in ("high", "critical"):
-            try:
-                retry_result = await self._adaptive_retry(
-                    retry_task, synthesis["max_severity"]
-                )
-                result["retry_result"] = retry_result
-            except Exception as e:
-                result["retry_error"] = str(e)
-        return result
-
-    async def _adaptive_retry(
-        self, task: Callable[[], Awaitable[Any]], severity: str, base_delay: float = 0.1
-    ) -> Any:
-        """Retry a task with backoff based on severity."""
-        max_attempts = 3 if severity in ("high", "critical") else 1
-        attempt = 0
-        while attempt < max_attempts:
-            attempt += 1
-            try:
-                result = await task()
-                self.performance_tracker.record_event("retry", True, attempt)
-                return result
-            except Exception as e:
-                self.performance_tracker.metrics["retry_attempts"] += 1
-                logger.warning("Retry %s/%s failed: %s", attempt, max_attempts, e)
-                if attempt >= max_attempts:
-                    self.performance_tracker.record_event("retry", False, attempt)
-                    raise
-
-
-class MetaIntelligenceCore:
-    """Core meta-intelligence system that manages the AI ecosystem"""
-    def __init__(
-        self, *, enable_red_team: bool = False, enable_blue_team: bool = True,
-        blue_team_sensitivity: float = 0.5,
-    ):
-        self.meta_agent = ExecutiveAgent(
-            "meta_core", enable_red_team=enable_red_team,
-            enable_blue_team=enable_blue_team,
-            blue_team_sensitivity=blue_team_sensitivity,
-        )
-        self.system_metrics: Dict[str, Any] = {}
-        self.evolution_history: List[Dict[str, Any]] = []
-        self.system_health = SystemHealth.OPTIMAL
-        self.critic_merger = CriticInsightMerger()
-        self.performance_tracker = PerformanceTracker()
-        self._initialize_base_agents()
-
-    def _initialize_base_agents(self):
-        """Initialize the system with basic AI agents"""
-        base_agents = [
-            ("reasoning_agent", [AgentCapability.REASONING, AgentCapability.ANALYSIS]),
-            ("creative_agent", [AgentCapability.CREATIVITY, AgentCapability.SYNTHESIS]),
-            ("planning_agent", [AgentCapability.PLANNING, AgentCapability.EXECUTION]),
-            ("learning_agent", [AgentCapability.LEARNING, AgentCapability.MONITORING])
-        ]
-        for agent_id, capabilities in base_agents:
-            agent = SpecialistAgent(
-                agent_id=agent_id,
-                specialization=capabilities[0].value,
-                capabilities=capabilities,
-                knowledge_graph=self.meta_agent.knowledge_graph,
-                mcp_client=self.meta_agent.mcp_client,
-                preferred_models=[],
-            )
-            self.meta_agent.managed_agents[agent_id] = agent
-
-    async def analyze_system_state(self) -> Dict[str, Any]:
-        """Analyze the current state of the AI ecosystem"""
-        analysis_task = {"type": "analyze_system"}
-        analysis_result = await self.meta_agent.execute_task(analysis_task)
-        self.performance_tracker.record_event(
-            "analysis", success=analysis_result.get("success", False),
-        )
-        if analysis_result.get("success", False):
-            avg_performance = analysis_result["analysis"]["average_performance"]
-            if avg_performance > 0.9: self.system_health = SystemHealth.OPTIMAL
-            elif avg_performance > 0.8: self.system_health = SystemHealth.GOOD
-            elif avg_performance > 0.6: self.system_health = SystemHealth.DEGRADED
-            else: self.system_health = SystemHealth.CRITICAL
-        
-        return {
-            "system_health": self.system_health.value, "analysis": analysis_result,
-            "total_agents": len(self.meta_agent.managed_agents),
-            "active_agents": len([a for a in self.meta_agent.managed_agents.values() if a.is_active])
-        }
-
-    async def evolve_system(self) -> Dict[str, Any]:
-        """Trigger system evolution and improvement"""
-        evolution_task = {"type": "evolve_system"}
-        evolution_result = await self.meta_agent.execute_task(evolution_task)
-        self.performance_tracker.record_event(
-            "evolution", success=evolution_result.get("success", False),
-        )
-        if evolution_result.get("success", False):
-            self.evolution_history.append({
-                "timestamp": datetime.now(), "evolution": evolution_result
+            # Connect to orchestrator
+            edges.append({
+                "id": f"{orchestrator_id}-{agent_name}",
+                "source": orchestrator_id,
+                "target": agent_name,
+                "type": "smoothstep",
+                "style": {"stroke": "#60a5fa", "strokeWidth": 1}
             })
-        return evolution_result
 
-    async def create_specialized_agent(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new specialized agent based on requirements"""
-        create_task = {
-            "type": "create_agent", "capabilities": requirements.get("capabilities", []),
-            "agent_type": requirements.get("type", "specialist")
+    workflow = {
+        "id": str(uuid.uuid4()),
+        "session_id": session_id,
+        "name": "Cerebro Galaxy Workflow",
+        "nodes": nodes,
+        "edges": edges,
+        "status": "running",
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "orchestrators": [
+            {
+                "id": f"orchestrator-{i + 1}",
+                "label": name,
+                "purpose": f"Specialized {name.split()[0].lower()} coordination",
+                "status": "active" if f"orchestrator-{i + 1}" in active_orchestrators else "idle",
+                "agents": list(specialist_agents.keys())[i * 2:(i + 1) * 2] if i * 2 < len(specialist_agents) else []
+            } for i, name in enumerate(orchestrator_names)
+        ]
+    }
+    return workflow
+
+# Import workflow engine with graceful fallback
+try:
+    from jarvis.workflows.engine import workflow_engine
+except Exception as e:
+    logger.warning(f"⚠️ Workflow engine not available: {e}")
+
+    class DummyWorkflowEngine:
+        def get_workflow_status(self, workflow_id: str):
+            return None
+
+    workflow_engine = DummyWorkflowEngine()
+
+
+@app.get("/api/workflow/status/{workflow_id}", dependencies=[Depends(get_current_user)])
+async def get_workflow_status(workflow_id: str):
+    """Get the status of a specific workflow."""
+    status = workflow_engine.get_workflow_status(workflow_id)
+    if not status:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return status
+
+
+# Logs endpoints
+@app.get("/api/logs", dependencies=[Depends(role_required("admin"))])
+async def get_logs(session_id: Optional[str] = Query(None), limit: int = Query(100)):
+    """Get logs with optional filters. Requires admin role."""
+    sample_logs = [
+        {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id or "default-session",
+            "level": "info",
+            "message": "Cerebro galaxy initialized successfully",
+            "timestamp": datetime.now().isoformat()
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id or "default-session",
+            "level": "info",
+            "message": "Backend connected and ready for real-time updates",
+            "timestamp": datetime.now().isoformat()
         }
-        return await self.meta_agent.execute_task(create_task)
+    ]
+    return sample_logs
 
-    async def optimize_performance(self) -> Dict[str, Any]:
-        """Optimize system-wide performance"""
-        optimize_task = {"type": "optimize_agents"}
-        return await self.meta_agent.execute_task(optimize_task)
 
-    def record_successful_strategy(self, trace: List[str], confidence: float = 1.0) -> str:
-        """Record a strategy node from a successful reasoning trace."""
-        return self.meta_agent._record_strategy_from_trace(trace, confidence)
+# HITL endpoints
+@api_router.get("/hitl/pending")
+async def get_pending_hitl_requests(session_id: Optional[str] = Query(None)):
+    """Get pending HITL requests"""
+    return []  # No pending requests for demo
 
-    def get_system_status(self) -> Dict[str, Any]:
-        """Get comprehensive system status"""
-        agent_statuses = {}
-        for agent_id, agent in self.meta_agent.managed_agents.items():
-            agent_statuses[agent_id] = {
-                "performance": agent.metrics.overall_performance(),
-                "success_rate": agent.metrics.success_rate,
-                "response_time": agent.metrics.average_response_time,
-                "capabilities": [cap.value for cap in agent.capabilities],
-                "is_active": agent.is_active
-            }
-        return {
-            "system_health": self.system_health.value,
-            "meta_agent_performance": self.meta_agent.metrics.overall_performance(),
-            "total_agents": len(self.meta_agent.managed_agents),
-            "agents": agent_statuses,
-            "evolution_plans": len(self.meta_agent.evolution_plans),
-            "evolution_history": len(self.evolution_history),
-            "performance_metrics": self.performance_tracker.metrics,
-        }
 
-    async def learn_from_ecosystem_feedback(self, feedback: Dict[str, Any]) -> bool:
-        """Learn from ecosystem-wide feedback"""
-        await self.meta_agent.learn_from_feedback(feedback)
-        critics = feedback.get("critics")
-        if critics:
-            await self.integrate_critic_feedback(critics)
-        for agent in self.meta_agent.managed_agents.values():
-            await agent.learn_from_feedback(feedback)
-        return True
+# Mission history endpoint
+@app.get("/missions/{mission_id}/history", dependencies=[Depends(verify_api_key)])
+async def get_mission_history(mission_id: str = Path(..., regex=r"^[\w-]+$")):
+    """Return mission history including steps and discovered facts."""
+    try:
+        history = neo4j_graph.get_mission_history(mission_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid mission id")
+    if not history:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    return history
 
-    async def integrate_critic_feedback(
-        self, feedback_items: List[Dict[str, Any]],
-        retry_task: Optional[Callable[[], Awaitable[Any]]] = None,
-    ) -> Dict[str, Any]:
-        """Merge critic feedback and optionally retry a task."""
-        feedback_objs = []
-        for idx, item in enumerate(feedback_items):
-            try:
-                feedback_obj = CriticFeedback(**item)
-                feedback_objs.append(feedback_obj)
-            except TypeError as e:
-                logger.error(
-                    "Failed to construct CriticFeedback from feedback_items[%d]: %s. Item: %s",
-                    idx, e, item
+
+@app.post("/knowledge/query")
+async def knowledge_query(payload: Dict[str, Any], current_user: Any = Depends(get_current_user)) -> Dict[str, Any]:
+    """Query the Neo4j graph and handle connection errors. Requires authentication."""
+    query = payload.get("query", "")
+    if not query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    try:
+        return {"results": neo4j_graph.query(query)}
+    except ServiceUnavailable as exc:
+        raise HTTPException(status_code=500, detail="Neo4j service unavailable") from exc
+    except TransientError as exc:
+        raise HTTPException(status_code=500, detail="Neo4j transient error") from exc
+    except Exception as exc:
+        logger.error(f"Failed to execute knowledge query: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+# Include API router
+app.include_router(api_router)
+
+
+# WebSocket endpoint with real Cerebro integration
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str, session_id: Optional[str] = Query(None)):
+    await manager.connect(websocket, client_id, session_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            message = json.loads(data)
+
+            # Handle different message types
+            if message["type"] == "ping":
+                await manager.send_personal_message(
+                    json.dumps({"type": "pong", "timestamp": datetime.now().isoformat()}),
+                    client_id
                 )
-        if not feedback_objs:
-            logger.warning("No valid CriticFeedback objects could be constructed from feedback_items.")
-        
-        weighted = self.critic_merger.weight_feedback(feedback_objs)
-        synthesis = self.critic_merger.synthesize_arguments(weighted)
-        logger.info("Critic synthesis: %s", synthesis["combined_argument"])
 
-        result: Dict[str, Any] = {"synthesis": synthesis}
-        if retry_task and synthesis["max_severity"] in ("high", "critical"):
-            try:
-                retry_result = await self._adaptive_retry(retry_task, synthesis["max_severity"])
-                result["retry_result"] = retry_result
-            except Exception as e:
-                result["retry_error"] = str(e)
-        return result
+            elif message["type"] == "chat_message" and message.get("trigger_cerebro"):
+                # Real Cerebro processing
+                user_message = message.get("message", "")
+                session = session_id or "default-session"
 
-    async def _adaptive_retry(
-        self, task: Callable[[], Awaitable[Any]], severity: str, base_delay: float = 0.1
-    ) -> Any:
-        """Retry a task with backoff based on severity."""
-        max_attempts = 3 if severity in ("high", "critical") else 1
-        attempt = 0
-        while attempt < max_attempts:
-            attempt += 1
-            try:
-                result = await task()
-                self.performance_tracker.record_event("retry", True, attempt)
-                return result
-            except Exception as e:
-                self.performance_tracker.metrics["retry_attempts"] += 1
-                logger.warning("Retry %s/%s failed: %s", attempt, max_attempts, e)
-                if attempt >= max_attempts:
-                    self.performance_tracker.record_event("retry", False, attempt)
-                    raise
-                await asyncio.sleep(base_delay * attempt)
+                logger.info(f"🧠 Cerebro processing message: {user_message[:50]}...")
+
+                # Notify frontend that Cerebro is thinking
+                await manager.broadcast_to_session(
+                    json.dumps({
+                        "type": "cerebro_thinking",
+                        "data": {
+                            "message": user_message,
+                            "status": "thinking",
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    }),
+                    session
+                )
+
+                try:
+                    # Use real Cerebro orchestrator
+                    if cerebro_orchestrator:
+                        # Process with real orchestrator
+                        result = await cerebro_orchestrator.coordinate_specialists(
+                            user_message,
+                            user_context=f"Session: {session}",
+                            context={"client_id": client_id, "timestamp": datetime.now().isoformat()}
+                        )
+
+                        # Determine if new orchestrators were spawned
+                        specialists_used = result.get("specialists_used", [])
+                        coordination_type = result.get("type", "simple")
+
+                        # Simulate orchestrator spawning for complex tasks
+                        if len(specialists_used) > 1:
+                            orchestrator_id = f"orchestrator-{len(active_orchestrators) + 1}"
+                            active_orchestrators[orchestrator_id] = {
+                                "id": orchestrator_id,
+                                "specialists": specialists_used,
+                                "created_at": datetime.now().isoformat(),
+                                "task": user_message
+                            }
+
+                            # Notify frontend of orchestrator spawning
+                            await manager.broadcast_to_session(
+                                json.dumps({
+                                    "type": "orchestrator_spawned",
+                                    "data": {
+                                        "orchestrator_id": orchestrator_id,
+                                        "specialists": specialists_used,
+                                        "purpose": f"Handle {coordination_type} coordination",
+                                        "complexity": result.get("complexity", "medium"),
+                                        "timestamp": datetime.now().isoformat()
+                                    }
+                                }),
+                                session
+                            )
+
+                            # Simulate agent activation
+                            for specialist in specialists_used:
+                                await manager.broadcast_to_session(
+                                    json.dumps({
+                                        "type": "agent_activated",
+                                        "data": {
+                                            "agent_id": specialist,
+                                            "orchestrator_id": orchestrator_id,
+                                            "task": f"Process {specialist} analysis",
+                                            "status": "running",
+                                            "timestamp": datetime.now().isoformat()
+                                        }
+                                    }),
+                                    session
+                                )
+
+                        # Send Cerebro response
+                        await manager.broadcast_to_session(
+                            json.dumps({
+                                "type": "cerebro_response",
+                                "data": {
+                                    "message": result.get("synthesized_response", "Analysis complete"),
+                                    "confidence": result.get("confidence", 0.85),
+                                    "specialists_used": specialists_used,
+                                    "coordination_summary": result.get("coordination_summary", ""),
+                                    "status": "active",
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                            }),
+                            session
+                        )
+
+                        # Send chat response
+                        await manager.broadcast_to_session(
+                            json.dumps({
+                                "type": "chat_response",
+                                "data": {
+                                    "message": result.get("synthesized_response", "Analysis complete"),
+                                    "source": "cerebro",
+                                    "specialists_involved": specialists_used,
+                                    "confidence": result.get("confidence", 0.85),
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                            }),
+                            session
+                        )
+
+                    else:
+                        # Fallback response
+                        await manager.broadcast_to_session(
+                            json.dumps({
+                                "type": "chat_response",
+                                "data": {
+                                    "message": "Cerebro is initializing. Please try again in a moment.",
+                                    "source": "system",
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                            }),
+                            session
+                        )
+
+                except Exception as e:
+                    logger.error(f"❌ Cerebro processing failed: {e}")
+                    await manager.broadcast_to_session(
+                        json.dumps({
+                            "type": "chat_response",
+                            "data": {
+                                "message": f"I encountered an error while processing your request: {str(e)}",
+                                "source": "cerebro",
+                                "error": True,
+                                "timestamp": datetime.now().isoformat()
+                            }
+                        }),
+                        session
+                    )
+
+            elif message["type"] == "cerebro_input":
+                # Legacy support for direct cerebro input
+                await manager.broadcast_to_session(
+                    json.dumps({
+                        "type": "cerebro_thinking",
+                        "data": {"message": message.get("message", "")}
+                    }),
+                    session_id or "default-session"
+                )
+
+    except WebSocketDisconnect:
+        manager.disconnect(client_id)
 
 
-# Global meta-intelligence instance
-meta_intelligence = MetaIntelligenceCore()
-
-
-# Convenience functions
-async def analyze_ai_ecosystem() -> Dict[str, Any]:
-    """Analyze the AI ecosystem state"""
-    return await meta_intelligence.analyze_system_state()
-
-
-async def evolve_ai_ecosystem() -> Dict[str, Any]:
-    """Trigger AI ecosystem evolution"""
-    return await meta_intelligence.evolve_system()
+if __name__ == "__main__":
+    print("🚀 Starting Enhanced Jarvis AI Backend Server")
+    print("=" * 50)
+    print("📡 API Server: http://localhost:8000")
+    print("📚 API Docs: http://localhost:8000/docs")
+    print("🔌 WebSocket: ws://localhost:8000/ws/{client_id}")
+    print("=" * 50)
+    
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

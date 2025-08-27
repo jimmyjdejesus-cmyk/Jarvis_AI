@@ -1,11 +1,16 @@
 import sys
 import pathlib
 import random
+import os
 from collections import deque
 from dataclasses import dataclass
 from typing import List, Any
 import pytest
+import unittest
+from unittest.mock import patch
 from pathlib import Path
+from fastapi.testclient import TestClient
+from app.main import app
 
 # Ensure repository root on path for `jarvis` package
 root = Path(__file__).resolve().parents[1]
@@ -77,6 +82,36 @@ def mock_project_memory(monkeypatch, tmp_path):
     return ProjectMemory(persist_directory=str(tmp_path))
 
 
+class TestAPI(unittest.TestCase):
+
+    def setUp(self):
+        os.environ["JARVIS_API_KEY"] = "test-key"
+        self.client = TestClient(app)
+        self.headers = {"X-API-Key": "test-key"}
+
+    @patch('app.main.workflow_engine')
+    def test_get_workflow_status_found(self, mock_workflow_engine):
+        mock_workflow_engine.get_workflow_status.return_value = {
+            "workflow_id": "test_id",
+            "status": "completed",
+        }
+        response = self.client.get("/api/workflow/status/test_id", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "completed")
+        mock_workflow_engine.get_workflow_status.assert_called_once_with("test_id")
+
+    @patch('app.main.workflow_engine')
+    def test_get_workflow_status_not_found(self, mock_workflow_engine):
+        mock_workflow_engine.get_workflow_status.return_value = None
+        response = self.client.get("/api/workflow/status/not_found_id", headers=self.headers)
+        self.assertEqual(response.status_code, 404)
+        mock_workflow_engine.get_workflow_status.assert_called_once_with("not_found_id")
+
+    def test_api_key_required(self):
+        response = self.client.get("/api/workflow/status/test_id")
+        self.assertEqual(response.status_code, 401)
+
+
 def test_buffer_capacity():
     mem = ReplayMemory(capacity=3)
     for i in range(4):
@@ -127,3 +162,6 @@ def test_push_and_recall(tmp_path):
     log_content = bus.read_log()
     assert "push" in log_content
     assert "recall" in log_content
+
+if __name__ == '__main__':
+    unittest.main()
