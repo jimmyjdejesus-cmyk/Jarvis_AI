@@ -176,3 +176,7 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
 - Executed `pytest -q` to confirm no warnings or regressions.
 
+
+- Centralized API key authentication by moving /api routes to APIRouter with verify_api_key dependency.
+- Ran flake8 on app/main.py (multiple pre-existing style violations).
+- Executed pytest -q; collection failed with TypeError in mission history Path and missing modules.
