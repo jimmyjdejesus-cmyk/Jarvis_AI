@@ -62,9 +62,9 @@ class AgentSpec:
     name: str
     run: Callable[..., Awaitable[Any]]
     description: str | None = None
-    inputs: Optional[List[str]] = None
-    outputs: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    inputs: List[str] | None = None
+    outputs: List[str] | None = None
+    metadata: Dict[str, Any] | None = None
 
 
 @dataclass
