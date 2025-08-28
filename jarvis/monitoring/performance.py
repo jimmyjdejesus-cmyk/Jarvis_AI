@@ -51,7 +51,7 @@ def _default_credibility() -> float:
         cfg = load_config()
         value = cfg.get("monitoring", {}).get("default_credibility", 1.0)
         return float(value)
-    except Exception:
+    except (TypeError, ValueError):
         return 1.0
 
 
