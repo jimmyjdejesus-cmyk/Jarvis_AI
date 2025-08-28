@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import secrets
 import os
 from typing import Dict
 
@@ -28,6 +28,8 @@ def create_mission(
     payload: MissionCreate, x_api_key: str = Header(...)
 ) -> Dict[str, str]:
     """Create a new mission and persist its DAG."""
+
+
     if not (api_key := os.environ.get("JARVIS_API_KEY")) or not secrets.compare_digest(x_api_key, api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
     dag = planner.plan(goal=payload.goal, context={"title": payload.title})

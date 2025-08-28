@@ -142,6 +142,10 @@ Added integration test verifying memory and knowledge graph persistence across m
 **Associated Data:**
 ```json
 {"files": ["test_mission_step_persistence.py"]}
+## Agent Log
+- Added API mission creation test and team assignment sub-DAG test.
+## Agent Interaction
+**Timestamp:** 2025-08-28T03:00:16+00:00
 ## Agent Log 2025-08-28
 - Added tests for SelfRAGGate logging and policy optimizer integration.
 ## Agent Log
@@ -159,6 +163,15 @@ Added integration test verifying memory and knowledge graph persistence across m
 **Team:** tests
 **Action/Message:**
 ```
+Repaired shared conftest with dependency stubs and in-memory RedisTaskQueue.
+Updated mission tests to patch jarvis.models.client and verified mission API.
+```
+**Associated Data:**
+```
+Files: tests/conftest.py, tests/test_mission_creation.py, tests/test_team_assignment.py
+```
+---
+
 Wrapped long lines in test_knowledge_query_get to satisfy flake8 E501.
 File is quite long; consider archiving older entries soon.
 ```

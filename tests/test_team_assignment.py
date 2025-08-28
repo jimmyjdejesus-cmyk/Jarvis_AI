@@ -1,6 +1,23 @@
-import jarvis.agents.mission_planner as agent_mp
+import pytest
+import sys
+import types
+
 from jarvis.orchestration.mission_planner import MissionPlanner
 from jarvis.world_model.knowledge_graph import KnowledgeGraph
+
+# Mock external dependencies for isolated testing
+agents_pkg = types.ModuleType("jarvis.agents")
+sys.modules["jarvis.agents"] = agents_pkg
+
+from jarvis.agents import mission_planner as agent_mp
+from jarvis.agents import curiosity_agent as curiosity_agent
+from jarvis.agents import mission_planner as mp
+from jarvis.agents import base_specialist as bs
+
+
+class _Dummy:
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 class DummyQueue:
