@@ -34,7 +34,7 @@ def check_dependencies():
         print(f"❌ Missing Python dependency: {e}")
         print("📦 Installing Python dependencies...")
         try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn", "websockets", "redis", "pydantic"], check=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "fastapi==0.111.0", "uvicorn", "websockets", "redis", "pydantic>=2.7,<3"], check=True)
             print("✅ Python dependencies installed successfully")
         except subprocess.CalledProcessError:
             print("❌ Failed to install Python dependencies")
@@ -113,8 +113,8 @@ def start_backend():
         # Install Python dependencies first
         print("📦 Installing Python dependencies...")
         subprocess.run([
-            sys.executable, "-m", "pip", "install", 
-            "fastapi", "uvicorn", "websockets", "redis", "pydantic"
+            sys.executable, "-m", "pip", "install",
+            "fastapi==0.111.0", "uvicorn", "websockets", "redis", "pydantic>=2.7,<3"
         ], check=True, capture_output=True)
         print("✅ Python dependencies ready")
         

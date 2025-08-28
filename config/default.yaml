@@ -73,3 +73,14 @@ neo4j:
   password: null  # retrieved from keyring service "jarvis"
   # For production, store credentials in the OS keyring and rotate them
   # regularly rather than committing them to configuration files.
+
+# Monitoring configuration
+monitoring:
+  default_severity: low
+  default_credibility: 1.0
+  unknown_severity_weight: 1
+  severity_weights:
+    low: 1
+    medium: 2
+    high: 3
+    critical: 4

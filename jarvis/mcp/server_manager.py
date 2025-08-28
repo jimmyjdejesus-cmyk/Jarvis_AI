@@ -182,7 +182,7 @@ class MCPServerManager:
             self.server_configs.items(),
             key=lambda x: x[1]["priority"]
         )
-        
+
         for server_name, config in sorted_servers:
             if include_unhealthy:
                 servers.append(server_name)

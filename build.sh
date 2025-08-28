@@ -26,7 +26,7 @@ if [ -f "start_jarvis_enhanced.py" ]; then
     
     # Install dependencies first
     echo "📦 Installing dependencies..."
-    pip install fastapi uvicorn websockets redis pydantic
+      pip install -r requirements.txt
     
     # Build frontend with npm
     if [ -d "src-tauri" ]; then
