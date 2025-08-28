@@ -5,6 +5,8 @@ ENABLE_RED_TEAM: false
 # Set ENABLE_BLUE_TEAM to true to enable the blue team critic that audits
 # final results for risk and ethical concerns.
 ENABLE_BLUE_TEAM: true
+
+# Route curiosity-generated questions into the directive queue
 ENABLE_CURIOSITY_ROUTING: true
 
 orch:

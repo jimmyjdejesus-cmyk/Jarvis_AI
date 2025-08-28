@@ -1,8 +1,11 @@
+# Agent Log - jarvis/ecosystem
+
+- Integrated `CuriosityRouter` to route questions generated after missions.
+- Added config flag `ENABLE_CURIOSITY_ROUTING` and routing in `_consider_curiosity`.
 ## Agent Log
 - 2024-05-29: initializing log for ecosystem directory.
 - 2024-05-29: Added WorkflowEngine DAG execution and graph retrieval to meta_intelligence.
 ## Dev Log
-
 - Updated Meta-Intelligence to route curiosity questions into mission directives with optional execution.
 - [2025-08-27T20:19:30+00:00] Added debug logging for disabled curiosity routing.
 
@@ -16,4 +19,3 @@ Modified meta_intelligence to persist mission step outcomes and initialize knowl
 **Associated Data:**
 ```json
 {"files": ["meta_intelligence.py"]}
-

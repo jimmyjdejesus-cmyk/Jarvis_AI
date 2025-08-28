@@ -63,80 +63,78 @@ logger = logging.getLogger(__name__)
 
 class ExecutiveAgent(AIAgent):
     """Executive agent that manages other AI agents."""
-        def __init__(
-                self,
-                agent_id: str,
-                mcp_client=None,
-                orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
-                memory_manager: Optional[MemoryManager] = None,
-                mission_planner: Optional['MissionPlanner'] = None,
-                enable_red_team: bool | None = None,
-                enable_blue_team: bool | None = None,
-                blue_team_sensitivity: float = 0.5,
-                enable_curiosity: bool | None = None,
-                enable_curiosity_routing: bool | None = None,
-            ):
-                super().__init__(agent_id, [
-                    AgentCapability.REASONING,
-                    AgentCapability.PLANNING,
-                    AgentCapability.MONITORING,
-                    AgentCapability.LEARNING,
-                ])
-                self.mcp_client = mcp_client
-                self.orchestrator_cls = orchestrator_cls
-                self.mission_planner = mission_planner or MissionPlanner()
-                self.memory_manager = memory_manager or MemoryManager(ProjectMemory())
-                self.session_manager = SessionManager()
-                self.curiosity_router: CuriosityRouter | None = None
+def __init__(
+        self,
+        agent_id: str,
+        mcp_client=None,
+        orchestrator_cls: Type[MultiAgentOrchestrator] = SubOrchestrator,
+        memory_manager: Optional[MemoryManager] = None,
+        mission_planner: Optional['MissionPlanner'] = None,
+        enable_red_team: bool | None = None,
+        enable_blue_team: bool | None = None,
+        blue_team_sensitivity: float = 0.5,
+        enable_curiosity: bool | None = None,
+        enable_curiosity_router: bool | None = None,
+    ):
+        super().__init__(agent_id, [
+            AgentCapability.REASONING,
+            AgentCapability.PLANNING,
+            AgentCapability.MONITORING,
+            AgentCapability.LEARNING,
+        ])
+        self.mcp_client = mcp_client
+        self.orchestrator_cls = orchestrator_cls
+        self.mission_planner = mission_planner or MissionPlanner()
+        self.session_manager = SessionManager()
+        self.constitutional_critic = ConstitutionalCritic(mcp_client=self.mcp_client)
+        self.memory: MemoryManager = memory_manager or ProjectMemory()
+        self.managed_agents: Dict[str, AIAgent] = {}
+        self.evolution_plans: List[SystemEvolutionPlan] = []
+        self.hypergraph = HierarchicalHypergraph()
+        self.curiosity_agent = CuriosityAgent(self.hypergraph)
+        self.curiosity_router: CuriosityRouter | None = None
 
-                if (
-                    enable_red_team is None
-                    or enable_blue_team is None
-                    or enable_curiosity is None
-                    or enable_curiosity_routing is None
-                ):
-                    try:
-                        from config.config_loader import load_config
-                        cfg = load_config()
-                    except Exception:
-                        cfg = {}
-                    if enable_red_team is None:
-                        enable_red_team = cfg.get("ENABLE_RED_TEAM", False)
-                    if enable_blue_team is None:
-                        enable_blue_team = cfg.get("ENABLE_BLUE_TEAM", True)
-                    if enable_curiosity is None:
-                        enable_curiosity = cfg.get("ENABLE_CURIOSITY", True)
-                    if enable_curiosity_routing is None:
-                        enable_curiosity_routing = cfg.get("ENABLE_CURIOSITY_ROUTING", True)
+        if (
+            enable_red_team is None
+            or enable_blue_team is None
+            or enable_curiosity is None
+            or enable_curiosity_router is None
+        ):
+            try:
+                from config.config_loader import load_config
+                cfg = load_config()
+            except Exception:
+                cfg = {}
+            if enable_red_team is None:
+                enable_red_team = cfg.get("ENABLE_RED_TEAM", False)
+            if enable_blue_team is None:
+                enable_blue_team = cfg.get("ENABLE_BLUE_TEAM", True)
+            if enable_curiosity is None:
+                enable_curiosity = cfg.get("ENABLE_CURIOSITY", True)
+            if enable_curiosity_router is None:
+                enable_curiosity_router = cfg.get("ENABLE_CURIOSITY_ROUTING", True)
 
-                self.enable_curiosity = bool(enable_curiosity)
-                self.enable_curiosity_routing = bool(enable_curiosity_routing)
-                self.enable_red_team = bool(enable_red_team)
-                self.red_team = RedTeamCritic(mcp_client) if self.enable_red_team else None
-                self.enable_blue_team = bool(enable_blue_team)
-                self.blue_team = (
-                    BlueTeamCritic(sensitivity=blue_team_sensitivity)
-                    if self.enable_blue_team
-                    else None
-                )
-                self.white_gate = WhiteGate()
-                self.system_monitor = SystemMonitor()
-                if self.mcp_client:
-                    self.mcp_client.monitor = self.system_monitor
-                self._initialize_knowledge_graph()
-                self.learning_history: List[Dict[str, Any]] = []
-                self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
-                self.critic_merger = CriticInsightMerger()
-                self.performance_tracker = PerformanceTracker()
-
-                self.workflow_engine = WorkflowEngine()
-                self._last_execution_workflow = None
-                if self.enable_curiosity_routing:
-                    self.curiosity_router = CuriosityRouter()
-
-            def log_event(self, event: str, payload: Any):
-                """Log an event."""
-                logger.info(f"Event '{event}': {payload}")
+        self.enable_curiosity = bool(enable_curiosity)
+        self.enable_curiosity_router = bool(enable_curiosity_router)
+        self.enable_red_team = bool(enable_red_team)
+        self.red_team = RedTeamCritic(mcp_client) if self.enable_red_team else None
+        self.enable_blue_team = bool(enable_blue_team)
+        self.blue_team = (
+            BlueTeamCritic(sensitivity=blue_team_sensitivity)
+            if self.enable_blue_team
+            else None
+        )
+        self.white_gate = WhiteGate()
+        self.system_monitor = SystemMonitor()
+        if self.mcp_client:
+            self.mcp_client.monitor = self.system_monitor
+        self._initialize_knowledge_graph()
+        self.learning_history: List[Dict[str, Any]] = []
+        self.sub_orchestrators: Dict[str, MultiAgentOrchestrator] = {}
+        self.critic_merger = CriticInsightMerger()
+        self.performance_tracker = PerformanceTracker()
+        if self.enable_curiosity_router:
+            self.curiosity_router = CuriosityRouter()
 
     def _initialize_knowledge_graph(self):
         """Connect to a persistent knowledge graph backend.
@@ -284,7 +282,7 @@ class ExecutiveAgent(AIAgent):
             return
 
         question = self.curiosity_agent.generate_question()
-        if not question:
+if not question:
             logger.debug("Curiosity agent produced no question.")
             return
 

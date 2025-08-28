@@ -1,4 +1,5 @@
-
+# Agent Log - tests
+- Added unit tests for `CuriosityRouter` covering enqueue behavior and disabled mode.
 # Agent Log
 - Added tests for `run_step` timeout handling, retry backoff, and performance tracking.
 ## Agent Log 2025-08-31
