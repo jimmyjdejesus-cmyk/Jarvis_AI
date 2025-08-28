@@ -22,10 +22,10 @@ class PerformanceTracker:
     )
 
     def record_event(self, event_type: str, success: bool, attempt: int = 1) -> None:
-    """Record execution metrics for orchestrator operations."""
-    if event_type == "step":
-        if not success:
-            self.metrics["failed_steps"] += 1
-        # A retry is any attempt after the first one, regardless of success.
-        if attempt > 1:
-            self.metrics["retry_attempts"] += 1
+        """Record execution metrics for orchestrator operations."""
+        if event_type == "step":
+            if not success:
+                self.metrics["failed_steps"] += 1
+            # A retry is any attempt after the first one, regardless of success.
+            if attempt > 1:
+                self.metrics["retry_attempts"] += 1

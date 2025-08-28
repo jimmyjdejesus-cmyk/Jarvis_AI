@@ -13,4 +13,8 @@
 ## Agent Log 2025-09-05
 - Exported CLI type aliases via `jarvis_ai.__init__` for consistency.
 - Added MCPClient integration tests for authentication failure and timeouts.
-- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
+- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).- Added BlackTeamOrchestrator and disruptive mission spawning logic.
+
+## Agent Log 2025-09-06
+- Introduced team settings tab with sliders for Black team curiosity, risk balance, token usage, and compute usage.
+- Fixed trailing class stub in `tests/conftest.py` to restore pytest execution.

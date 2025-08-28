@@ -175,5 +175,3 @@ def mock_neo4j_graph(monkeypatch):
         "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
     )
     yield mock_graph
-
-class ExecutiveAgent(AIAgent):
