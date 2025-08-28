@@ -1,4 +1,81 @@
-lst = self._edges.get(node, [])
+"""Shared pytest fixtures for the test suite."""
+
+import sys
+import types
+from pathlib import Path
+from unittest.mock import MagicMock
+import importlib.util
+
+import pytest
+
+# Stub external dependencies
+neo4j_module = types.ModuleType("neo4j")
+neo4j_module.GraphDatabase = object
+neo4j_module.Driver = object
+sys.modules.setdefault("neo4j", neo4j_module)
+
+langgraph_module = types.ModuleType("langgraph")
+graph_submodule = types.ModuleType("langgraph.graph")
+graph_submodule.StateGraph = object
+graph_submodule.END = None
+sys.modules.setdefault("langgraph", langgraph_module)
+sys.modules.setdefault("langgraph.graph", graph_submodule)
+
+aiohttp_module = types.ModuleType("aiohttp")
+sys.modules.setdefault("aiohttp", aiohttp_module)
+
+keyring_module = types.ModuleType("keyring")
+keyring_module.get_password = lambda *a, **k: None
+sys.modules.setdefault("keyring", keyring_module)
+keyring_errors_module = types.ModuleType("keyring.errors")
+class NoKeyringError(Exception):
+    pass
+keyring_errors_module.NoKeyringError = NoKeyringError
+sys.modules.setdefault("keyring.errors", keyring_errors_module)
+
+pydantic_module = types.ModuleType("pydantic")
+class BaseModel:  # minimal stand-in
+    pass
+
+def Field(*args, **kwargs):
+    return None
+pydantic_module.BaseModel = BaseModel
+pydantic_module.Field = Field
+def create_model(name, **fields):
+    return type(name, (BaseModel,), fields)
+pydantic_module.create_model = create_model
+sys.modules.setdefault("pydantic", pydantic_module)
+
+chromadb_module = types.ModuleType("chromadb")
+chromadb_utils = types.ModuleType("chromadb.utils")
+chromadb_embedding = types.ModuleType("chromadb.utils.embedding_functions")
+class EmbeddingFunction:
+    pass
+chromadb_embedding.EmbeddingFunction = EmbeddingFunction
+chromadb_utils.embedding_functions = chromadb_embedding
+sys.modules.setdefault("chromadb", chromadb_module)
+sys.modules.setdefault("chromadb.utils", chromadb_utils)
+sys.modules.setdefault("chromadb.utils.embedding_functions", chromadb_embedding)
+
+nx_module = types.ModuleType("networkx")
+class DiGraph:
+    def __init__(self):
+        self._nodes = {}
+        self._edges = {}
+    def add_node(self, node, **attrs):
+        self._nodes[node] = attrs
+    def add_edge(self, s, t, **attrs):
+        self._edges.setdefault(s, []).append((t, attrs))
+    def nodes(self, data=False):
+        return list(self._nodes.items()) if data else list(self._nodes.keys())
+    def edges(self, data=False):
+        edges = []
+        for s, lst in self._edges.items():
+            for t, attrs in lst:
+                edges.append((s, t, attrs) if data else (s, t))
+        return edges
+    def out_edges(self, node, data=False):
+        lst = self._edges.get(node, [])
         return [(node, t, attrs) if data else (node, t) for t, attrs in lst]
 nx_module.DiGraph = DiGraph
 sys.modules.setdefault("networkx", nx_module)
@@ -24,6 +101,14 @@ class SystemMonitor:
 monitor_submodule.SystemMonitor = SystemMonitor
 sys.modules.setdefault("jarvis.homeostasis", homeostasis_module)
 sys.modules.setdefault("jarvis.homeostasis.monitor", monitor_submodule)
+
+# Stub performance tracker to avoid importing heavy monitoring code
+performance_module = types.ModuleType("jarvis.monitoring.performance")
+class PerformanceTracker:
+    def __init__(self, *a, **k):
+        pass
+performance_module.PerformanceTracker = PerformanceTracker
+sys.modules.setdefault("jarvis.monitoring.performance", performance_module)
 
 memory_service = types.ModuleType("memory_service")
 models_sub = types.ModuleType("memory_service.models")
@@ -65,13 +150,12 @@ sys.modules.setdefault("memory_service.models", models_sub)
 
 # Ensure repository root on path
 ROOT = Path(__file__).resolve().parent.parent
+JARVIS_PATH = ROOT / "jarvis"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Lightweight workflows package to avoid circular imports
-spec = importlib.util.spec_from_file_location("jarvis.workflows.engine", ROOT / "jarvis/workflows/engine.py")
-engine_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(engine_module)
+# Lightweight workflows package stub to avoid heavy imports
+engine_module = types.ModuleType("jarvis.workflows.engine")
 workflows_pkg = types.ModuleType("jarvis.workflows")
 workflows_pkg.engine = engine_module
 sys.modules.setdefault("jarvis.workflows", workflows_pkg)
@@ -88,4 +172,4 @@ def mock_neo4j_graph(monkeypatch):
     monkeypatch.setattr(
         "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
     )
-    yield mock_graph
+    return mock_graph

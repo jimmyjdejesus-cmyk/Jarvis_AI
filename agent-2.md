@@ -28,3 +28,6 @@
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
 
+## Agent Log 2025-08-28
+- Added JARVIS_PATH constant in tests/conftest.py to expose jarvis package path.
+- Ran pytest to verify configuration loading.
