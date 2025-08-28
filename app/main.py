@@ -93,7 +93,7 @@ def set_credential(
 @app.get("/api/missions/{mission_id}")
 def get_mission(
     mission_id: str, x_api_key: str = Header(...)
-) -> Dict[str, object]:
+) -> Dict[str, Any]:
     """Retrieve a previously created mission."""
     if x_api_key != os.environ.get("JARVIS_API_KEY"):
         raise HTTPException(status_code=401, detail="Invalid API key")
