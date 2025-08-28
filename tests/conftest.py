@@ -59,3 +59,18 @@ for name in [
     "VectorParams",
 ]:
     setattr(qdrant_models, name, MagicMock())
+
+
+@pytest.fixture
+def mock_neo4j_graph(monkeypatch):
+    """Provide a mock Neo4j graph for tests."""
+
+    mock_graph = MagicMock()
+    mock_graph.connect = MagicMock()
+    mock_graph.close = MagicMock()
+    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
+
+    monkeypatch.setattr(
+        "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
+    )
+    yield mock_graph
