@@ -1,12 +1,11 @@
 import sys
 import types
-import pytest
+import asyncio
+from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
+from jarvis.orchestration.path_memory import PathMemory
+
 
 # Mock external dependencies for isolated testing
-sys.modules.setdefault("psutil", types.SimpleNamespace())
-sys.modules.setdefault("networkx", types.SimpleNamespace())
-dummy_neo4j = types.SimpleNamespace(GraphDatabase=object, Driver=object)
-sys.modules.setdefault("neo4j", dummy_neo4j)
 agents_pkg = types.ModuleType("jarvis.agents")
 sys.modules["jarvis.agents"] = agents_pkg
 
@@ -24,14 +23,8 @@ sys.modules["jarvis.agents.specialists"] = types.SimpleNamespace(
     DevOpsAgent=_Dummy,
 )
 
-sys.modules["jarvis.agents.specialist_registry"] = types.SimpleNamespace(
-    SPECIALIST_REGISTRY={},
-    create_specialist=lambda name, mcp_client, **_: _Dummy(),
-)
 sys.path.append(".")
 
-from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.orchestration.path_memory import PathMemory
 
 
 class DummyMCP:
@@ -67,8 +60,7 @@ class DummySpecialist:
         }
 
 
-@pytest.mark.asyncio
-async def test_parallel_orchestrator_auction_merge():
+def test_parallel_orchestrator_auction_merge():
     mcp = DummyMCP()
     orch = MultiAgentOrchestrator(mcp)
     orch.specialists = {
@@ -76,7 +68,9 @@ async def test_parallel_orchestrator_auction_merge():
         "b": DummySpecialist("b", 0.5),
     }
     analysis = {"specialists_needed": ["a", "b"], "complexity": "low"}
-    result = await orch._parallel_specialist_analysis("req", analysis, PathMemory(), None, None, None)
+    result = asyncio.run(
+        orch._parallel_specialist_analysis("req", analysis, PathMemory(), None, None, None)
+    )
     assert result["auction"]["winner"] == "a"
     assert "a:" in result["synthesized_response"].splitlines()[0]
     assert result["exploration_metrics"]["diversity"] >= 2

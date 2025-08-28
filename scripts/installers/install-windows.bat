@@ -125,7 +125,7 @@ echo Creating launcher script...
 echo @echo off
 echo cd /d "%INSTALL_DIR%"
 echo call venv\Scripts\activate.bat
-echo jarvis run
+echo jarvis run %%*
 echo pause
 ) > start-jarvis.bat
 
@@ -136,7 +136,7 @@ set DESKTOP=%USERPROFILE%\Desktop
 echo @echo off
 echo cd /d "%INSTALL_DIR%"
 echo call venv\Scripts\activate.bat
-echo jarvis run
+echo jarvis run %%*
 ) > "%DESKTOP%\Jarvis AI.bat"
 
 REM Installation complete

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from neo4j import GraphDatabase, Driver
+
+if TYPE_CHECKING:  # pragma: no cover
+    from jarvis.orchestration.mission import MissionDAG, MissionNode
 
 
 class Neo4jGraph:
@@ -62,3 +65,82 @@ class Neo4jGraph:
                 target=target_id,
                 props=props,
             )
+
+    # ------------------------------------------------------------------
+    # Mission DAG operations
+    def write_mission_dag(self, dag: "MissionDAG") -> None:
+        """Persist an entire :class:`MissionDAG` to Neo4j."""
+
+        with self.driver.session() as session:
+            session.run(
+                "MERGE (m:Mission {id: $mission_id}) SET m.rationale=$rationale",
+                mission_id=dag.mission_id,
+                rationale=dag.rationale,
+            )
+            for node in dag.nodes.values():
+                session.run(
+                    "MERGE (n:MissionNode {mission_id:$mission_id, step_id:$step_id}) "
+                    "SET n.capability=$capability, n.team_scope=$team_scope, "
+                    "n.hitl_gate=$hitl_gate, n.deps=$deps",
+                    mission_id=dag.mission_id,
+                    step_id=node.step_id,
+                    capability=node.capability,
+                    team_scope=node.team_scope,
+                    hitl_gate=node.hitl_gate,
+                    deps=node.deps,
+                )
+                session.run(
+                    "MATCH (m:Mission {id:$mission_id}), (n:MissionNode {mission_id:$mission_id, step_id:$step_id}) "
+                    "MERGE (m)-[:HAS_NODE]->(n)",
+                    mission_id=dag.mission_id,
+                    step_id=node.step_id,
+                )
+            for src, dst in dag.edges:
+                session.run(
+                    "MATCH (a:MissionNode {mission_id:$mission_id, step_id:$src}), "
+                    "(b:MissionNode {mission_id:$mission_id, step_id:$dst}) "
+                    "MERGE (a)-[:DEPENDS_ON]->(b)",
+                    mission_id=dag.mission_id,
+                    src=src,
+                    dst=dst,
+                )
+
+    # ------------------------------------------------------------------
+    def read_mission_dag(self, mission_id: str) -> "MissionDAG":
+        """Load a :class:`MissionDAG` from Neo4j."""
+
+        with self.driver.session() as session:
+            rationale = ""
+            result = session.run(
+                "MATCH (m:Mission {id:$mission_id}) RETURN m.rationale AS rationale",
+                mission_id=mission_id,
+            )
+            for record in result:
+                rationale = record.get("rationale", "")
+
+            node_records = session.run(
+                "MATCH (n:MissionNode {mission_id:$mission_id}) "
+                "RETURN n.step_id AS step_id, n.capability AS capability, "
+                "n.team_scope AS team_scope, n.hitl_gate AS hitl_gate, n.deps AS deps",
+                mission_id=mission_id,
+            )
+            from jarvis.orchestration.mission import MissionNode, MissionDAG
+
+            nodes: Dict[str, MissionNode] = {}
+            for rec in node_records:
+                nodes[rec["step_id"]] = MissionNode(
+                    step_id=rec["step_id"],
+                    capability=rec["capability"],
+                    team_scope=rec["team_scope"],
+                    hitl_gate=rec.get("hitl_gate", False),
+                    deps=rec.get("deps", []),
+                )
+
+            edge_records = session.run(
+                "MATCH (a:MissionNode {mission_id:$mission_id})-[:DEPENDS_ON]->(b:MissionNode {mission_id:$mission_id}) "
+                "RETURN a.step_id AS src, b.step_id AS dst",
+                mission_id=mission_id,
+            )
+            edges = [(rec["src"], rec["dst"]) for rec in edge_records]
+
+        return MissionDAG(mission_id=mission_id, nodes=nodes, edges=edges, rationale=rationale)

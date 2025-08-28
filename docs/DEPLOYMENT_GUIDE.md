@@ -26,8 +26,8 @@ pip install -e .
 
 **Usage after installation:**
 ```bash
-# Start the application
-jarvis run
+# Execute a mission
+jarvis run "hello world"
 
 # Initialize configuration
 jarvis config --init
@@ -125,7 +125,7 @@ lang_ecosystem:
 
 Access the web-based configuration interface:
 
-1. Start Jarvis AI: `jarvis run`
+1. Start Jarvis AI: `jarvis run "hello world"`
 2. Navigate to the Settings tab in the sidebar
 3. Configure settings through the intuitive interface
 4. Changes are saved to `config/config.yaml`
@@ -185,7 +185,7 @@ pip install -e .
 jarvis config --init
 
 # Start development server
-jarvis run --port 8501
+jarvis run "hello world" --port 8501
 ```
 
 ### 2. Production Deployment
@@ -221,7 +221,7 @@ jarvis config --init
 nano config/config.yaml
 
 # Start with production settings
-JARVIS_DEBUG_MODE=false jarvis run --host 0.0.0.0 --port 8501
+JARVIS_DEBUG_MODE=false jarvis run "hello world" --host 0.0.0.0 --port 8501
 ```
 
 ### 3. CI/CD Integration
@@ -334,7 +334,7 @@ jarvis config --init  # This merges with existing config
 jarvis config --validate
 
 # 5. Start with new CLI
-jarvis run
+jarvis run "hello world"
 ```
 
 ## 📊 Monitoring and Telemetry

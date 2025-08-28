@@ -5,6 +5,7 @@ ENABLE_RED_TEAM: false
 # Set ENABLE_BLUE_TEAM to true to enable the blue team critic that audits
 # final results for risk and ethical concerns.
 ENABLE_BLUE_TEAM: true
+ENABLE_CURIOSITY_ROUTING: true
 
 orch:
   min_novelty: 0.25
