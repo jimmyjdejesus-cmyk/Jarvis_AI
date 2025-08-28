@@ -23,3 +23,6 @@
 ## Agent Log 2025-09-07
 - Stubbed in-memory vector store and reusable MultiTeamOrchestrator fixture for tests; installed pytest-asyncio and flake8.
 - Formatted orchestration tests and fixtures with Black, documented fixtures, and resolved flake8 warnings.
+
+## Agent Log 2025-08-28
+- Added an extra blank line after the TeamWorkflowState comment and confirmed two blank lines before MultiTeamOrchestrator in jarvis/orchestration/graph.py to satisfy flake8 spacing.
