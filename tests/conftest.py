@@ -93,15 +93,4 @@ def load_graph_module(monkeypatch):
             return False
 
         async def evaluate(self, *args, **kwargs):  # pragma: no cover - stub
-            return None
-
-    pruning_stub.PruningEvaluator = PruningEvaluator
-    monkeypatch.setitem(sys.modules, "jarvis.orchestration.pruning", pruning_stub)
-
-    spec = importlib.util.spec_from_file_location(
-        "jarvis.orchestration.graph", root / "orchestration" / "graph.py"
-    )
-    module = importlib.util.module_from_spec(spec)
-    monkeypatch.setitem(sys.modules, spec.name, module)
-    spec.loader.exec_module(module)
-    return module
+            pass

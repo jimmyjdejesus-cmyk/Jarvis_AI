@@ -153,7 +153,28 @@ File: test_cli.py
 - Fixed stray class definition in conftest.py causing IndentationError during pytest setup.
 {"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
+- Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.## Agent Log 2025-08-28
+- Restored conftest.py and added create_model stub to pydantic mock.
+## Agent Log 2025-09-07
+- Added PerformanceTracker unit tests covering success and failure retries.
+- Stubbed ecosystem and team agents in conftest to resolve import cycles.
+## Agent Log 2025-09-08
+- Ensured `sys` import appears before usage in `conftest.py` and installed FastAPI, qdrant-client, and fakeredis to reduce collection errors.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
+## Agent Log 2025-09-07
+- Replaced blanket stubs in `conftest.py` with a conditional `langgraph` shim and a keyring patch.
+- Converted `test_curiosity_routing` to use real `networkx` and `neo4j` libraries.
+- Added `test_knowledge_graph_networkx.py` to exercise `networkx.DiGraph` through `KnowledgeGraph`.
+- Retained a minimal `memory_service` stub in `test_curiosity_routing` to avoid requiring a running Qdrant instance.
+## Agent Log 2025-09-06
+- Added tests verifying allowed specialist propagation and enforcement in sub-orchestrators.
+## Agent Log 2025-09-07
+- Added thread-safe PersistentQueue tests for Redis failure and concurrency. File is lengthy; consider archiving old logs.
+- Added tests for file-backed ProjectMemory fallback.
+## Agent Log 2025-09-07
+- Stubbed ExecutiveAgent and MultiTeamOrchestrator in conftest for WhiteGate test execution.
+## Agent Log 2025-09-08
+- Added edge case tests for MultiTeamOrchestrator white gate behavior.
 ## Agent Interaction
 **Timestamp:** 2025-08-28T02:28:19+00:00
 **Agent ID:** openai-assistant
@@ -177,6 +198,7 @@ File is quite long; consider archiving older entries soon.
 File: tests/test_knowledge_query_get.py
 ```
 ---
+
 ## Agent Log 2025-09-07
 - Added tests verifying Black team context isolation, handling of non-dict White outputs, and parallel execution of the competitive pair.
 - Added test verifying Black team ignores White team context during graph execution.
@@ -187,4 +209,23 @@ File: tests/test_knowledge_query_get.py
 - Added edge-case test for non-dict White team outputs to ensure Black team
   context remains unchanged.
 - Parameterized non-dict White output test and added parallel execution coverage for the competitive pair.
-
+## Agent Interaction
+**Timestamp:** 2025-08-28T03:43:52+00:00
+**Agent ID:** openai-assistant
+**Team:** tests
+**Action/Message:**
+```
+Refactored test_api.py: converted top comment to Python style, ensured required imports, and added mission history endpoint test using create_test_app.
+```
+**Associated Data:**
+```
+File: tests/test_api.py
+```
+---
+## Agent Log 2025-09-07
+- Added test verifying Black team ignores White team context during graph execution.
+- File remains lengthy; consider archiving to agent-2.md soon.
+- Added unit test for AgentCore dynamic components.
+## Note
+File is very long; starting new logs in agent-2.md.
+- Extended AgentCore unit test to assert missing component raises KeyError.

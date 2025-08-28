@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph, END
 # Temporarily removed to resolve import error
 from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
 from jarvis.orchestration.pruning import PruningEvaluator
-from jarvis.orchestration.context_utils import filter_team_outputs
+from jarvis.orchestration.context_utils import filter_context, filter_team_outputs
 
 from jarvis.critics import WhiteGate, CriticVerdict
 from jarvis.critics import RedTeamCritic, BlueTeamCritic
@@ -155,7 +155,7 @@ class MultiTeamOrchestrator:
             return {"status": "merged"}
         return await asyncio.to_thread(self._run_team, team, state)
 
-    def _run_adversary_pair(
+def _run_adversary_pair(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
         """Run Red and Blue teams and merge critic verdicts via WhiteGate."""
@@ -289,18 +289,27 @@ class MultiTeamOrchestrator:
     def _run_innovators_disruptors(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
-        """Run the Black team in isolation from White team feedback."""
-        # Start from the shared context but drop keys derived from White team
-        # outputs so disruptive exploration isn't biased by security data.
-        black_agent = self.orchestrator.teams[INNOVATORS_DISRUPTORS_TEAM]
-        filtered_context = filter_team_outputs(
-            state["context"], state["team_outputs"], SECURITY_QUALITY_TEAM
-        )
+def _run_innovators_disruptors(
+    self, state: TeamWorkflowState
+) -> TeamWorkflowState:
+    """Run the Black team in isolation from White team feedback."""
+    # Start from the shared context but drop keys derived from White team
+    # outputs so disruptive exploration isn't biased by security data.
+    black_agent = self.orchestrator.teams[INNOVATORS_DISRUPTORS_TEAM]
+    filtered_context = filter_team_outputs(
+        state["context"], state["team_outputs"], SECURITY_QUALITY_TEAM
+    )
+    temp_state = dict(state)
+    temp_state["context"] = filtered_context
+
+    black_output = self._run_team(black_agent, temp_state)
+    state["team_outputs"][INNOVATORS_DISRUPTORS_TEAM] = black_output
+    return state
         temp_state = dict(state)
         temp_state["context"] = filtered_context
 
         black_output = self._run_team(black_agent, temp_state)
-        state["team_outputs"][INNOVATORS_DISRUPTORS_TEAM] = black_output
+state["team_outputs"][INNOVATORS_DISRUPTORS_TEAM] = black_output
         return state
 
     def _broadcast_findings(

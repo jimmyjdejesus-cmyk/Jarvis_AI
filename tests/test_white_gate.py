@@ -63,14 +63,21 @@ def build_orchestrator(monkeypatch):
 def test_white_gate_blocks_downstream_when_rejected(build_orchestrator):
     red_verdict = CriticVerdict(approved=False, fixes=[], risk=0.2, notes="")
     blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
-    orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
+orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
+
     state = {
+
         "objective": "test",
+
         "context": {},
+
         "team_outputs": {},
+
         "critics": {},
+
     }
     state = orchestrator._run_adversary_pair(state)
+
     assert state["halt"]
     assert not black_agent.called
 
@@ -78,7 +85,7 @@ def test_white_gate_blocks_downstream_when_rejected(build_orchestrator):
 def test_white_gate_allows_downstream_when_approved(build_orchestrator):
     red_verdict = CriticVerdict(approved=True, fixes=[], risk=0.0, notes="")
     blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
-    orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
+orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
     state = {
         "objective": "test",
         "context": {},
@@ -89,3 +96,35 @@ def test_white_gate_allows_downstream_when_approved(build_orchestrator):
     assert not state["halt"]
     orchestrator._run_innovators_disruptors(state)
     assert black_agent.called
+
+
+def test_white_gate_accepts_dict_outputs(build_orchestrator):
+    red_dict = {"approved": True, "risk": 0.0, "notes": ""}
+    blue_dict = {"approved": True, "risk": 0.1, "notes": ""}
+    orchestrator, black_agent, _white_agent = build_orchestrator(
+        red_dict, blue_dict
+    )
+    result = orchestrator.run("objective")
+    assert black_agent.called
+    assert result["halt"] is False
+
+
+def test_white_gate_handles_unexpected_output_type(build_orchestrator):
+    red_output = "unexpected"
+    blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
+    orchestrator, black_agent, _white_agent = build_orchestrator(
+        red_output, blue_verdict
+    )
+    result = orchestrator.run("objective")
+    assert not black_agent.called
+    assert result["halt"] is True
+
+
+def test_white_gate_calls_security_quality_always(build_orchestrator):
+    red_verdict = CriticVerdict(approved=False, fixes=[], risk=0.2, notes="")
+    blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
+    orchestrator, _black_agent, white_agent = build_orchestrator(
+        red_verdict, blue_verdict
+    )
+    orchestrator.run("objective")
+    assert white_agent.called

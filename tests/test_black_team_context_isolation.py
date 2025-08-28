@@ -40,7 +40,8 @@ def mto_cls(monkeypatch):
     team_agents_stub.TeamMemberAgent = TeamMemberAgent
     monkeypatch.setitem(
         sys.modules, "jarvis.orchestration.team_agents", team_agents_stub
-    )
+)
+  
 
     pruning_stub = types.ModuleType("jarvis.orchestration.pruning")
 
@@ -50,7 +51,7 @@ def mto_cls(monkeypatch):
 
     pruning_stub.PruningEvaluator = PruningEvaluator
     monkeypatch.setitem(
-        sys.modules, "jarvis.orchestration.pruning", pruning_stub
+        sys.modules, "jarvis.orchestration.team_agents", team_agents_stub
     )
 
     critics_stub = types.ModuleType("jarvis.critics")
@@ -100,6 +101,7 @@ def mto_cls(monkeypatch):
     langgraph_stub.StateGraph = StateGraph
     langgraph_stub.END = object()
     monkeypatch.setitem(sys.modules, "langgraph.graph", langgraph_stub)
+
     langgraph_pkg = types.ModuleType("langgraph")
     langgraph_pkg.graph = langgraph_stub
     monkeypatch.setitem(sys.modules, "langgraph", langgraph_pkg)
@@ -108,20 +110,23 @@ def mto_cls(monkeypatch):
         "jarvis.orchestration.graph", root / "orchestration" / "graph.py"
     )
     module = importlib.util.module_from_spec(spec)
-    monkeypatch.setitem(sys.modules, spec.name, module)
-    spec.loader.exec_module(module)
+monkeypatch.setitem(sys.modules, spec.name, module)
 
-    class DummyGraph:  # pragma: no cover - stub
-        def stream(self, *_args, **_kwargs):
-            return []
+spec.loader.exec_module(module)
 
-    monkeypatch.setattr(
-        module.MultiTeamOrchestrator,
-        "_build_graph",
-        lambda self: DummyGraph(),
-    )
 
-    return module.MultiTeamOrchestrator
+class DummyGraph:  # pragma: no cover - stub
+    def stream(self, *_args, **_kwargs):
+        return []
+
+
+monkeypatch.setattr(
+    module.MultiTeamOrchestrator,
+    "_build_graph",
+    lambda self: DummyGraph(),
+)
+
+return module.MultiTeamOrchestrator
 
 
 class DummyBlackAgent:
@@ -140,8 +145,7 @@ class DummyBlackAgent:
 
 class DummyOrchestrator:
     def __init__(self):
-        self.teams = {"black": DummyBlackAgent()}
-        self.team_status = {}
+    self.teams = {"innovators_disruptors": DummyBlackAgent()}
 
     def log(self, *args, **kwargs):  # pragma: no cover - noop
         pass
@@ -185,7 +189,7 @@ def test_black_team_excludes_white_team_context(mto_cls):
 
     mto._run_innovators_disruptors(state)
 
-    received = orchestrator.teams["black"].received_context
+received = orchestrator.teams["innovators_disruptors"].received_context
     assert "leak" not in received
     assert received["foo"] == "bar"
 
@@ -202,7 +206,7 @@ def test_black_team_handles_non_dict_white_output(mto_cls, white_output):
 
     mto._run_innovators_disruptors(state)
 
-    received = orchestrator.teams["black"].received_context
+    received = orchestrator.teams["innovators_disruptors"].received_context
     assert received["leak"] == "secret"
 
 
