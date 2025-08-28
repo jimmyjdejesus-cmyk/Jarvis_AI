@@ -44,6 +44,8 @@
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
 ## Agent Log 2025-09-07
+- Introduced PersistentQueue for CuriosityRouter with Redis integration and in-memory fallback.
+- Added tests covering enqueue/dequeue, failure handling, and concurrency.
 - Expanded CriticInsightMerger with weighted scoring and argument synthesis; added tests.
 ## Agent Log 2025-09-08
 - Moved default credibility and unknown severity weight for critic insights into configuration.
