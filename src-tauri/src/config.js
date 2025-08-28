@@ -2,6 +2,29 @@
 const storedHttp = localStorage.getItem('jarvis-backend-url') || 'http://localhost:8000';
 const storedWs = localStorage.getItem('jarvis-backend-ws') || 'ws://localhost:8000';
 const storedApiKey = localStorage.getItem('jarvis-api-key') || '';
+const storedTeamSettings = JSON.parse(localStorage.getItem('jarvis-team-settings') || '{}');
+
+export const TEAM_SETTINGS = {
+  Black: {
+    curiosity: storedTeamSettings?.Black?.curiosity ?? 50,
+    riskReward: storedTeamSettings?.Black?.riskReward ?? 50,
+    tokenUsage: storedTeamSettings?.Black?.tokenUsage ?? 50,
+    computeUsage: storedTeamSettings?.Black?.computeUsage ?? 50,
+  },
+};
+
+export const setTeamSetting = (team, key, value) => {
+  if (!TEAM_SETTINGS[team]) {
+    TEAM_SETTINGS[team] = {};
+  }
+  TEAM_SETTINGS[team][key] = value;
+  const current = JSON.parse(localStorage.getItem('jarvis-team-settings') || '{}');
+  const updated = {
+    ...current,
+    [team]: { ...(current[team] || {}), [key]: value },
+  };
+  localStorage.setItem('jarvis-team-settings', JSON.stringify(updated));
+};
 
 const API_CONFIG = {
   // Backend base URLs
