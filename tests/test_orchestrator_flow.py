@@ -45,7 +45,7 @@ class DummyMcpClient:
     async def generate_response(self, server, model, prompt):
         if "Analyze" in prompt:
             data = {
-                "specialists_needed": ["testspecialist"],
+                "specialists_needed": ["test_specialist"],
                 "complexity": "low",
             }
             return json.dumps(data)
@@ -57,6 +57,7 @@ class DummyMcpClient:
 class DummySpecialist:
     def __init__(self, name="test_specialist"):
         self.name = name
+        self.preferred_models: list[str] = []
 
     async def process_task(self, task, **kwargs):
         return {"response": "response"}
@@ -71,7 +72,7 @@ class IncompleteSpecialist(DummySpecialist):
 async def test_orchestrator_with_critic():
     mcp_client = DummyMcpClient()
     orchestrator = MultiAgentOrchestrator(mcp_client, specialists={})
-    orchestrator.specialists = {"testing": DummySpecialist()}
+    orchestrator.specialists = {"test_specialist": DummySpecialist()}
 
     result = await orchestrator.coordinate_specialists("test request")
     assert result["synthesized_response"] == "response"
@@ -81,7 +82,7 @@ async def test_orchestrator_with_critic():
 async def test_orchestrator_with_critic_veto():
     mcp_client = DummyMcpClient()
     orchestrator = MultiAgentOrchestrator(mcp_client, specialists={})
-    orchestrator.specialists = {"testing": DummySpecialist()}
+    orchestrator.specialists = {"test_specialist": DummySpecialist()}
 
     async def mock_review(plan):
         return {"veto": True, "violations": ["test violation"]}
@@ -102,7 +103,7 @@ async def test_dispatch_with_retry():
     specialist.process_task = AsyncMock(
         side_effect=[Exception("fail"), {"response": "success"}]
     )
-    orchestrator.specialists = {"testspecialist": specialist}
+    orchestrator.specialists = {"test_specialist": specialist}
 
     with pytest.raises(Exception) as e:
         await orchestrator.dispatch_specialist("test_specialist", "test")
@@ -252,10 +253,10 @@ async def test_dispatch_incomplete_response_returns_error():
     mcp_client = DummyMcpClient()
     specialist = IncompleteSpecialist()
     orchestrator = MultiAgentOrchestrator(
-        mcp_client, specialists={"testspecialist": specialist}
+        mcp_client, specialists={"test_specialist": specialist}
     )
 
-    result = await orchestrator.dispatch_specialist("testspecialist", "task")
+    result = await orchestrator.dispatch_specialist("test_specialist", "task")
     assert result["type"] == "error"
     assert result["error"] is True
 
@@ -273,3 +274,38 @@ async def test_coordinate_specialists_incomplete_response():
     spec_result = result["results"]["testing"]
     assert spec_result["error"] is True
     assert result["synthesized_response"].startswith("Analysis failed")
+
+
+@pytest.mark.asyncio
+async def test_coordinate_specialists_partial_failure():
+    """One failing specialist should not block other results."""
+
+    class MultiSpecClient(DummyMcpClient):
+        async def generate_response(self, server, model, prompt):  # noqa: D401
+            if "Analyze" in prompt:
+                return json.dumps(
+                    {
+                        "specialists_needed": ["good", "bad"],
+                        "complexity": "high",
+                    }
+                )
+            return await super().generate_response(server, model, prompt)
+
+    mcp_client = MultiSpecClient()
+    orchestrator = MultiAgentOrchestrator(
+        mcp_client,
+        specialists={"good": DummySpecialist(), "bad": DummySpecialist()},
+    )
+    orchestrator.dispatch_specialist = AsyncMock(
+        side_effect=[
+            {"specialist": "good", "response": "ok", "confidence": 1.0},
+            orchestrator._create_specialist_error("bad", "fail"),
+        ]
+    )
+    orchestrator.critic.review = AsyncMock(
+        return_value={"veto": False, "violations": []}
+    )
+
+    result = await orchestrator.coordinate_specialists("test request")
+    assert result["results"]["bad"]["error"] is True
+    assert result["results"]["good"]["response"] == "ok"
