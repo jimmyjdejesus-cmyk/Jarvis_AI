@@ -165,6 +165,11 @@ Added integration test verifying memory and knowledge graph persistence across m
 ## Agent Log 2025-09-08
 - Ensured `sys` import appears before usage in `conftest.py` and installed FastAPI, qdrant-client, and fakeredis to reduce collection errors.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
+## Agent Log 2025-09-07
+- Replaced blanket stubs in `conftest.py` with a conditional `langgraph` shim and a keyring patch.
+- Converted `test_curiosity_routing` to use real `networkx` and `neo4j` libraries.
+- Added `test_knowledge_graph_networkx.py` to exercise `networkx.DiGraph` through `KnowledgeGraph`.
+- Retained a minimal `memory_service` stub in `test_curiosity_routing` to avoid requiring a running Qdrant instance.
 ## Agent Log 2025-09-06
 - Added tests verifying allowed specialist propagation and enforcement in sub-orchestrators.
 ## Agent Log 2025-09-07

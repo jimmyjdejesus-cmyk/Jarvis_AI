@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import MagicMock
 import pytest
+import builtins
+import logging as _logging
 
 # flake8: noqa
 
@@ -17,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Stub external dependencies
+# Stub optional dependencies
 sys.modules.setdefault("neo4j", MagicMock())
 keyring_errors = types.ModuleType("keyring.errors")
 
@@ -223,6 +225,21 @@ workflows_pkg = types.ModuleType("jarvis.workflows")
 workflows_pkg.engine = engine_module
 sys.modules.setdefault("jarvis.workflows", workflows_pkg)
 sys.modules.setdefault("jarvis.workflows.engine", engine_module)
+
+
+@pytest.fixture(autouse=True)
+def stub_keyring(monkeypatch):
+    """Avoid accessing system keyring during tests."""
+    storage = {}
+
+    def _get_password(service, username):
+        return storage.get((service, username))
+
+    def _set_password(service, username, password):
+        storage[(service, username)] = password
+
+    monkeypatch.setattr(keyring, "get_password", _get_password)
+    monkeypatch.setattr(keyring, "set_password", _set_password)
 
 
 @pytest.fixture

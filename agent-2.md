@@ -43,6 +43,11 @@
 - Installed flake8 and ran linting and pytest for verification.
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
+## Agent Log 2025-09-07
+- Audited test suite stubs: simplified `tests/conftest.py` to rely on real libs and patch keyring.
+- Enabled integration with `networkx` by removing mock graph and adding `test_knowledge_graph_networkx.py`.
+- Updated curiosity routing test to use actual dependencies.
+=======
 ## Agent Log 2025-09-06
 - Restricted sub-orchestrator specialist set propagation and enforcement; updated planning tests and execution guards.
 ## Agent Log 2025-09-07
