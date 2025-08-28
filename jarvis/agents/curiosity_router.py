@@ -69,6 +69,12 @@ class PersistentQueue:
     def dequeue(self) -> Optional[Dict[str, Any]]:
         """Retrieve the next task from the queue if available."""
 
+        # Drain any locally queued items first so tasks enqueued while Redis
+        # was unreachable are not starved once connectivity returns.
+        with self._lock:
+            if self._local:
+                return self._local.popleft()
+
         try:
             if self.client is not None:
                 data = self.client.lpop(self.name)

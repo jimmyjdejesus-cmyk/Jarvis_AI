@@ -48,6 +48,24 @@ def test_queue_fallback_on_redis_failure() -> None:
     }
 
 
+def test_local_backlog_drained_first() -> None:
+    """Items queued during outages are processed before Redis items."""
+
+    # enqueue while redis is down so items go to local fallback
+    queue = PersistentQueue(client=FailingRedis())
+    router = CuriosityRouter(queue=queue)
+    router.route("Offline A?")
+    router.route("Offline B?")
+
+    # restore redis and enqueue a new item that should be processed last
+    queue.client = fakeredis.FakeRedis()
+    router.route("Online C?")
+
+    assert queue.dequeue()["request"].endswith("Offline A")
+    assert queue.dequeue()["request"].endswith("Offline B")
+    assert queue.dequeue()["request"].endswith("Online C")
+
+
 def test_persistent_queue_threadsafe() -> None:
     queue = PersistentQueue(client=None)  # use in-memory queue
 
