@@ -1,30 +1,9 @@
 from typing import Any, Dict
 
-from jarvis.critics import CriticVerdict
 import pytest
-from tests.test_black_team_context_isolation import _import_graph_module
-from jarvis.critics import CriticVerdict as RealCriticVerdict
 
-
-@pytest.fixture
-def graph_module():
-    with _import_graph_module() as module:
-        module.CriticVerdict = RealCriticVerdict
-
-        class StubWhiteGate:  # pragma: no cover - stub
-            def merge(self, red, blue):
-                return red if not red.approved else blue
-
-        module.WhiteGate = StubWhiteGate
-
-        class DummyGraph:  # pragma: no cover - stub
-            def stream(self, *_args, **_kwargs):
-                return []
-
-        module.MultiTeamOrchestrator._build_graph = (
-            lambda self: DummyGraph()
-        )
-        yield module
+from jarvis.critics import CriticVerdict
+from tests.conftest import load_graph_module
 
 
 class DummyAgent:
@@ -56,34 +35,35 @@ class DummyOrchestrator:
         pass
 
 
-def build_orchestrator(
-    red_verdict: CriticVerdict,
-    blue_verdict: CriticVerdict,
-    graph_module,
-):
-    red_agent = DummyAgent("Red", red_verdict)
-    blue_agent = DummyAgent("Blue", blue_verdict)
-    yellow_agent = DummyAgent("Yellow", {})
-    green_agent = DummyAgent("Green", {})
-    black_agent = DummyAgent("Black", {})
-    white_agent = DummyAgent("White", {})
-    orch = DummyOrchestrator(
-        {
-            "adversary_pair": (red_agent, blue_agent),
-            "competitive_pair": (yellow_agent, green_agent),
-            "security_quality": white_agent,
-            "innovators_disruptors": black_agent,
-        }
-    )
-    return graph_module.MultiTeamOrchestrator(orch), black_agent
+@pytest.fixture
+def build_orchestrator(monkeypatch):
+    module = load_graph_module(monkeypatch)
+    MultiTeamOrchestrator = module.MultiTeamOrchestrator
+
+    def _builder(red_verdict: CriticVerdict, blue_verdict: CriticVerdict):
+        red_agent = DummyAgent("Red", red_verdict)
+        blue_agent = DummyAgent("Blue", blue_verdict)
+        yellow_agent = DummyAgent("Yellow", {})
+        green_agent = DummyAgent("Green", {})
+        black_agent = DummyAgent("Black", {})
+        white_agent = DummyAgent("White", {})
+        orch = DummyOrchestrator(
+            {
+                module.ADVERSARY_PAIR_TEAM: (red_agent, blue_agent),
+                module.COMPETITIVE_PAIR_TEAM: (yellow_agent, green_agent),
+                module.SECURITY_QUALITY_TEAM: white_agent,
+                module.INNOVATORS_DISRUPTORS_TEAM: black_agent,
+            }
+        )
+        return MultiTeamOrchestrator(orch), black_agent
+
+    return _builder
 
 
-def test_white_gate_blocks_downstream_when_rejected(graph_module):
+def test_white_gate_blocks_downstream_when_rejected(build_orchestrator):
     red_verdict = CriticVerdict(approved=False, fixes=[], risk=0.2, notes="")
     blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
-    orchestrator, black_agent = build_orchestrator(
-        red_verdict, blue_verdict, graph_module
-    )
+    orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
     state = {
         "objective": "test",
         "context": {},
@@ -95,12 +75,10 @@ def test_white_gate_blocks_downstream_when_rejected(graph_module):
     assert not black_agent.called
 
 
-def test_white_gate_allows_downstream_when_approved(graph_module):
+def test_white_gate_allows_downstream_when_approved(build_orchestrator):
     red_verdict = CriticVerdict(approved=True, fixes=[], risk=0.0, notes="")
     blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
-    orchestrator, black_agent = build_orchestrator(
-        red_verdict, blue_verdict, graph_module
-    )
+    orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
     state = {
         "objective": "test",
         "context": {},
