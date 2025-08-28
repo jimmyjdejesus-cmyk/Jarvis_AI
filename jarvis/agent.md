@@ -15,3 +15,14 @@ Dev Log
 [2025-08-27T20:19:23+00:00] Refined curiosity routing (sanitization and debug logs).
 
 \n## Agent Log 2025-09-06\n- Wired WhiteGate into multi-team orchestration to merge red/blue critic verdicts.\n
+
+- Added file-backed fallback MemoryManager and ProjectMemory.
+## Agent Interaction
+**Timestamp:** $(date -Iseconds)
+**Agent ID:** openai-assistant
+**Team:** memory
+**Action/Message:**
+Added update/delete APIs and thread locking to fallback ProjectMemory.
+**Associated Data:**
+File: memory/__init__.py
+- Added file-backed fallback MemoryManager and ProjectMemory.

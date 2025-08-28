@@ -279,6 +279,22 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Introduced in-memory `apiKeyStore` and updated Neo4jConfigForm to avoid localStorage for API key retrieval.
 
 - Noted this log file is growing large; consider splitting logs by domain for future clarity.
+
+## Agent Interaction
+**Timestamp:** $(date -Iseconds)
+**Agent ID:** openai-assistant
+**Team:** memory
+**Action/Message:**
+```
+Extended fallback memory with update/delete APIs and thread locking. Added
+tests for CRUD operations and concurrent writes.
+```
+**Associated Data:**
+```
+Files: jarvis/memory/__init__.py, tests/test_project_memory_fallback.py
+```
+---
+- Noted this log file is growing large; consider splitting logs by domain for future clarity.
 ## Agent Interaction
 **Timestamp:** 2025-08-27T15:11:57.089609
 **Agent ID:** replay_memory
