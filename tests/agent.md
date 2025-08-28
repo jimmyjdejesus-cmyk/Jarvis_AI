@@ -88,7 +88,7 @@ except ImportError as e:
 ## Agent Log 2025-09-05
 - Added integration tests covering authentication failures and request timeouts for MCPClient.
 ## Agent Interaction
-**Timestamp:** $(date -Iseconds)
+**Timestamp:** 2025-08-28T23:07:00+00:00
 **Agent ID:** openai-assistant
 **Team:** tests
 **Action/Message:**
@@ -102,7 +102,7 @@ File: test_cli.py
 ---
 
 ## Agent Interaction
-**Timestamp:** $(date -Iseconds)
+**Timestamp:** 2025-08-28T23:07:00+00:00
 **Agent ID:** openai-assistant
 **Team:** tests
 **Action/Message:**
@@ -159,3 +159,4 @@ File is quite long; consider archiving older entries soon.
 File: tests/test_knowledge_query_get.py
 ```
 ---
+

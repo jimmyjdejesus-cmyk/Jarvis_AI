@@ -79,3 +79,4 @@ echo ""
 echo "💡 To run in development mode:"
 echo "   • Windows: start_jarvis.bat"
 echo "   • Cross-platform: python start_jarvis_enhanced.py"
+

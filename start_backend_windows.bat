@@ -44,3 +44,4 @@ REM Start the backend
 python main.py
 
 pause
+

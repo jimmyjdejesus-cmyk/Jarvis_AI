@@ -1,6 +1,7 @@
 # flake8: noqa
 """Shared pytest fixtures for the test suite."""
 
+import os
 import sys
 import types
 from pathlib import Path
@@ -8,6 +9,8 @@ from unittest.mock import MagicMock
 import importlib.util
 
 import pytest
+
+os.environ.setdefault("JARVIS_AUTH_SECRET", "test-secret")
 
 # Stub external dependencies
 neo4j_module = types.ModuleType("neo4j")
