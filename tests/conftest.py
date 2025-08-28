@@ -1,3 +1,5 @@
+"""Shared pytest fixtures for the test suite."""
+
 from __future__ import annotations
 
 # flake8: noqa
@@ -32,30 +34,3 @@ sys.modules.setdefault("keyring.errors", keyring_errors)
 
 langgraph_graph = types.ModuleType("langgraph.graph")
 langgraph_graph.END = object()
-
-
-class StateGraph:  # pragma: no cover - minimal stub
-    pass
-
-
-langgraph_graph.StateGraph = StateGraph
-langgraph_module = types.ModuleType("langgraph")
-langgraph_module.graph = langgraph_graph
-sys.modules.setdefault("langgraph", langgraph_module)
-sys.modules.setdefault("langgraph.graph", langgraph_graph)
-# Minimal qdrant_client stub so imports succeed without the heavy dependency
-qdrant_client = types.ModuleType("qdrant_client")
-qdrant_client.QdrantClient = MagicMock()
-qdrant_models = types.ModuleType("qdrant_client.models")
-qdrant_client.models = qdrant_models
-sys.modules.setdefault("qdrant_client", qdrant_client)
-sys.modules.setdefault("qdrant_client.models", qdrant_models)
-for name in [
-    "Distance",
-    "FieldCondition",
-    "Filter",
-    "MatchValue",
-    "PointStruct",
-    "VectorParams",
-]:
-    setattr(qdrant_models, name, MagicMock())
