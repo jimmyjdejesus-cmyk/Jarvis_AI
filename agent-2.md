@@ -115,6 +115,16 @@ File: tests/test_api.py
 ```
 ---
 
+## Agent Log 2025-08-28
+- Cleaned orchestrator imports and resolved line-length/trailing whitespace via black and flake8.
+- Restored tests/conftest.py and added pydantic.create_model stub; installed test deps but pytest still fails (missing streamlit).
+## Agent Log 2025-09-07
+- Installed bs4, PyYAML, and Redis to unblock tests; stubs added for ecosystem and team agents.
+- Introduced PerformanceTracker tests validating retry metrics.
+## Agent Log 2025-09-08
+- Trimmed long lines and unused imports in `jarvis/workflows/engine.py` to satisfy flake8.
+- Pinned `beautifulsoup4` and `pyyaml` versions and installed FastAPI, qdrant-client, and fakeredis for test collection.
+- Patched `tests/conftest.py` to ensure early `sys` import and attempted full pytest run (17 collection errors remain).
 ## Agent Interaction
 **Timestamp:** 2025-08-28T03:46:07+00:00
 Shortened lines in tests/test_knowledge_query_get.py to meet 79-character limit.
@@ -138,7 +148,6 @@ Added httpx dependency for FastAPI TestClient support.
 File: requirements.txt
 ```
 ---
-=======
 Pinned FastAPI-related dependencies and updated startup scripts to install from requirements.
 ```
 **Associated Data:**

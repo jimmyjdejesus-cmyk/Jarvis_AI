@@ -132,7 +132,7 @@ class MultiTeamOrchestrator:
             return {"status": "merged"}
         return await asyncio.to_thread(self._run_team, team, state)
 
-    def _run_adversary_pair(
+def _run_adversary_pair(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
         """Run Red and Blue teams and merge critic verdicts via WhiteGate."""
