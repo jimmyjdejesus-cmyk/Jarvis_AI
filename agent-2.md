@@ -1,18 +1,27 @@
 ## Agent Log 2025-09-02
 - Documented `run_meta_agent` return values and exposed mission result from CLI.
 - Updated CLI tests to verify returned mission result.
-- Ran flake8 and pytest.
+
 ## Agent Log 2025-09-03
 - Refined CLI type hints and added helper for building mission context.
 - Introduced MCPClient integration test with a local aiohttp server.
 - Pinned pygame, pydantic, and aiohttp versions in requirements.
+
 ## Agent Log 2025-09-04
-- Introduced TypedDict structures and type aliases in CLI for clearer mission planning and results.
-- Broadened MCPClient integration tests to cover server errors and tool execution.
+- Added TypedDict structures and type aliases in CLI for clearer mission planning and results.
+- Expanded MCPClient integration tests to cover server errors and tool execution.
 - Pinned FastAPI, Uvicorn, NetworkX, and Requests versions for improved dependency security.
+
 ## Agent Log 2025-09-05
 - Exported CLI type aliases via `jarvis_ai.__init__` for consistency.
 - Added MCPClient integration tests for authentication failure and timeouts.
+## Agent Log 2025-09-06
+- Introduced team settings tab with sliders for Black team curiosity, risk balance, token usage, and compute usage.
+- Added BlackTeamOrchestrator and disruptive mission spawning logic.
+## Agent Log 2025-09-07
+- Removed trailing spaces from various modules to ensure blank lines are empty.
+- Added `networkx>=3.0` to requirements to align runtime dependencies with imports.
+- Centralized team context filtering via new helper and expanded tests for parallel executions.
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).## Agent Log 2025-08-28
 - Stubbed heavy dependencies in tests/conftest.py and provided in-memory task queue to restore pytest execution.
 - Adjusted mission tests to patch jarvis.models.client and run against FastAPI mission endpoints.
@@ -22,16 +31,10 @@
 - Stubbed heavy dependencies in tests/conftest.py and provided in-memory task queue to restore pytest execution.
 - Adjusted mission tests to patch jarvis.models.client and run against FastAPI mission endpoints.
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
-## Agent Log 2025-08-28
-- Integrated PolicyOptimizer and hypergraph journaling in orchestrator.
-- Wired ProjectMemory context retrieval and storage and added SelfRAGGate decision logging with tests.
-- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).- Added BlackTeamOrchestrator and disruptive mission spawning logic.
-## Agent Log 2025-09-06
 - Introduced team settings tab with sliders for Black team curiosity, risk balance, token usage, and compute usage.
 - Fixed trailing class stub in `tests/conftest.py` to restore pytest execution.
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).\n## Agent Log 2025-09-06\n- Integrated WhiteGate into adversary pair to merge critic verdicts and halt workflow when rejected.\n- Added tests verifying WhiteGate gating.\n
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
-## Agent Log 2025-09-06
 - Wired Red/Blue critics into multi-team graph with concurrent review and tests.
 - Implemented ExecutiveAgent planning and dynamic sub-orchestrator spawning.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
@@ -63,12 +66,16 @@
 - Expanded merger tests to vary default credibility and fallback severity weight.
 - Ran flake8 and pytest.
 ## Agent Log 2025-08-28
+- Integrated PolicyOptimizer and hypergraph journaling in orchestrator.
+- Wired ProjectMemory context retrieval and storage and added SelfRAGGate decision logging with tests.
+- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).- Added BlackTeamOrchestrator and disruptive mission spawning logic.
 - Refactored orchestration graph for PEP8 compliance, removed unused context variable, wrapped long lines, and added WhiteGate initialization. Ran flake8 with no errors.
+
 ## Agent Log 2025-09-07
 - Removed trailing spaces from various modules to ensure blank lines are empty.
 - Installed FastAPI and executed pytest; collection failed with import errors and syntax issues across multiple tests.
-## Agent Log 2025-09-07
 - Removed trailing spaces from various modules to ensure blank lines are empty.
+- Added `networkx>=3.0` to requirements to align runtime dependencies with imports.
 ## Agent Interaction
 **Timestamp:** 2025-08-28T02:28:19+00:00
 **Agent ID:** openai-assistant
@@ -83,18 +90,24 @@ Logged action in tests/agent.md.
 File: tests/test_knowledge_query_get.py
 ```
 ---
+## Agent Log 2025-09-07
+- Removed trailing spaces from various modules to ensure blank lines are empty.
+- Added `networkx>=3.0` to requirements to align runtime dependencies with imports.
+- Centralized team context filtering via new helper and expanded tests for parallel executions.
+- Centralized team context filtering via new helper and expanded tests for parallel executions.
+- Applied `filter_team_outputs` across adversary and competitive pairs for consistent White-team isolation.
+- Hardened helper to accept missing team outputs and added concurrent and missing-team tests.
+- Ran flake8 and pytest on updated modules.
 ## Agent Interaction
 **Timestamp:** 2025-08-28T03:43:52+00:00
 ---## Agent Log 2025-09-07
 - Added minimal `AgentCore` class with flexible initialization and placeholder `run` method.
 - Updated `agent.core` package to re-export `AgentCore` cleanly.
 - Executed targeted backend coordination test with `pytest` and ran `flake8` on modified files.
-
 ## Agent Log 2025-09-07
 - Enhanced AgentCore with component registry and helper methods.
 - Added unit test covering initialization and dynamic component attachment.
 - Ran flake8 and targeted pytest.
-
 ## Agent Log 2025-09-07
 - Updated AgentCore.get_component to raise KeyError for absent components.
 - Extended unit test to cover missing component path.
@@ -105,9 +118,7 @@ File: tests/test_knowledge_query_get.py
 - Pinned FastAPI to 0.111.x and Pydantic to 2.7+ across requirements, pyproject, startup scripts, and documentation.
 - Documented compatibility rationale and verified installation via pip (fastapi 0.111.0, pydantic 2.7.1).
 - Updated Windows guide and build scripts to install these pinned versions.
-- Ran pytest; collection failed with multiple import errors and missing modules.
-
-
+- Ran pytest; collection failed with multiple import errors and missing modules
 ## Agent Interaction
 **Timestamp:** 2025-08-28T02:28:19+00:00
 **Agent ID:** openai-assistant

@@ -21,3 +21,34 @@ def filter_context(
     """
     exclude_set = set(exclude)
     return {k: v for k, v in context.items() if k not in exclude_set}
+
+
+def filter_team_outputs(
+    context: Dict[str, Any],
+    team_outputs: Dict[str, Any] | None,
+    team: str,
+) -> Dict[str, Any]:
+    """Remove keys present in a team's outputs from the shared context.
+
+    Parameters
+    ----------
+    context:
+        Original context dictionary shared among orchestration teams.
+    team_outputs:
+        Optional mapping of team names to their latest outputs. If ``None`` or
+        not a mapping, the context is returned unchanged.
+    team:
+        Name of the team whose output keys should be excluded.
+
+    Returns
+    -------
+    Dict[str, Any]
+        Shallow copy of ``context`` without keys produced by ``team``.
+    """
+    output = (
+        team_outputs.get(team, {})
+        if isinstance(team_outputs, dict)
+        else {}
+    )
+    keys = output.keys() if isinstance(output, dict) else []
+    return filter_context(context, keys)
