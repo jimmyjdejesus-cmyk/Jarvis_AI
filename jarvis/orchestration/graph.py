@@ -102,7 +102,6 @@ class MultiTeamOrchestrator:
         return await asyncio.to_thread(self._run_team, team, state)
 
     def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
-def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
         """Runs the Red and Blue teams and merges critic verdicts via WhiteGate."""
         red_agent, blue_agent = self.orchestrator.teams["adversary_pair"]
 
