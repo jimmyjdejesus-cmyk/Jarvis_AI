@@ -64,6 +64,33 @@ File: tests/test_knowledge_query_get.py
 - Ran pytest; collection failed with multiple import errors and missing modules.
 
 
+## Agent Interaction
+**Timestamp:** 2025-08-28T02:28:19+00:00
+**Agent ID:** openai-assistant
+**Team:** root
+**Action/Message:**
+```
+Shortened lines in tests/test_knowledge_query_get.py to meet 79-character limit.
+Logged action in tests/agent.md.
+```
+**Associated Data:**
+```
+File: tests/test_knowledge_query_get.py
+```
+---
+## Agent Interaction
+**Timestamp:** $(date -Iseconds)
+**Agent ID:** openai-assistant
+**Team:** root
+**Action/Message:**
+```
+Pinned FastAPI-related dependencies and updated startup scripts to install from requirements.
+```
+**Associated Data:**
+```
+Files: requirements.txt, pyproject.toml, build.sh, start_backend.bat, start_backend_windows.bat
+```
+---
 ## Agent Log 2025-08-28
 - Added AgentSpec dataclass with run callback and metadata in orchestrator.
 - Exported orchestration dataclasses via __all__ and ran pytest.

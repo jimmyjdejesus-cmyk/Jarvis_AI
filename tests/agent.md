@@ -180,4 +180,3 @@ File is quite long; consider archiving older entries soon.
 ```
 File: tests/test_knowledge_query_get.py
 ```
----
