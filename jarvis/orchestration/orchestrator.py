@@ -13,21 +13,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
-from pathlib import Path
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import json
 from collections import defaultdict
 from dataclasses import dataclass
-
-from langgraph.graph import END, StateGraph
 
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
 from .semantic_cache import SemanticCache
 from .message_bus import HierarchicalMessageBus
 from jarvis.memory.project_memory import ProjectMemory
+from jarvis.learning.policy_optimizer import PolicyOptimizer
+from jarvis.world_model.hypergraph import HierarchicalHypergraph
 from jarvis.agents.specialist_registry import (
     get_specialist_registry,
     create_specialist,
@@ -97,11 +95,17 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         budgets: Optional[Dict[str, Any]] = None,
         memory: Optional[ProjectMemory] = None,
         performance_tracker: PerformanceTracker | None = None,
+        hypergraph: HierarchicalHypergraph | None = None,
+        policy_optimizer: PolicyOptimizer | None = None,
     ) -> None:
         self.mcp_client = mcp_client
         self.monitor = monitor
         self.knowledge_graph = knowledge_graph
         self.memory = memory
+        self.hypergraph = hypergraph
+        self.policy_optimizer = policy_optimizer or (
+            PolicyOptimizer(hypergraph) if hypergraph else None
+        )
         if specialists is None:
             self.specialists = {
                 name: create_specialist(name, mcp_client, knowledge_graph=knowledge_graph)
@@ -118,7 +122,6 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.message_bus = message_bus or HierarchicalMessageBus()
         self.budgets = budgets or {}
         self.performance_tracker = performance_tracker or PerformanceTracker()
-        from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         self.critic = ConstitutionalCritic(mcp_client=self.mcp_client)
 
@@ -152,6 +155,14 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
                 if name in set(allowed)
             }
 
+        mem_context: Any | None = step_ctx.context
+        if self.memory and run_id and not step_ctx.context:
+            try:
+                past = self.memory.query("orchestrator", run_id, step_ctx.request)
+                mem_context = "\n".join(item["text"] for item in past)
+            except Exception:
+                mem_context = None
+
         retry_policy = step_ctx.retry_policy or {}
         retries = retry_policy.get("retries", 0)
         backoff_base = retry_policy.get("backoff_base", 1)
@@ -164,7 +175,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
                 try:
                     coro = self.coordinate_specialists(
                         step_ctx.request,
-                        context=step_ctx.context,
+                        context=mem_context,
                         user_context=step_ctx.user_context,
                     )
                     if timeout is not None:
@@ -189,6 +200,33 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
             {"specialists_used": data.get("specialists_used", [])},
             run_id=run_id,
         )
+
+        score = data.get("oracle_score", 1.0 if data.get("type") != "error" else 0.0)
+        if self.hypergraph:
+            node_key = run_id or step_ctx.request
+            self.hypergraph.update_node(
+                1,
+                node_key,
+                {
+                    "request": step_ctx.request,
+                    "response": data.get("synthesized_response", ""),
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            )
+            if self.hypergraph.query(2, step_ctx.request) is None:
+                self.hypergraph.update_node(2, step_ctx.request, {"confidence": 0.5})
+        if self.policy_optimizer:
+            self.policy_optimizer.update_strategy(step_ctx.request, score)
+        if self.memory and run_id:
+            try:
+                self.memory.add(
+                    "orchestrator",
+                    run_id,
+                    data.get("synthesized_response", ""),
+                    {"request": step_ctx.request},
+                )
+            except Exception:
+                pass
         return StepResult(data=data, run_id=run_id or "", depth=step_ctx.recursion_depth)
 
     def list_child_orchestrators(self) -> List[str]:

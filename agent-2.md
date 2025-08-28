@@ -14,3 +14,6 @@
 - Exported CLI type aliases via `jarvis_ai.__init__` for consistency.
 - Added MCPClient integration tests for authentication failure and timeouts.
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
+## Agent Log 2025-08-28
+- Integrated PolicyOptimizer and hypergraph journaling in orchestrator.
+- Wired ProjectMemory context retrieval and storage and added SelfRAGGate decision logging with tests.
