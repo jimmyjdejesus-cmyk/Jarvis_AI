@@ -14,7 +14,7 @@ echo ✅ Python found
 
 REM Install dependencies
 echo 📦 Installing Python dependencies...
-pip install fastapi uvicorn websockets pydantic langgraph
+pip install fastapi==0.111.0 uvicorn websockets "pydantic>=2.7,<3" langgraph
 
 REM Navigate to app directory
 if not exist "app" (

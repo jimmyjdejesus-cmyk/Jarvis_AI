@@ -57,3 +57,9 @@ Logged action in tests/agent.md.
 File: tests/test_knowledge_query_get.py
 ```
 ---
+## Agent Log 2025-09-08
+- Pinned FastAPI to 0.111.x and Pydantic to 2.7+ across requirements, pyproject, startup scripts, and documentation.
+- Documented compatibility rationale and verified installation via pip (fastapi 0.111.0, pydantic 2.7.1).
+- Updated Windows guide and build scripts to install these pinned versions.
+- Ran pytest; collection failed with multiple import errors and missing modules.
+
