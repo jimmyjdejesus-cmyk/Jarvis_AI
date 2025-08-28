@@ -135,6 +135,9 @@ def __init__(
         self.performance_tracker = PerformanceTracker()
         if self.enable_curiosity_router:
             self.curiosity_router = CuriosityRouter()
+def log_event(self, event: str, payload: Any):
+        """Log an event."""
+        logger.info(f"Event '{event}': {payload}")
 
     def _initialize_knowledge_graph(self):
         """Connect to a persistent knowledge graph backend.

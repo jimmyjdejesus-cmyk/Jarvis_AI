@@ -1,46 +1,33 @@
-import sys
-import pathlib
 import random
-from collections import deque
 from dataclasses import dataclass
-from typing import List, Any
-import pytest
-from pathlib import Path
+from app.main import app
 
-# Ensure repository root on path for `jarvis` package
-root = Path(__file__).resolve().parents[1]
-sys.path.append(str(root / "jarvis"))
-
-# Import ProjectMemory without executing the full jarvis package
-import importlib.util
-
-project_memory_spec = importlib.util.spec_from_file_location(
-    "project_memory",
-    pathlib.Path(__file__).resolve().parents[1] / "jarvis" / "memory" / "project_memory.py",
-)
-project_memory = importlib.util.module_from_spec(project_memory_spec)
-sys.modules["project_memory"] = project_memory
-project_memory_spec.loader.exec_module(project_memory)
-ProjectMemory = project_memory.ProjectMemory
-
-from memory.memory_bus import MemoryBus
-from memory.replay_memory import ReplayMemory, Experience
+import jarvis.memory.project_memory as project_memory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.project_memory import ProjectMemory
+from jarvis.memory.replay_memory import ReplayMemory
 
 
+@dataclass
+class Experience:
+    state: int
+    action: int
+    reward: float
 
 
 class PrioritizedReplayMemory(ReplayMemory):
     """Replay memory with priority-based sampling and updates."""
 
     def sample(self, batch_size: int) -> List[Experience]:
-        priorities = [exp.priority for exp in self._storage]
+        priorities = [p for _, p in self.buffer]
         weights = [p / sum(priorities) for p in priorities]
-        chosen = random.choices(self._storage, weights=weights, k=batch_size)
-        return chosen
+        chosen = random.choices(list(self.buffer), weights=weights, k=batch_size)
+        return [exp for exp, _ in chosen]
 
     def update_priorities(self, indices: List[int], priorities: List[float]) -> None:
         for idx, p in zip(indices, priorities):
-            self._storage[idx].priority = p
+            exp, _ = self.buffer[idx]
+            self.buffer[idx] = (exp, p)
 
 
 @pytest.fixture
@@ -74,16 +61,16 @@ def mock_project_memory(monkeypatch, tmp_path):
 def test_buffer_capacity():
     mem = ReplayMemory(capacity=3)
     for i in range(4):
-        mem.add(Experience(i, i, float(i), i+1, False))
-    assert len(mem) == 3
-    states = [exp.state for exp in mem._storage]
+        mem.push(Experience(i, i, float(i)))
+    assert len(mem.buffer) == 3
+    states = [exp.state for exp, _ in mem.buffer]
     assert 0 not in states  # oldest dropped
 
 
 def test_random_sampling():
     mem = ReplayMemory(capacity=5)
     for i in range(5):
-        mem.add(Experience(i, i, float(i), i+1, False))
+        mem.push(Experience(i, i, float(i)))
     random.seed(0)
     batch = mem.sample(3)
     assert len(batch) == 3
@@ -93,24 +80,31 @@ def test_random_sampling():
 def test_priority_updates():
     mem = PrioritizedReplayMemory(capacity=5)
     for i in range(5):
-        mem.add(Experience(i, i, float(i), i+1, False))
+        mem.push(Experience(i, i, float(i)))
     mem.update_priorities([0, 1], [0.1, 0.9])
-    assert mem._storage[0].priority == 0.1
-    assert mem._storage[1].priority == 0.9
+    assert mem.buffer[0][1] == 0.1
+    assert mem.buffer[1][1] == 0.9
     random.seed(1)
     batch = mem.sample(2)
     assert len(batch) == 2
 
 
+def test_project_memory_recall(mock_project_memory: ProjectMemory):
+    mem = ReplayMemory(capacity=3, project_memory=mock_project_memory)
+    mem.push(Experience(1, 2, 3.0))
+    results = mock_project_memory.query("proj", "sess", "1-2-3.0", top_k=1)
+    assert results[0]["text"] == "1-2-3.0"
+
+
 def test_push_and_recall(tmp_path):
-    bus = MemoryBus(str(tmp_path))
-    memory = ReplayMemory(capacity=10, log_dir=str(tmp_path))
-    memory.add(Experience(state="s1", action="a1", reward=1.0, next_state="s2", done=False))
-    memory.add(Experience(state="s1", action="a2", reward=0.5, next_state="s3", done=True))
+    bus = MemoryBus(tmp_path)
+    memory = ReplayMemory(capacity=10, memory_bus=bus)
+    memory.push("s1", "a1", 1.0, "s2", False)
+    memory.push("s1", "a2", 0.5, "s3", True)
     recalled = memory.recall("s1", top_k=2)
     assert len(recalled) == 2
-    assert recalled[0].action == "a2"
-    assert recalled[1].action == "a1"
+    assert recalled[0][1] == "a2"
+    assert recalled[1][1] == "a1"
     log_content = bus.read_log()
-    assert "Inserted experience" in log_content
-    assert "Recall experience" in log_content
+    assert "push" in log_content
+    assert "recall" in log_content

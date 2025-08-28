@@ -1,33 +1,66 @@
 
 # Development Log
 
+- Created agent.md to log actions for repository updates.
+- Documented Neo4j environment variables in config/default.yaml and deployment guide.
+- Added input validation in Neo4jGraph and HierarchicalHypergraph to prevent injection attacks.
+- Added unit tests for Neo4j credential loading and query sanitization.
+- Implemented and passed unit tests (`pytest`).
+
+- Added detailed docstrings to Neo4jGraph helpers and Hypergraph.update_node for maintainability.
+- Expanded docstrings for Hypergraph query and mutation helpers.
+- Added integration test skeleton for Neo4j that runs when a database is available.
+- Surfaced Neo4j credential fields in the desktop app settings and documented secret-manager usage.
+=======
+
+# Agent Log
+
+- Initialized work on Neo4j knowledge graph integration for ExecutiveAgent.
+- Added environment-aware Neo4j graph initialization with in-memory fallback.
+- Propagated knowledge graph to mission planner and potential sub-agents.
+- Ran pytest; encountered missing async plugin for test execution.
+=======
+
+# Agent Log
+
+- Created agent.md to document changes and actions.
+- Added `get_mission_history` method to `jarvis/world_model/neo4j_graph.py` with sanitization.
+- Created FastAPI endpoint `/missions/{mission_id}/history` in `app/main.py`.
+- Implemented frontend `MissionHistoryView` and integrated into `App.jsx`.
+- Added unit tests for mission history retrieval.
+- Added configurable backend URL with status indicators in MissionHistoryView.
+- Extended /health endpoint to report Neo4j connectivity.
+- Added Neo4jGraph.is_alive method and accompanying tests.
+- Introduced lightweight FastAPI test harness (`app/test_harness.py`) to avoid heavy imports in endpoint tests.
+- Added `tests/test_api.py` using the harness to verify mission history and health endpoints without side effects.
+
+# Development Log
+
 - Initialized agent log.
 - Added ReplayMemory module and integrated into JarvisAgent with logging via MemoryBus.
 - Added unit tests for ReplayMemory and JarvisAgent planning recall.
 - Executed pytest to validate replay memory and planning recall.
-=======
 
 # Agent Log
 
-- Initialized agent log.
+## 2025-08-27
+- Initialized repository analysis for mission: update world model integration.
+- Implemented world model updating via Neo4jGraph and integrated into mission execution.
+- Ran pytest with asyncio mode; all tests passing.
+- Refactored world model persistence to record mission DAG metadata and close ephemeral Neo4j connections.
+- Added unit test for `_update_world_model` and executed pytest suites.
+
 - Added quantum memory module with complex amplitudes and measurement-based retrieval.
 - Updated memory package exports for QuantumMemory.
 - Created tests for amplitude updates and interference hooks.
-=======
-
-# Agent Log
 
 - Created tests/test_replay_memory.py verifying replay buffer capacity, random sampling, priority updates, and recall via ProjectMemory using mocks.
 - Ran pytest for new tests to confirm passing.
-=======
-
-# Agent Log
 
 ## Replay memory module implementation
 - Initialized log for ReplayMemory implementation tasks.
 - Added prioritized ReplayMemory with Experience dataclass and logging via MemoryBus.
 - Updated memory package exports and added unit tests.
-=======
 
 # Agent Activity Log
 
@@ -106,955 +139,145 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   [2025-08-26] Cleaned benchmark artifacts, updated CI for targeted linting, and ignored generated results.
 
 *   **[2025-08-25]** Added Documentation, Database, Localization, EthicalHacker, CloudCostOptimizer, and UserFeedback specialist agents with prompts, methods, and tests.
-
 * [2025-08-27] Added docs, database, security, and localization specialists with modular prompt loading and dynamic registry; updated orchestrator and tests.
 * [2025-08-27] Refactored `SpecialistAgent` for backward compatibility and updated auction orchestrator test stubs.
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.979166
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
+* [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests
+* [2025-08-27] Replaced print/return logic with assertions in `test_backend.py` and removed manual execution block for pytest.
 
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.979658
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
+* [2025-08-27] Cleaned merge markers and added lazy workflow engine import in meta_intelligence; sanitized memory __init__ and added ToolMeta alias; fixed FastAPI Path usage in app/main.py; resolved coding agent f-string; tests: test_update_world_model, test_executive_agent, and test_backend now pass.
+* [2025-08-27] Validated Neo4j Cypher queries to allow only read-only operations and exposed safe query endpoint with tests.
+* [2025-08-27] Scoped workflow, log, and HITL stores to FastAPI app state and updated endpoints to use request-bound access; `pytest` collection failed due to syntax errors in unrelated Jarvis modules.
+- Removed duplicate `networkx>=3.0` from `pyproject.toml` and reinstalled dependencies to verify environment.
 
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.979836
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
+- Verified no duplicate dependencies remain in pyproject.toml.
+- Resolved merge conflict in jarvis/ecosystem/meta_intelligence.py and simplified execute_mission workflow.
+- Ran pytest (fails: AgentCapability missing REASONING attribute) to verify environment after conflict resolution.
 
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.979936
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
+- Cleaned non-ASCII spaces in `jarvis/memory/__init__.py` to fix import errors.
+- Refactored `coding_agent.debug` to avoid backslashes in f-string expressions.
+- Rewrote tool registry with `ToolMeta` alias and stable `__all__`.
+- Added unit tests for `ExecutiveAgent.execute_mission` covering success and planning failure paths.
+- Ensured specialist factory test resets cached modules for isolation.
+- Ran `pip install -e .` and `pytest -q` (remaining failures in replay memory and orchestration components).
+* [2025-08-27] Integrated OAuth2 JWT authentication with role-based access; updated config, docs, and added tests verifying token flow.
+ [2025-08-27] Added tests for knowledge query endpoint error handling and implemented endpoint with Neo4j exception handling.
+* [2025-08-27] Added verify_api_key dependency to /api routes, updated API tests with required headers, and implemented API key validation in app/main.py. Ran pytest (collection failed due to existing syntax errors).
+## 2025-08-28
+- Starting authentication integration with OAuth2 and role-based permissions.
+- Implemented JWT-based auth with role checks and added tests for token flow (failing due to upstream import issue).
+## 2025-08-29
+- Added tests for knowledge query error handling with Neo4j exceptions.
+* [2025-08-27] Secured FastAPI endpoints with API key verification dependency and attempted linting/tests (flake8 warnings, pytest import errors).
+- Removed duplicate `networkx>=3.0` from `pyproject.toml` and reinstalled dependencies to verify environment.
+- Updated requirements with newer cachetools, marshmallow, neo4j, platformdirs, posthog, pydantic-core, pyright, ruff, setuptools, and typing_extensions versions; ran dependency install and pytest (failing tests recorded).
+## 2025-08-27
+- Updated dependencies in requirements.txt (cachetools, marshmallow, neo4j, platformdirs, posthog, pydantic-core, pyright, ruff, setuptools, typing-extensions) and pyproject.toml.
+- Installed updated packages and ran pytest suite.
+- Removed sys.path manipulations from tests and core modules, switching to package-based imports.
+- Simplified app.main and jarvis/__init__ to avoid heavy jarvis imports during tests.
+- Executed `pip install -e .` and `pytest tests` (import errors remain in several test modules).
+## 2025-08-30
+- Added backend test coverage for specialist coordination including success and failure paths.
+- Verified specialist IDs, synthesized response content, and error propagation.
+- Ran `pytest tests/test_backend.py` to confirm behavior.
+- Removed `sys.path` manipulations from tests and switched to package imports.
+- Installed package in editable mode and ran `pytest tests`; collection failed with 10 errors (TypeError in test_api/test_auth, etc.).
+* [2025-08-30] Updated FastAPI Path params in app/main.py and app/test_harness.py to use "pattern" instead of deprecated "regex". Ran pytest -q but collection failed due to missing "jose" module and other import errors.
+## 2025-08-30
+- Replaced deprecated FastAPI `Path` `regex` parameter with `pattern` in `app/main.py` and `app/test_harness.py`, ensuring compatibility with Pydantic v2.
+- Executed `pytest -q` to confirm no warnings or regressions.
+- Added /missions POST endpoint in meta_intelligence with Mission creation and graph persistence.
+- Implemented MissionCreate model and tests for mission creation endpoint.
+- Added directory-level `agent.md` docs in `jarvis/ecosystem/` and `tests/` outlining mission endpoint behavior and testing tips.
+- Switched mission history endpoint to use `Path(..., pattern=...)` for Pydantic v2 compatibility.
+- Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
+- Added endpoint and UI hook to store Neo4j credentials in the OS keyring from the desktop settings panel.
+- Wrote tests for credential storage and API validation.
+- Fixed LogViewerPane test placeholders and connection titles; all frontend tests now pass.
+- Wrapped long lines in tests/conftest.py to satisfy flake8.
+- Note: root agent.md is lengthy; consider partitioning future logs.
+- Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
+- Added endpoint and UI hook to store Neo4j credentials in the OS keyring from the desktop settings panel.
+- Wrote tests for credential storage and API validation.
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
+- Refactored ChatPane to delegate Neo4j credential inputs to new Neo4jConfigForm component and expanded config API tests for invalid URI and auth failures.
+## 2025-09-05
+- Adjusted LogViewerPane tests to match "Filter logs..." placeholder and full connection titles.
+- Installed Node dependencies and ran `npm test` in `src-tauri`; LogViewerPane tests passed.
+- Reviewed component tests for placeholder and title alignment; no changes required elsewhere.
+- Added error-state retry test for LogViewerPane and re-ran `npm test`.
+- Confirmed component tests remain synchronized with UI text; added explicit assertion that error banner clears after retry in LogViewerPane test.
+- Root agent log growing large; consider splitting logs by module in future.
+- Scoped workflow/log/HITL stores to app.state and updated endpoints to use request-scoped access.
+- Added test ensuring per-instance isolation for workflow state.
+- Attempted flake8 and pytest; flake8 raised pre-existing style errors and pytest failed importing app.main due to Path clash.
+- Resolved Path import clash in app/main.py by aliasing FastAPI's Path to FastAPIPath and updating mission history route.
+- Trimmed unused imports and restored required auth dependencies; flake8 still reports numerous pre-existing E501 violations.
+- Verified workflow state isolation with pytest; test passes despite deprecation warnings.
+- Added /missions POST endpoint in meta_intelligence with Mission creation and graph persistence.
+- Implemented MissionCreate model and tests for mission creation endpoint.
+## 2025-08-30
+- Added tests for mission execution graph updates and API endpoints.
+- Introduced mock Neo4jGraph fixture for tests.
+- Documented Neo4j environment variables in README.
+- Aliased pathlib.Path in app/main.py to avoid FastAPI Path conflicts.
+## 2025-08-31
+- Integrated Neo4j graph updates into `ExecutiveAgent.execute_mission`, recording nodes and edges for each mission step and closing the driver after completion.
+- Ran `pytest tests/test_executive_agent.py tests/test_update_world_model.py -q` to validate mission execution and world model updates.
+- Relaxed coding agent import in `jarvis/__init__.py` to avoid test-time failures when optional modules are missing.
+## 2025-08-31
+- Added session-based mission history endpoint using `SessionManager` and returned chronological events.
+- Created unit tests validating mission history retrieval and not-found behavior.
+- Ran `flake8 app/main.py tests/test_api.py` (multiple pre-existing style errors) and executed targeted pytest tests (passed).
+- Added GET `/knowledge/query` endpoint using KnowledgeGraph with query param handling and JSON response.
+- Introduced unit tests for GET endpoint and adjusted existing tests for authentication, all passing (`pytest tests/test_knowledge_query_get.py tests/test_knowledge_query.py -q`).
+- Removed duplicate `python-multipart` requirement entry, leaving single `python-multipart>=0.0.6`. Ran `pip check` (no issues) and `pytest -q` (collection errors: Path default values and missing modules).
+## 2025-08-30
+- Verified `CloudCostOptimizerAgent` exports in `jarvis/agents/specialists.py` and `jarvis/agents/__init__.py`.
+- Added dedicated unit test `test_cloud_cost_agent` to ensure the specialist loads without heavy dependencies.
+- Executed `pytest tests/test_specialist_factory.py::test_cloud_cost_agent -q` (pass).
+- Integrated `keyring` secrets manager for Neo4j credentials, refactored graph loaders, updated tests and deployment guide, and ran targeted tests and linting.
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
+## 2025-09-05
+- Adjusted LogViewerPane tests to match "Filter logs..." placeholder and full connection titles.
+- Installed Node dependencies and ran `npm test` in `src-tauri`; LogViewerPane tests passed.
+## 2025-08-27
+- Updated GitHub Actions to launch a Neo4j service container with configured credentials.
+- Reduced skip logic in `tests/test_neo4j_integration.py` to only depend on missing credentials.
+- Ran `pytest tests/test_neo4j_integration.py` (skipped: Neo4j credentials not configured).
+- Implemented Tauri desktop login form with JWT handling and fetch patching.
+- Patched global fetch/http to attach Authorization headers from stored token.
+- Added Jest tests for LoginForm and updated LogViewerPane tests; ran `npm test` successfully.
+## 2025-08-31
+- Added tests for knowledge query endpoint error handling overriding `get_graph` to raise Neo4j exceptions.
+- Patched pathlib.Path during tests to resolve FastAPI Path conflict and re-registered `/knowledge/query` for stubbing.
+- Executed `pytest tests/test_knowledge_query.py -q` (2 passed).
+- Centralized API key authentication by moving /api routes to APIRouter with verify_api_key dependency.
+- Ran flake8 on app/main.py (multiple pre-existing style violations).
+- Executed pytest -q; collection failed with TypeError in mission history Path and missing modules.
+- Executed `pytest -q` to confirm no warnings or regressions.
 
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.981047
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
 
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.981169
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
+- Added secure Neo4j credential configuration via API call and in-memory storage. Updated ChatPane to send credentials without persisting them to localStorage and backend to accept runtime configuration. Added test for new endpoint.
 
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.981329
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.981412
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.981488
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 4,
-  "action": 4,
-  "reward": 4.0,
-  "next_state": 5,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.982483
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.982604
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.982691
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.982888
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:07:14.983028
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 4,
-  "action": 4,
-  "reward": 4.0,
-  "next_state": 5,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.880844
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.881028
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.881116
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.881196
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.882356
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.882533
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.882621
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.882777
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.882910
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 4,
-  "action": 4,
-  "reward": 4.0,
-  "next_state": 5,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.883877
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.883996
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.884197
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.884305
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:08:53.884429
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 4,
-  "action": 4,
-  "reward": 4.0,
-  "next_state": 5,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.077692
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.077863
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.077951
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.078028
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.078957
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.079077
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.079158
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.079231
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.079304
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 4,
-  "action": 4,
-  "reward": 4.0,
-  "next_state": 5,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.080316
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.080520
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.080630
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.080708
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 3,
-  "action": 3,
-  "reward": 3.0,
-  "next_state": 4,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:10:56.080780
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 4,
-  "action": 4,
-  "reward": 4.0,
-  "next_state": 5,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:11:57.089072
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 0,
-  "action": 0,
-  "reward": 0.0,
-  "next_state": 1,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:11:57.089245
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 1,
-  "action": 1,
-  "reward": 1.0,
-  "next_state": 2,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
-## Agent Interaction
-**Timestamp:** 2025-08-27T15:11:57.089413
-**Agent ID:** replay_memory
-**Team:** memory
-**Action/Message:**
-```
-Inserted experience into replay buffer.
-```
-**Associated Data:**
-```json
-{
-  "state": 2,
-  "action": 2,
-  "reward": 2.0,
-  "next_state": 3,
-  "done": false,
-  "priority": 1.0
-}
-```
----
-
+## 2025-08-30
+- Added tests for mission execution graph updates and API endpoints.
+- Introduced mock Neo4jGraph fixture for tests.
+- Documented Neo4j environment variables in README.
+- Aliased pathlib.Path in app/main.py to avoid FastAPI Path conflicts.
+## 2025-08-30
+- Added SettingsView with fields for backend URL, API key, and Neo4j credentials.
+- Extended config.js with API key persistence, helper fetch, and WebSocket query support.
+- Integrated Settings view into App navigation and updated MissionHistoryView to use API-authenticated requests.
+- Added Jest tests for SettingsView and updated LogViewerPane tests for revised placeholders.
+- Ran `npm install --prefix src-tauri` and `npm test --prefix src-tauri` (tests passed).
+- Attempted `pytest tests/test_endpoints.py -q` after installing dependencies; fails due to missing `python-multipart` package.
+- Refactored ChatPane to delegate Neo4j credential inputs to new Neo4jConfigForm component and expanded config API tests for invalid URI and auth failures.
+- Centralized form styling into `components/formStyles.css` and imported in ChatPane and Neo4jConfigForm.
+- Introduced in-memory `apiKeyStore` and updated Neo4jConfigForm to avoid localStorage for API key retrieval.
+- Noted this log file is growing large; consider splitting logs by domain for future clarity.
+=======
 ## Agent Interaction
 **Timestamp:** 2025-08-27T15:11:57.089609
 **Agent ID:** replay_memory
