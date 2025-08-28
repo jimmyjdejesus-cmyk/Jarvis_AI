@@ -188,7 +188,7 @@ class CriticInsightMerger:
     def _as_dict(self, item: Any) -> Dict[str, Any]:  # pragma: no cover
         """Return a dictionary representation of ``item``."""
 
-        return item if isinstance(item, dict) else item.__dict__.copy()
+        return item.copy() if isinstance(item, dict) else item.__dict__.copy()
 
     def weight_feedback(
         self, feedback_items: Iterable[Any]
