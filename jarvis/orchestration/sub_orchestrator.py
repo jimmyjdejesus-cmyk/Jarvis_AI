@@ -66,3 +66,15 @@ class SubOrchestrator(MultiAgentOrchestrator):
                 if name in set(allowed_specialists)
             }
 
+    async def run_mission_dag(self, dag, context: Any | None = None) -> Any:
+        """Execute a :class:`~jarvis.orchestration.mission.MissionDAG` within this orchestrator.
+
+        The DAG is converted to a workflow and executed using the shared
+        workflow engine. Only specialists registered with this sub-orchestrator
+        (or its children) will be available during execution.
+        """
+        from jarvis.workflows.engine import from_mission_dag, WorkflowEngine
+
+        workflow = from_mission_dag(dag)
+        engine = WorkflowEngine()
+        return await engine.execute_workflow(workflow)

@@ -23,6 +23,20 @@ from dataclasses import dataclass
 
 from langgraph.graph import END, StateGraph
 
+
+
+@dataclass
+class AgentSpec:
+    """Minimal agent specification for dynamic workflows."""
+
+    name: str
+    orchestrator: Any | None = None
+
+
+class DynamicOrchestrator:
+    """Placeholder dynamic orchestrator for tests."""
+    pass
+
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
 from .semantic_cache import SemanticCache

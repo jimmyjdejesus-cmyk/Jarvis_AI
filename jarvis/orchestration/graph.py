@@ -1,20 +1,25 @@
 """
 Defines the LangGraph-based orchestration logic for the multi-agent teams.
 """
-
 import asyncio
-from typing import List, Dict, Any, TypedDict, Annotated
+from typing import Dict, Any, TypedDict
 from langgraph.graph import StateGraph, END
 # from langgraph.checkpoints import SqliteSaver # Temporarily removed to resolve import error
 from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
 from jarvis.orchestration.pruning import PruningEvaluator
 
+from jarvis.critics import WhiteGate, CriticVerdict
+from jarvis.critics import RedTeamCritic, BlueTeamCritic
+
 # Define the state for our graph
-class TeamWorkflowState(TypedDict):
+class TeamWorkflowState(TypedDict, total=False):
     objective: str
     context: Dict[str, Any]
     team_outputs: Dict[str, Any]
+    critics: Dict[str, Any]
     next_team: str
+    critics: Dict[str, Any]
+    halt: bool
 
 class MultiTeamOrchestrator:
     """Uses LangGraph to orchestrate the five specialized teams."""
@@ -26,6 +31,8 @@ class MultiTeamOrchestrator:
     ) -> None:
         self.orchestrator = orchestrator_agent
         self.evaluator = evaluator
+        self.red_critic = RedTeamCritic()
+        self.blue_critic = BlueTeamCritic()
         self.graph = self._build_graph()
 
     def _build_graph(self):
@@ -95,7 +102,8 @@ class MultiTeamOrchestrator:
         return await asyncio.to_thread(self._run_team, team, state)
 
     def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
-        """Runs the Red and Blue teams in parallel."""
+def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
+        """Runs the Red and Blue teams and merges critic verdicts via WhiteGate."""
         red_agent, blue_agent = self.orchestrator.teams["adversary_pair"]
 
         async def run_pair():
@@ -105,7 +113,37 @@ class MultiTeamOrchestrator:
             )
 
         red_output, blue_output = asyncio.run(run_pair())
+
+        def _to_verdict(output: Any) -> CriticVerdict:
+            if isinstance(output, CriticVerdict):
+                return output
+            if isinstance(output, dict):
+                return CriticVerdict(
+                    approved=bool(output.get("approved")),
+                    fixes=list(output.get("fixes", [])),
+                    risk=float(output.get("risk", 0.0)),
+                    notes=str(output.get("notes", "")),
+                )
+            return CriticVerdict(False, [], 1.0, f"Unsupported output type: {type(output).__name__}")
+
+        red_verdict = _to_verdict(red_output)
+        blue_verdict = _to_verdict(blue_output)
+        merged = self.white_gate.merge(red_verdict, blue_verdict)
+
+        state.setdefault("critics", {})["white_gate"] = merged.to_dict()
         state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
+        state["halt"] = not merged.approved
+
+        self.orchestrator.log("WhiteGate merged verdict", data=merged.to_dict())
+        if state["halt"]:
+            self.orchestrator.log("Downstream execution halted by WhiteGate.")
+        return state
+        state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
+        state["halt"] = not merged.approved
+
+        self.orchestrator.log("WhiteGate merged verdict", data=merged.to_dict())
+        if state["halt"]:
+            self.orchestrator.log("Downstream execution halted by WhiteGate.")
         return state
 
     def _run_competitive_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
@@ -188,13 +226,15 @@ class MultiTeamOrchestrator:
             "objective": objective,
             "context": {},
             "team_outputs": {},
+            "critics": {},
             "next_team": "competitive_pair"
         }
-        
+
         # The `stream` method will execute the graph step-by-step
         for step in self.graph.stream(initial_state):
-            # Each step is a dictionary with the node name and its output
-            node, output = next(iter(step.items()))
-            self.orchestrator.log(f"Completed step: {node}", data=output)
-        
+            node, state = next(iter(step.items()))
+            self.orchestrator.log(f"Completed step: {node}", data=state)
+            if state.get("halt"):
+                break
+
         return "Orchestration complete."
