@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import secrets
 import os
 from typing import Dict
 
 from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
 
 from jarvis.orchestration.mission import Mission, save_mission, load_mission
 from jarvis.orchestration.mission_planner import MissionPlanner
@@ -23,12 +25,20 @@ class MissionCreate(BaseModel):
     goal: str
 
 
+class CredentialUpdate(BaseModel):
+    """Request body for updating service credentials."""
+
+    service: str = Field(
+        ..., description="Environment variable name, e.g. OPENAI_API_KEY"
+    )
+    value: str = Field(..., description="Secret value for the service")
+
+
 @app.post("/api/missions", status_code=201)
 def create_mission(
     payload: MissionCreate, x_api_key: str = Header(...)
 ) -> Dict[str, str]:
     """Create a new mission and persist its DAG."""
-
 
     if not (api_key := os.environ.get("JARVIS_API_KEY")) or not secrets.compare_digest(x_api_key, api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -54,19 +64,3 @@ def create_mission(
         "mission_id": mission.id,
         "status": WorkflowStatus.PENDING.value,
     }
-
-
-@app.get("/api/missions/{mission_id}")
-def get_mission(
-    mission_id: str, x_api_key: str = Header(...)
-) -> Dict[str, object]:
-    """Retrieve a previously created mission."""
-    if x_api_key != os.environ.get("JARVIS_API_KEY"):
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    try:
-        mission = load_mission(mission_id)
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=404, detail="Mission not found"
-        ) from None
-    return mission.to_dict()

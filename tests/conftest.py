@@ -9,6 +9,7 @@ import importlib.util
 import enum
 from dataclasses import dataclass
 import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -16,8 +17,12 @@ if str(ROOT) not in sys.path:
 # Stub optional dependencies
 sys.modules.setdefault("neo4j", MagicMock())
 keyring_errors = types.ModuleType("keyring.errors")
+
+
 class NoKeyringError(Exception):
     pass
+
+
 keyring_errors.NoKeyringError = NoKeyringError
 keyring_module = types.ModuleType("keyring")
 keyring_module.errors = keyring_errors
@@ -28,8 +33,11 @@ sys.modules.setdefault("keyring.errors", keyring_errors)
 langgraph_graph = types.ModuleType("langgraph.graph")
 langgraph_graph.END = object()
 
+
 class StateGraph:  # pragma: no cover - minimal stub
     pass
+
+
 langgraph_graph.StateGraph = StateGraph
 langgraph_module = types.ModuleType("langgraph")
 langgraph_module.graph = langgraph_graph
@@ -51,7 +59,3 @@ for name in [
     "VectorParams",
 ]:
     setattr(qdrant_models, name, MagicMock())
-
-# Stub chromadb embedding functions to satisfy project_memory imports
-chromadb = types.ModuleType("chromadb")
-chromadb.PersistentClient = MagicMock()

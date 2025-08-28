@@ -13,6 +13,11 @@
 ## Agent Log 2025-09-05
 - Exported CLI type aliases via `jarvis_ai.__init__` for consistency.
 - Added MCPClient integration tests for authentication failure and timeouts.
+- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).## Agent Log 2025-08-28
+- Stubbed heavy dependencies in tests/conftest.py and provided in-memory task queue to restore pytest execution.
+- Adjusted mission tests to patch jarvis.models.client and run against FastAPI mission endpoints.
+## Agent Log 2025-09-06
+- Added backend credential endpoint and wired Tauri UI to supply OpenAI/Anthropic keys.
 - - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).## Agent Log 2025-08-28
 - Stubbed heavy dependencies in tests/conftest.py and provided in-memory task queue to restore pytest execution.
 - Adjusted mission tests to patch jarvis.models.client and run against FastAPI mission endpoints.

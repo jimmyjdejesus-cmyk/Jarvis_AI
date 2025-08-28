@@ -146,6 +146,7 @@ Added integration test verifying memory and knowledge graph persistence across m
 - Added API mission creation test and team assignment sub-DAG test.
 ## Agent Interaction
 **Timestamp:** 2025-08-28T03:00:16+00:00
+
 ## Agent Log 2025-08-28
 - Added tests for SelfRAGGate logging and policy optimizer integration.
 ## Agent Log
@@ -171,7 +172,7 @@ Updated mission tests to patch jarvis.models.client and verified mission API.
 Files: tests/conftest.py, tests/test_mission_creation.py, tests/test_team_assignment.py
 ```
 ---
-
+- Added credential API tests covering environment updates and validation.
 Wrapped long lines in test_knowledge_query_get to satisfy flake8 E501.
 File is quite long; consider archiving older entries soon.
 ```

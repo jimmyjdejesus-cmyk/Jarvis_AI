@@ -72,6 +72,19 @@ export const setApiKey = (key) => {
   localStorage.setItem('jarvis-api-key', key);
 };
 
+// Send a credential to the backend for services like OpenAI or Anthropic
+export const setServiceCredential = async (service, key) => {
+  try {
+    await apiFetch('/api/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ service, value: key })
+    });
+  } catch (err) {
+    console.error(`Failed to set credential for ${service}:`, err);
+  }
+};
+
 // Helper to perform fetch with API key header
 export const apiFetch = (endpoint, options = {}) => {
   const headers = options.headers ? { ...options.headers } : {};
