@@ -141,4 +141,4 @@ File: test_cli.py
 Added integration test verifying memory and knowledge graph persistence across mission steps
 **Associated Data:**
 ```json
-{"files": ["test_mission_step_persistence.py"]}
+{"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
