@@ -160,7 +160,8 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
             try:
                 past = self.memory.query("orchestrator", run_id, step_ctx.request)
                 mem_context = "\n".join(item["text"] for item in past)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to query project memory for run_id {run_id}: {e}")
                 mem_context = None
 
         retry_policy = step_ctx.retry_policy or {}
