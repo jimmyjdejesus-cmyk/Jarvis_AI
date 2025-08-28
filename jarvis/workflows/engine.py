@@ -55,28 +55,28 @@ class WorkflowContext:
     variables: Dict[str, Any] = field(default_factory=dict)
     results: Dict[str, TaskResult] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def get_result(self, task_id: str) -> Optional[TaskResult]:
         """Get result from a specific task"""
         return self.results.get(task_id)
-    
+
     def get_output(self, task_id: str) -> Any:
         """Get output from a specific task"""
         result = self.get_result(task_id)
         return result.output if result else None
-    
+
     def set_variable(self, key: str, value: Any):
         """Set a workflow variable"""
         self.variables[key] = value
-    
+
     def get_variable(self, key: str, default: Any = None) -> Any:
         """Get a workflow variable"""
         return self.variables.get(key, default)
 
 class WorkflowTask(ABC):
     """Abstract base class for workflow tasks"""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  task_id: str,
                  name: str,
                  description: str = "",
@@ -90,17 +90,17 @@ class WorkflowTask(ABC):
         self.conditions = conditions or {}
         self.timeout = timeout
         self.status = TaskStatus.WAITING
-    
+
     @abstractmethod
     async def execute(self, context: WorkflowContext) -> TaskResult:
         """Execute the task with given context"""
         pass
-    
+
     def should_execute(self, context: WorkflowContext) -> bool:
         """Check if task should execute based on conditions"""
         if not self.conditions:
             return True
-        
+
         for condition_key, expected_value in self.conditions.items():
             if "." in condition_key:
                 # Handle nested conditions like "task1.status" or "variables.flag"
@@ -119,12 +119,12 @@ class WorkflowTask(ABC):
                     actual_value = None
             else:
                 actual_value = context.get_variable(condition_key)
-            
+
             if actual_value != expected_value:
                 return False
-        
+
         return True
-    
+
     def dependencies_satisfied(self, context: WorkflowContext) -> bool:
         """Check if all dependencies are satisfied"""
         for dep_id in self.dependencies:
@@ -135,8 +135,8 @@ class WorkflowTask(ABC):
 
 class SpecialistTask(WorkflowTask):
     """Task that uses one of our specialist agents"""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  task_id: str,
                  name: str,
                  specialist_type: str,
@@ -148,29 +148,29 @@ class SpecialistTask(WorkflowTask):
         super().__init__(task_id, name, description, dependencies, conditions, timeout)
         self.specialist_type = specialist_type
         self.prompt = prompt
-    
+
     async def execute(self, context: WorkflowContext) -> TaskResult:
         """Execute using specialist agent"""
         start_time = datetime.now()
-        
+
         try:
             # Import here to avoid circular imports
             from ..ecosystem.meta_intelligence import ExecutiveAgent
 
             orchestrator = ExecutiveAgent("workflow_meta")
-            
+
             # Replace context variables in prompt
             formatted_prompt = self._format_prompt(context)
-            
+
             # Execute with specific specialist
             result = await orchestrator.coordinate_specialists(
                 formatted_prompt,
                 [self.specialist_type],
                 coordination_strategy="single"
             )
-            
+
             execution_time = (datetime.now() - start_time).total_seconds()
-            
+
             return TaskResult(
                 task_id=self.task_id,
                 status=TaskStatus.COMPLETED,
@@ -178,11 +178,11 @@ class SpecialistTask(WorkflowTask):
                 execution_time=execution_time,
                 metadata={"specialist": self.specialist_type}
             )
-            
+
         except Exception as e:
             execution_time = (datetime.now() - start_time).total_seconds()
             logger.error(f"Task {self.task_id} failed: {str(e)}")
-            
+
             return TaskResult(
                 task_id=self.task_id,
                 status=TaskStatus.FAILED,
@@ -190,25 +190,25 @@ class SpecialistTask(WorkflowTask):
                 execution_time=execution_time,
                 metadata={"specialist": self.specialist_type}
             )
-    
+
     def _format_prompt(self, context: WorkflowContext) -> str:
         """Format prompt with context variables"""
         prompt = self.prompt
-        
+
         # Replace variables
         for key, value in context.variables.items():
             prompt = prompt.replace(f"{{{key}}}", str(value))
-        
+
         # Replace task outputs
         for task_id, result in context.results.items():
             if result.output:
                 prompt = prompt.replace(f"{{{task_id}.output}}", str(result.output))
-        
+
         return prompt
 
 class CustomTask(WorkflowTask):
     """Task that executes a custom function"""
-    
+
     def __init__(self,
                  task_id: str,
                  name: str,
@@ -219,20 +219,20 @@ class CustomTask(WorkflowTask):
                  timeout: float = 300.0):
         super().__init__(task_id, name, description, dependencies, conditions, timeout)
         self.function = function
-    
+
     async def execute(self, context: WorkflowContext) -> TaskResult:
         """Execute custom function"""
         start_time = datetime.now()
-        
+
         try:
             # Execute function (handle both sync and async)
             if asyncio.iscoroutinefunction(self.function):
                 result = await self.function(context)
             else:
                 result = self.function(context)
-            
+
             execution_time = (datetime.now() - start_time).total_seconds()
-            
+
             return TaskResult(
                 task_id=self.task_id,
                 status=TaskStatus.COMPLETED,
@@ -240,11 +240,11 @@ class CustomTask(WorkflowTask):
                 execution_time=execution_time,
                 metadata={"function": self.function.__name__}
             )
-            
+
         except Exception as e:
             execution_time = (datetime.now() - start_time).total_seconds()
             logger.error(f"Task {self.task_id} failed: {str(e)}")
-            
+
             return TaskResult(
                 task_id=self.task_id,
                 status=TaskStatus.FAILED,
@@ -256,7 +256,7 @@ class CustomTask(WorkflowTask):
 @dataclass
 class Workflow:
     """Workflow definition with tasks and execution logic"""
-    
+
     workflow_id: str
     name: str
     description: str
@@ -265,39 +265,39 @@ class Workflow:
     timeout: float = 3600.0  # 1 hour default
     retry_failed: bool = True
     max_retries: int = 3
-    
+
     def __post_init__(self):
         self.status = WorkflowStatus.PENDING
         self.context = WorkflowContext(workflow_id=self.workflow_id)
         self.execution_start: Optional[datetime] = None
         self.execution_end: Optional[datetime] = None
-    
+
     def get_task(self, task_id: str) -> Optional[WorkflowTask]:
         """Get task by ID"""
         for task in self.tasks:
             if task.task_id == task_id:
                 return task
         return None
-    
+
     def get_ready_tasks(self) -> List[WorkflowTask]:
         """Get tasks that are ready to execute"""
         ready_tasks = []
-        
+
         for task in self.tasks:
-            if (task.status == TaskStatus.WAITING and 
-                task.dependencies_satisfied(self.context) and 
+            if (task.status == TaskStatus.WAITING and
+                task.dependencies_satisfied(self.context) and
                 task.should_execute(self.context)):
                 ready_tasks.append(task)
-        
+
         return ready_tasks
-    
+
     def is_complete(self) -> bool:
         """Check if workflow is complete"""
         for task in self.tasks:
             if task.status not in [TaskStatus.COMPLETED, TaskStatus.SKIPPED, TaskStatus.FAILED]:
                 return False
         return True
-    
+
     def has_failed_critical_tasks(self) -> bool:
         """Check if any critical tasks have failed"""
         for task in self.tasks:
@@ -309,24 +309,24 @@ class Workflow:
 
 class WorkflowEngine:
     """Advanced workflow orchestration engine"""
-    
+
     def __init__(self):
         self.active_workflows: Dict[str, Workflow] = {}
         self.completed_workflows: Dict[str, Workflow] = {}
         self.workflow_history: List[Dict[str, Any]] = []
-    
+
     async def execute_workflow(self, workflow: Workflow) -> Workflow:
         """Execute a complete workflow"""
         logger.info(f"Starting workflow: {workflow.name} ({workflow.workflow_id})")
-        
+
         workflow.status = WorkflowStatus.RUNNING
         workflow.execution_start = datetime.now()
         self.active_workflows[workflow.workflow_id] = workflow
-        
+
         try:
             while not workflow.is_complete() and not workflow.has_failed_critical_tasks():
                 ready_tasks = workflow.get_ready_tasks()
-                
+
                 if not ready_tasks:
                     # No tasks ready - check if we're stuck
                     waiting_tasks = [t for t in workflow.tasks if t.status == TaskStatus.WAITING]
@@ -335,23 +335,23 @@ class WorkflowEngine:
                         break
                     else:
                         break
-                
+
                 # Execute ready tasks (with parallelism limit)
                 semaphore = asyncio.Semaphore(workflow.max_parallel)
                 tasks_to_execute = ready_tasks[:workflow.max_parallel]
-                
+
                 # Mark tasks as running
                 for task in tasks_to_execute:
                     task.status = TaskStatus.RUNNING
-                
+
                 # Execute tasks in parallel
                 execution_coroutines = [
                     self._execute_task_with_semaphore(task, workflow, semaphore)
                     for task in tasks_to_execute
                 ]
-                
+
                 await asyncio.gather(*execution_coroutines, return_exceptions=True)
-            
+
             # Determine final status
             if workflow.has_failed_critical_tasks():
                 workflow.status = WorkflowStatus.FAILED
@@ -359,47 +359,47 @@ class WorkflowEngine:
                 workflow.status = WorkflowStatus.COMPLETED
             else:
                 workflow.status = WorkflowStatus.FAILED  # Stuck or other issue
-            
+
             workflow.execution_end = datetime.now()
-            
+
             # Move to completed workflows
             self.completed_workflows[workflow.workflow_id] = workflow
             if workflow.workflow_id in self.active_workflows:
                 del self.active_workflows[workflow.workflow_id]
-            
+
             # Record in history
             self._record_workflow_completion(workflow)
-            
+
             logger.info(f"Workflow {workflow.name} completed with status: {workflow.status.value}")
-            
+
             return workflow
-            
+
         except Exception as e:
             logger.error(f"Workflow {workflow.workflow_id} failed with exception: {str(e)}")
             workflow.status = WorkflowStatus.FAILED
             workflow.execution_end = datetime.now()
-            
+
             # Move to completed workflows
             self.completed_workflows[workflow.workflow_id] = workflow
             if workflow.workflow_id in self.active_workflows:
                 del self.active_workflows[workflow.workflow_id]
-            
+
             self._record_workflow_completion(workflow)
             return workflow
-    
+
     async def _execute_task_with_semaphore(self, task: WorkflowTask, workflow: Workflow, semaphore: asyncio.Semaphore):
         """Execute a single task with semaphore control"""
         async with semaphore:
             try:
                 logger.info(f"Executing task: {task.name} ({task.task_id})")
                 result = await asyncio.wait_for(task.execute(workflow.context), timeout=task.timeout)
-                
+
                 # Store result in context
                 workflow.context.results[task.task_id] = result
                 task.status = result.status
-                
+
                 logger.info(f"Task {task.name} completed with status: {result.status.value}")
-                
+
             except asyncio.TimeoutError:
                 logger.error(f"Task {task.task_id} timed out")
                 task.status = TaskStatus.FAILED
@@ -408,7 +408,7 @@ class WorkflowEngine:
                     status=TaskStatus.FAILED,
                     error="Task timed out"
                 )
-            
+
             except Exception as e:
                 logger.error(f"Task {task.task_id} failed with exception: {str(e)}")
                 task.status = TaskStatus.FAILED
@@ -417,13 +417,13 @@ class WorkflowEngine:
                     status=TaskStatus.FAILED,
                     error=str(e)
                 )
-    
+
     def _record_workflow_completion(self, workflow: Workflow):
         """Record workflow completion in history"""
         execution_time = 0.0
         if workflow.execution_start and workflow.execution_end:
             execution_time = (workflow.execution_end - workflow.execution_start).total_seconds()
-        
+
         history_entry = {
             "workflow_id": workflow.workflow_id,
             "name": workflow.name,
@@ -434,19 +434,19 @@ class WorkflowEngine:
             "failed_tasks": len([t for t in workflow.tasks if t.status == TaskStatus.FAILED]),
             "timestamp": workflow.execution_end or datetime.now()
         }
-        
+
         self.workflow_history.append(history_entry)
-    
+
     def get_workflow_status(self, workflow_id: str) -> Optional[Dict[str, Any]]:
         """Get current status of a workflow"""
-        workflow = (self.active_workflows.get(workflow_id) or 
+        workflow = (self.active_workflows.get(workflow_id) or
                    self.completed_workflows.get(workflow_id))
-        
+
         if not workflow:
             return None
-        
+
         task_statuses = {task.task_id: task.status.value for task in workflow.tasks}
-        
+
         return {
             "workflow_id": workflow.workflow_id,
             "name": workflow.name,
@@ -456,21 +456,21 @@ class WorkflowEngine:
             "execution_end": workflow.execution_end,
             "context_variables": workflow.context.variables
         }
-    
+
     def cancel_workflow(self, workflow_id: str) -> bool:
         """Cancel an active workflow"""
         if workflow_id in self.active_workflows:
             workflow = self.active_workflows[workflow_id]
             workflow.status = WorkflowStatus.CANCELLED
             workflow.execution_end = datetime.now()
-            
+
             # Move to completed
             self.completed_workflows[workflow_id] = workflow
             del self.active_workflows[workflow_id]
-            
+
             self._record_workflow_completion(workflow)
             return True
-        
+
         return False
 
 # Global workflow engine instance

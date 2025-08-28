@@ -1,6 +1,6 @@
 # --- Core Dependencies ---
 # Foundation libraries for the application
-fastapi>=0.111.0
+fastapi>=0.111,<0.112  # Pin with Pydantic 2.7+ for compatibility
 uvicorn>=0.30.0
 langchain>=0.2.1
 langchain-core>=0.2.1
@@ -35,8 +35,8 @@ cachetools>=6.2.0
 marshmallow>=4.0.0
 platformdirs>=4.4.0
 posthog>=6.7.0
-pydantic>=2.11.0
-pydantic-core>=2.39.0
+pydantic>=2.7,<3
+pydantic-core>=2.18,<3
 typing-extensions>=4.15.0
 typing_extensions>=4.15.0
 
