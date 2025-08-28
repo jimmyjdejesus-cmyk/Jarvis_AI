@@ -23,6 +23,7 @@ class RedisStub:
 
     def __init__(self, *args, **kwargs) -> None:
         self._store: dict[str, str] = {}
+        self._lists: dict[str, list[str]] = {}
 
     def get(self, key: str) -> str | None:
         return self._store.get(key)
@@ -39,9 +40,43 @@ class RedisStub:
                 removed += 1
         return removed
 
+    def rpush(self, key: str, value: str) -> int:
+        lst = self._lists.setdefault(key, [])
+        lst.append(value)
+        return len(lst)
+
+    def lpop(self, key: str) -> str | None:
+        lst = self._lists.get(key)
+        if lst:
+            return lst.pop(0)
+        return None
+
+    def llen(self, key: str) -> int:
+        return len(self._lists.get(key, []))
+
+    @classmethod
+    def from_url(cls, url: str, *args, **kwargs) -> "RedisStub":  # pragma: no cover - convenience
+        return cls()
+
+
+# Provide minimal redis exception hierarchy used in production code
+class RedisError(Exception):
+    pass
+
+
+class ConnectionError(RedisError):
+    pass
+
+
+class TimeoutError(RedisError):
+    pass
+
 
 redis_module = types.ModuleType("redis")
 redis_module.Redis = RedisStub
+redis_module.RedisError = RedisError
+redis_module.ConnectionError = ConnectionError
+redis_module.TimeoutError = TimeoutError
 sys.modules.setdefault("redis", redis_module)
 keyring_errors = types.ModuleType("keyring.errors")
 
