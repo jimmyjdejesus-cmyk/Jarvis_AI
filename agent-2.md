@@ -28,3 +28,7 @@
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
 
+
+## Agent Log 2025-08-28
+- Added AgentSpec dataclass with run callback and metadata in orchestrator.
+- Exported orchestration dataclasses via __all__ and ran pytest.

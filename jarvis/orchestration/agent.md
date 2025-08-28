@@ -14,3 +14,5 @@
 - Added critic verdict tracking in TeamWorkflowState and initial state.
 ## Agent Log
 - Implemented `SubOrchestrator` specialist filtering and DAG execution.
+
+- Introduced AgentSpec dataclass with run callback and metadata; exported via __all__.

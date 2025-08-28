@@ -23,19 +23,15 @@ from dataclasses import dataclass
 
 from langgraph.graph import END, StateGraph
 
-
-
-@dataclass
-class AgentSpec:
-    """Minimal agent specification for dynamic workflows."""
-
-    name: str
-    orchestrator: Any | None = None
-
-
-class DynamicOrchestrator:
-    """Placeholder dynamic orchestrator for tests."""
-    pass
+__all__ = [
+    "AgentSpec",
+    "DynamicOrchestrator",
+    "MultiAgentOrchestrator",
+    "OrchestratorTemplate",
+    "StepContext",
+    "StepResult",
+    "END",
+]
 
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
@@ -55,8 +51,20 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Orchestrator template
+# Dataclasses
 # ---------------------------------------------------------------------------
+
+
+@dataclass
+class AgentSpec:
+    """Specification for a runnable agent."""
+
+    name: str
+    run: Callable[..., Awaitable[Any]]
+    description: str | None = None
+    inputs: Optional[List[str]] = None
+    outputs: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -85,11 +93,22 @@ class StepResult:
     depth: int
 
 
+# ---------------------------------------------------------------------------
+# Orchestrator template
+# ---------------------------------------------------------------------------
+
+
 class OrchestratorTemplate:
     """Base interface for orchestrators used in DAG execution."""
 
     async def run_step(self, step_ctx: StepContext) -> StepResult:
         raise NotImplementedError
+
+
+class DynamicOrchestrator(OrchestratorTemplate):
+    """Placeholder dynamic orchestrator for tests."""
+
+    pass
 
 
 # ---------------------------------------------------------------------------
