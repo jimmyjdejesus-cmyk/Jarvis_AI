@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import API_CONFIG, { setBackendBaseUrl, setApiKey } from '../config';
+import API_CONFIG, { setBackendBaseUrl, setApiKey, setServiceCredential } from '../config';
 
 const SettingsView = () => {
   const [backendUrl, updateBackendUrl] = useState(API_CONFIG.HTTP_BASE_URL);
@@ -7,6 +7,8 @@ const SettingsView = () => {
   const [neo4jUri, setNeo4jUri] = useState(localStorage.getItem('jarvis-neo4j-uri') || '');
   const [neo4jUser, setNeo4jUser] = useState(localStorage.getItem('jarvis-neo4j-user') || '');
   const [neo4jPassword, setNeo4jPassword] = useState(localStorage.getItem('jarvis-neo4j-password') || '');
+  const [openaiKey, setOpenaiKey] = useState(localStorage.getItem('jarvis-openai-key') || '');
+  const [anthropicKey, setAnthropicKey] = useState(localStorage.getItem('jarvis-anthropic-key') || '');
 
   const handleBackendChange = (e) => {
     const value = e.target.value;
@@ -38,6 +40,20 @@ const SettingsView = () => {
     localStorage.setItem('jarvis-neo4j-password', value);
   };
 
+  const handleOpenaiKeyChange = (e) => {
+    const value = e.target.value;
+    setOpenaiKey(value);
+    localStorage.setItem('jarvis-openai-key', value);
+    setServiceCredential('OPENAI_API_KEY', value);
+  };
+
+  const handleAnthropicKeyChange = (e) => {
+    const value = e.target.value;
+    setAnthropicKey(value);
+    localStorage.setItem('jarvis-anthropic-key', value);
+    setServiceCredential('ANTHROPIC_API_KEY', value);
+  };
+
   return (
     <div className="settings-view">
       <h1>Settings</h1>
@@ -51,6 +67,18 @@ const SettingsView = () => {
         <label>
           API Key:
           <input type="text" value={apiKey} onChange={handleApiKeyChange} />
+        </label>
+      </div>
+      <div className="settings-section">
+        <label>
+          OpenAI Key:
+          <input type="text" value={openaiKey} onChange={handleOpenaiKeyChange} />
+        </label>
+      </div>
+      <div className="settings-section">
+        <label>
+          Anthropic Key:
+          <input type="text" value={anthropicKey} onChange={handleAnthropicKeyChange} />
         </label>
       </div>
       <div className="settings-section">
@@ -76,3 +104,4 @@ const SettingsView = () => {
 };
 
 export default SettingsView;
+
