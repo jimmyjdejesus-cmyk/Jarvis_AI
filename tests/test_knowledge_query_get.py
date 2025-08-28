@@ -68,6 +68,12 @@ def test_health_endpoint():
     assert response.json() == {"status": "ok"}
 
 
+def test_health_unsupported_method():
+    """Unsupported methods return HTTP 405 for health endpoint."""
+    response = client.post("/health")
+    assert response.status_code == 405
+
+
 def test_unknown_endpoint():
     """Requests to unknown paths return HTTP 404."""
     response = client.get("/unknown")
