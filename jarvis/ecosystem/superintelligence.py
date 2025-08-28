@@ -212,7 +212,7 @@ class MetaCognitionEngine:
         steps = thought_process.get("steps", [])
         if not steps:
             return 0.5
-        
+
         # Simple coherence check - could be enhanced
         logical_connections = 0
         for i in range(len(steps) - 1):
