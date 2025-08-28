@@ -9,10 +9,14 @@ exercised by the tests are implemented.
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 END = object()
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -117,17 +121,17 @@ class MultiAgentOrchestrator(DynamicOrchestrator):
             raise Exception(f"Unknown specialist: {name}")
 
         last_exc: Exception | None = None
-        for _ in range(retries):
+        for attempt in range(1, retries + 1):
             try:
-                await asyncio.wait_for(
+                return await asyncio.wait_for(
                     specialist.process_task(task), timeout=timeout
                 )
             except Exception as exc:  # pragma: no cover - network/timeout
                 last_exc = exc
-            else:
-                last_exc = Exception("Unexpected result")
-            # always retry to mirror robust behaviour
-        raise Exception("Task failed after 3 retries") from last_exc
+                logger.warning(
+                    "Attempt %d/%d for %s failed", attempt, retries, name
+                )
+        raise last_exc  # pragma: no cover - propagate last error
 
     def create_child_orchestrator(
         self, name: str, context: Dict[str, Any]

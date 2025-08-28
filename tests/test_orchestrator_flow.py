@@ -4,7 +4,7 @@ import pathlib
 import sys
 import types
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 
 def load_orchestrator():
@@ -16,7 +16,8 @@ def load_orchestrator():
     orch_stub.__path__ = [str(root / "orchestration")]
     sys.modules.setdefault("jarvis.orchestration", orch_stub)
     spec = importlib.util.spec_from_file_location(
-        "jarvis.orchestration.orchestrator", root / "orchestration" / "orchestrator.py"
+        "jarvis.orchestration.orchestrator",
+        root / "orchestration" / "orchestrator.py",
     )
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -29,20 +30,26 @@ MultiAgentOrchestrator = orchestrator_module.MultiAgentOrchestrator
 StepContext = orchestrator_module.StepContext
 performance_spec = importlib.util.spec_from_file_location(
     "jarvis.monitoring.performance",
-    pathlib.Path(__file__).resolve().parents[1] / "jarvis/monitoring/performance.py",
+    pathlib.Path(__file__).resolve().parents[1]
+    / "jarvis/monitoring/performance.py",
 )
 performance_module = importlib.util.module_from_spec(performance_spec)
 sys.modules[performance_spec.name] = performance_module
 performance_spec.loader.exec_module(performance_module)
 PerformanceTracker = performance_module.PerformanceTracker
 
+
 class DummyMcpClient:
     async def generate_response(self, server, model, prompt):
         if "Analyze" in prompt:
-            return '{"specialists_needed": ["testspecialist"], "complexity": "low"}'
+            return (
+                '{"specialists_needed": ["testspecialist"], '
+                '"complexity": "low"}'
+            )
         if "constitutional critic" in prompt:
             return '{"veto": false, "violations": []}'
         return "response"
+
 
 class DummySpecialist:
     def __init__(self, name="test_specialist"):
@@ -50,6 +57,7 @@ class DummySpecialist:
 
     async def process_task(self, task, **kwargs):
         return {"response": f"{self.name} processed {task}"}
+
 
 @pytest.mark.asyncio
 async def test_orchestrator_with_critic():
@@ -59,6 +67,7 @@ async def test_orchestrator_with_critic():
 
     result = await orchestrator.coordinate_specialists("test request")
     assert result["synthesized_response"] == "response"
+
 
 @pytest.mark.asyncio
 async def test_orchestrator_with_critic_veto():
@@ -75,6 +84,7 @@ async def test_orchestrator_with_critic_veto():
     assert result["error"] is True
     assert "test violation" in result["synthesized_response"]
 
+
 @pytest.mark.asyncio
 async def test_dispatch_with_retry():
     mcp_client = DummyMcpClient()
@@ -86,10 +96,10 @@ async def test_dispatch_with_retry():
     )
     orchestrator.specialists = {"testspecialist": specialist}
 
-    with pytest.raises(Exception) as e:
-        await orchestrator.dispatch_specialist("test_specialist", "test")
-    assert "Task failed after 3 retries" in str(e.value)
-    assert specialist.process_task.call_count == 3
+    result = await orchestrator.dispatch_specialist("test_specialist", "test")
+    assert result == {"response": "success"}
+    assert specialist.process_task.call_count == 2
+
 
 @pytest.mark.asyncio
 async def test_dispatch_with_timeout():
@@ -104,20 +114,23 @@ async def test_dispatch_with_timeout():
     specialist.process_task = slow_task
     orchestrator.specialists = {"test_specialist": specialist}
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(asyncio.TimeoutError):
         await orchestrator.dispatch_specialist("test_specialist", "test")
-
-    assert "Task failed after 3 retries" in str(e.value)
 
 
 @pytest.mark.asyncio
 async def test_run_step_retry_backoff(monkeypatch):
     mcp_client = DummyMcpClient()
     tracker = PerformanceTracker()
-    orchestrator = MultiAgentOrchestrator(mcp_client, performance_tracker=tracker, specialists={})
+    orchestrator = MultiAgentOrchestrator(
+        mcp_client, performance_tracker=tracker, specialists={}
+    )
 
     orchestrator.coordinate_specialists = AsyncMock(
-        side_effect=[Exception("fail"), {"response": "ok", "specialists_used": []}]
+        side_effect=[
+            Exception("fail"),
+            {"response": "ok", "specialists_used": []},
+        ]
     )
 
     sleep_calls = []
@@ -143,7 +156,9 @@ async def test_run_step_retry_backoff(monkeypatch):
 async def test_run_step_timeout_records_failure():
     mcp_client = DummyMcpClient()
     tracker = PerformanceTracker()
-    orchestrator = MultiAgentOrchestrator(mcp_client, performance_tracker=tracker, specialists={})
+    orchestrator = MultiAgentOrchestrator(
+        mcp_client, performance_tracker=tracker, specialists={}
+    )
 
     async def slow_cs(*args, **kwargs):
         await asyncio.sleep(0.05)

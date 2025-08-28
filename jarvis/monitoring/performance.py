@@ -11,7 +11,9 @@ class CriticInsightMerger:
     def weight_feedback(self, feedback_items):  # pragma: no cover - trivial
         return feedback_items
 
-    def synthesize_arguments(self, weighted_feedback):  # pragma: no cover - trivial
+    def synthesize_arguments(
+        self, weighted_feedback
+    ):  # pragma: no cover - trivial
         max_sev = "low"
         for item in weighted_feedback:
             sev = getattr(item, "severity", "low")
@@ -29,10 +31,12 @@ class PerformanceTracker:
         default_factory=lambda: {"retry_attempts": 0, "failed_steps": 0}
     )
 
-    def record_event(self, event_type: str, success: bool, attempt: int = 1) -> None:
-if event_type == "step":
+    def record_event(
+        self, event_type: str, success: bool, attempt: int = 1
+    ) -> None:
+        if event_type == "step":
             if not success:
                 self.metrics["failed_steps"] += 1
-            # A retry is any attempt after the first one, regardless of success.
+            # Any attempt after the first counts as a retry.
             if attempt > 1:
                 self.metrics["retry_attempts"] += 1
