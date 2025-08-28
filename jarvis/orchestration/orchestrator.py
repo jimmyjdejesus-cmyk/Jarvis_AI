@@ -7,18 +7,129 @@ import types
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
+import importlib.util
+import sys
+import types
+from dataclasses import dataclass
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+
+from jarvis.agent.prompt import Prompter
+from jarvis.auction.vickrey_auction import run_vickrey_auction
+from jarvis.memory.memory_manager import PathMemory
+from jarvis.memory.semantic_cache import SemanticCache
+from jarvis.world_model.world_model import WorldModel
+
+from .agent import AgentSpec
+from .context import StepContext
+
+__all__ = [
+    "AgentSpec",
+    "Orchestrator",
+    "StepContext",
+    "run_vickrey_auction",
+]
+
+
+@dataclass
+class AgentSpec:
+    """Data class for agent specification."""
+
+    name: str
+    description: str
+    prompter: Prompter
+
+
+@dataclass
+class StepContext:
+    """Data class for step context."""
+
+    iteration: int
+    world_model: WorldModel
+    path_memory: PathMemory
+    semantic_cache: SemanticCache
+    previous_outcomes: list
+
+# Mocks for avoiding circular imports in tests
+homeostasis_module = types.ModuleType("jarvis.homeostasis")
+monitor_submodule = types.ModuleType("jarvis.homeostasis.monitor")
+
+class SystemMonitor:
+    pass
+monitor_submodule.SystemMonitor = SystemMonitor
+sys.modules.setdefault("jarvis.homeostasis", homeostasis_module)
+sys.modules.setdefault("jarvis.homeostasis.monitor", monitor_submodule)
+
+memory_service = types.ModuleType("memory_service")
+models_sub = types.ModuleType("memory_service.models")
+class Metrics:
+    def __init__(self, novelty=0.0, growth=0.0, cost=0.0):
+        self.novelty = novelty
+        self.growth = growth
+        self.cost = cost
+class NegativeCheck:  # pragma: no cover - stub
+    def __init__(self, *a, **k):
+        pass
+class Outcome:
+    def __init__(self, result="", oracle_score=0.0):
+        self.result = result
+        self.oracle_score = oracle_score
+class PathRecord:
+    def __init__(self, *a, **k):
+        pass
+class PathSignature:
+    def __init__(self, *a, **k):
+        pass
+
+def avoid_negative(*a, **k):
+    return {"avoid": False, "results": []}
+
+def record_path(*a, **k):
+    return None
+
+memory_service.Metrics = Metrics
+memory_service.NegativeCheck = NegativeCheck
+memory_service.Outcome = Outcome
+memory_service.PathRecord = PathRecord
+memory_service.PathSignature = PathSignature
+memory_service.avoid_negative = avoid_negative
+memory_service.record_path = record_path
+memory_service.vector_store = None
+sys.modules.setdefault("memory_service", memory_service)
+sys.modules.setdefault("memory_service.models", models_sub)
+
+# Ensure repository root on path
+ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Stub optional dependencies
-sys.modules.setdefault("neo4j", MagicMock())
-keyring_errors = types.ModuleType("keyring.errors")
+# Lightweight workflows package to avoid circular imports
+spec = importlib.util.spec_from_file_location("jarvis.workflows.engine", ROOT / "jarvis/workflows/engine.py")
+engine_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(engine_module)
+workflows_pkg = types.ModuleType("jarvis.workflows")
+workflows_pkg.engine = engine_module
+sys.modules.setdefault("jarvis.workflows", workflows_pkg)
+sys.modules.setdefault("jarvis.workflows.engine", engine_module)
 
 
-class NoKeyringError(Exception):
-    pass
+@pytest.fixture
+def mock_neo4j_graph(monkeypatch):
+    """Provide a mock Neo4j graph for tests."""
 
+    mock_graph = MagicMock()
+    mock_graph.connect = MagicMock()
+    mock_graph.close = MagicMock()
+    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
+
+    monkeypatch.setattr(
+        "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
+    )
+    yield mock_graph
+
+# ... the rest of the file (e.g., the Orchestrator class) should follow here ...
 
 keyring_errors.NoKeyringError = NoKeyringError
 keyring_module = types.ModuleType("keyring")

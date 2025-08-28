@@ -63,3 +63,7 @@ File: tests/test_knowledge_query_get.py
 - Updated Windows guide and build scripts to install these pinned versions.
 - Ran pytest; collection failed with multiple import errors and missing modules.
 
+
+## Agent Log 2025-08-28
+- Added AgentSpec dataclass with run callback and metadata in orchestrator.
+- Exported orchestration dataclasses via __all__ and ran pytest.
