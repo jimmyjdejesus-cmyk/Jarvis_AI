@@ -21,6 +21,7 @@ class TeamWorkflowState(TypedDict, total=False):
     critics: Dict[str, Any]
     halt: bool
 
+
 class MultiTeamOrchestrator:
     """Uses LangGraph to orchestrate the five specialized teams."""
 
