@@ -1,5 +1,4 @@
 # flake8: noqa
-
 """
 This module provides two lightweight orchestration helpers:
 
@@ -19,6 +18,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import json
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 
 from langgraph.graph import END  # noqa: F401
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
@@ -33,17 +33,9 @@ from jarvis.agents.specialist_registry import (
 from jarvis.monitoring.performance import PerformanceTracker
 from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-# Stub optional dependencies
-sys.modules.setdefault("neo4j", MagicMock())
-keyring_errors = types.ModuleType("keyring.errors")
 
 class DynamicOrchestrator:
     """Placeholder dynamic orchestrator for tests."""
-
     pass
 
 
@@ -259,18 +251,11 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
     async def _analyze_request_complexity(
             self, request: str, code: str = None) -> Dict[str, Any]:
         """Analyze a request to determine complexity and specialists needed."""
+        prompt = f"""
+**Analyze the following user request and code to determine the required specialists and complexity level.**
 
-
-keyring_errors.NoKeyringError = NoKeyringError
-keyring_module = types.ModuleType("keyring")
-keyring_module.errors = keyring_errors
-sys.modules.setdefault("keyring", keyring_module)
-sys.modules.setdefault("keyring.errors", keyring_errors)
-
-langgraph_graph = types.ModuleType("langgraph.graph")
-langgraph_graph.END = object()
-
-
+**Request:**
+{request}
 
 **Code Context (if any):**
 {code or "N/A"}
@@ -647,15 +632,35 @@ JSON Response:
                 logger.info(
                     f"Completed {specialist_type} analysis, passing context to next specialist")
 
+            synthesized_response = await self._synthesize_sequential_results(
+                request, specialist_results
+            )
 
+            successful_results = [
+                r for r in specialist_results.values() if r.get(
+                    "type") != "error"
+            ]
+            candidates = [
+                Candidate(
+                    agent=stype,
+                    bid=float(res.get("confidence", 0.0)),
+                    content=res.get("response", ""),
+                )
+                for stype, res in specialist_results.items()
+                if res.get("type") != "error"
+            ]
+            auction = run_vickrey_auction(candidates) if candidates else None
+            if auction:
+                winner_agent, winner_bid, auction_price = (
+                    auction.winner.agent,
+                    auction.winner.bid,
+                    auction.price,
+                )
+                self.exploration_stats.append(auction.metrics)
+            else:
+                winner_agent, winner_bid, auction_price = "None", 0.0, 0.0
 
-langgraph_graph.StateGraph = StateGraph
-langgraph_module = types.ModuleType("langgraph")
-langgraph_module.graph = langgraph_graph
-sys.modules.setdefault("langgraph", langgraph_module)
-sys.modules.setdefault("langgraph.graph", langgraph_graph)
-
-return {
+            return {
                 "type": "sequential_specialists",
                 "complexity": analysis["complexity"],
                 "specialists_used": specialists_needed,
@@ -787,7 +792,3 @@ return {
             "error": True,
             "type": "error",
         }
-
-    orch_stub = types.ModuleType("jarvis.orchestration")
-    orch_stub.__path__ = [str(root / "orchestration")]
-    monkeypatch.setitem(sys.modules, "jarvis.orchestration", orch_stub)
