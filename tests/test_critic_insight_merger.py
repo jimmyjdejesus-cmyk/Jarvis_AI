@@ -64,6 +64,30 @@ def test_weight_feedback_handles_missing_fields():
     assert by_sev["trivial"]["count"] == 1
 
 
+def test_weight_feedback_accepts_objects_without_dict():
+    """Slotted objects and namedtuples should be processed correctly."""
+
+    class SlotItem:
+        __slots__ = ("severity", "source_credibility")
+
+        def __init__(self, severity, source_credibility):
+            self.severity = severity
+            self.source_credibility = source_credibility
+
+    from collections import namedtuple
+
+    NT = namedtuple("NT", ["severity", "source_credibility"])
+
+    feedback = [
+        SlotItem("low", 0.5),
+        NT("high", 0.9),
+    ]
+    merger = CriticInsightMerger()
+    weighted = merger.weight_feedback(feedback)
+    scores = [item["weighted_score"] for item in weighted]
+    assert scores == pytest.approx([0.5, 2.7])
+
+
 @pytest.mark.parametrize("cred,fallback", [(0.5, 10), (2.0, 2)])
 def test_weight_feedback_configurable_defaults(cred, fallback):
     """Default credibility and fallback weights should be tunable."""

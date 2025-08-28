@@ -28,7 +28,7 @@ def _default_severity_weights() -> Dict[str, int]:
                     defaults[key] = int(value)
                 except (TypeError, ValueError):
                     continue
-    except Exception:
+    except (OSError, TypeError, ValueError):
         pass
     return defaults
 
@@ -40,7 +40,7 @@ def _default_severity() -> str:
         cfg = load_config()
         value = cfg.get("monitoring", {}).get("default_severity", "low")
         return str(value)
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return "low"
 
 
@@ -62,7 +62,7 @@ def _unknown_severity_weight() -> int:
         cfg = load_config()
         value = cfg.get("monitoring", {}).get("unknown_severity_weight", 1)
         return int(value)
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return 1
 
 
@@ -77,7 +77,7 @@ def _max_examples() -> int:
         cfg = load_config()
         value = cfg.get("monitoring", {}).get("max_examples", 2)
         return int(value)
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return 2
 
 
@@ -95,7 +95,7 @@ def _max_summary_groups() -> Optional[int]:
         if value is None:
             return None
         return int(value)
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return None
 
 
@@ -113,7 +113,7 @@ def _summary_score_threshold() -> Optional[float]:
         if value is None:
             return None
         return float(value)
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return None
 
 
@@ -132,7 +132,7 @@ def _summary_score_ratio() -> Optional[float]:
         if value is None:
             return None
         return float(value)
-    except Exception:
+    except (OSError, TypeError, ValueError):
         return None
 
 
@@ -186,9 +186,28 @@ class CriticInsightMerger:
     )
 
     def _as_dict(self, item: Any) -> Dict[str, Any]:  # pragma: no cover
-        """Return a dictionary representation of ``item``."""
+        """Return a dictionary representation of ``item``.
 
-        return item.copy() if isinstance(item, dict) else item.__dict__.copy()
+        Objects without a ``__dict__`` (e.g. those using ``__slots__`` or
+        namedtuples) are supported by falling back to ``getattr``.
+        """
+
+        if isinstance(item, dict):
+            return item.copy()
+        try:
+            return vars(item).copy()
+        except TypeError:
+            data: Dict[str, Any] = {}
+            for attr in dir(item):
+                if attr.startswith("_"):
+                    continue
+                try:
+                    value = getattr(item, attr)
+                except AttributeError:
+                    continue
+                if not callable(value):
+                    data[attr] = value
+            return data
 
     def weight_feedback(
         self, feedback_items: Iterable[Any]
