@@ -15,6 +15,11 @@ import threading
 import uuid
 from typing import Any, Dict, List, Optional
 
+try:  # pragma: no cover - Windows compatibility
+    import fcntl  # type: ignore
+except ImportError:  # pragma: no cover
+    fcntl = None  # type: ignore
+
 from .quantum_memory import QuantumMemory
 from .replay_memory import Experience, ReplayMemory
 
@@ -87,13 +92,20 @@ except ImportError:  # pragma: no cover - used in minimal test environments
             lock = _file_lock(path)
             with lock:
                 try:
-                    data: List[Dict[str, Any]] = []
-                    if os.path.exists(path):
-                        with open(path, "r", encoding="utf-8") as fh:
-                            data = json.load(fh)
-                    data.append(record)
-                    with open(path, "w", encoding="utf-8") as fh:
+                    with open(path, "a+", encoding="utf-8") as fh:
+                        if fcntl is not None:
+                            fcntl.flock(fh, fcntl.LOCK_EX)
+                        fh.seek(0)
+                        content = fh.read()
+                        data: List[Dict[str, Any]] = (
+                            json.loads(content) if content else []
+                        )
+                        data.append(record)
+                        fh.seek(0)
+                        fh.truncate()
                         json.dump(data, fh)
+                        if fcntl is not None:
+                            fcntl.flock(fh, fcntl.LOCK_UN)
                 except (OSError, json.JSONDecodeError) as exc:
                     # pragma: no cover
                     raise RuntimeError(
@@ -128,7 +140,11 @@ except ImportError:  # pragma: no cover - used in minimal test environments
                     if not os.path.exists(path):
                         return []
                     with open(path, "r", encoding="utf-8") as fh:
+                        if fcntl is not None:
+                            fcntl.flock(fh, fcntl.LOCK_SH)
                         data: List[Dict[str, Any]] = json.load(fh)
+                        if fcntl is not None:
+                            fcntl.flock(fh, fcntl.LOCK_UN)
                 except (OSError, json.JSONDecodeError) as exc:
                     # pragma: no cover
                     raise RuntimeError(
@@ -160,19 +176,26 @@ except ImportError:  # pragma: no cover - used in minimal test environments
                 try:
                     if not os.path.exists(path):
                         raise KeyError(record_id)
-                    with open(path, "r", encoding="utf-8") as fh:
-                        data: List[Dict[str, Any]] = json.load(fh)
-                    for item in data:
-                        if item["id"] == record_id:
-                            if text is not None:
-                                item["text"] = text
-                            if metadata is not None:
-                                item["metadata"] = metadata
-                            break
-                    else:
-                        raise KeyError(record_id)
-                    with open(path, "w", encoding="utf-8") as fh:
-                        json.dump(data, fh)
+                    with open(path, "r+", encoding="utf-8") as fh:
+                        if fcntl is not None:
+                            fcntl.flock(fh, fcntl.LOCK_EX)
+                        try:
+                            data: List[Dict[str, Any]] = json.load(fh)
+                            for item in data:
+                                if item["id"] == record_id:
+                                    if text is not None:
+                                        item["text"] = text
+                                    if metadata is not None:
+                                        item["metadata"] = metadata
+                                    break
+                            else:
+                                raise KeyError(record_id)
+                            fh.seek(0)
+                            fh.truncate()
+                            json.dump(data, fh)
+                        finally:
+                            if fcntl is not None:
+                                fcntl.flock(fh, fcntl.LOCK_UN)
                 except (OSError, json.JSONDecodeError) as exc:
                     # pragma: no cover
                     raise RuntimeError(
@@ -195,15 +218,25 @@ except ImportError:  # pragma: no cover - used in minimal test environments
                 try:
                     if not os.path.exists(path):
                         raise KeyError(record_id)
-                    with open(path, "r", encoding="utf-8") as fh:
-                        data: List[Dict[str, Any]] = json.load(fh)
-                    new_data = [d for d in data if d["id"] != record_id]
-                    if len(new_data) == len(data):
-                        raise KeyError(record_id)
-                    if new_data:
-                        with open(path, "w", encoding="utf-8") as fh:
-                            json.dump(new_data, fh)
-                    else:
+                    new_data: List[Dict[str, Any]]
+                    with open(path, "r+", encoding="utf-8") as fh:
+                        if fcntl is not None:
+                            fcntl.flock(fh, fcntl.LOCK_EX)
+                        try:
+                            data: List[Dict[str, Any]] = json.load(fh)
+                            new_data = [
+                                d for d in data if d["id"] != record_id
+                            ]
+                            if len(new_data) == len(data):
+                                raise KeyError(record_id)
+                            fh.seek(0)
+                            fh.truncate()
+                            if new_data:
+                                json.dump(new_data, fh)
+                        finally:
+                            if fcntl is not None:
+                                fcntl.flock(fh, fcntl.LOCK_UN)
+                    if not new_data:
                         os.remove(path)
                 except (OSError, json.JSONDecodeError) as exc:
                     # pragma: no cover

@@ -1,4 +1,5 @@
 import importlib
+import multiprocessing
 import sys
 import threading
 from pathlib import Path
@@ -13,6 +14,15 @@ def get_project_memory(monkeypatch: pytest.MonkeyPatch):
     import jarvis.memory as memory
     importlib.reload(memory)
     return memory.ProjectMemory
+
+
+def _mp_worker(persist_dir: str, idx: int) -> None:
+    sys.modules['chromadb'] = None
+    sys.modules.pop('jarvis.memory.project_memory', None)
+    import jarvis.memory as memory
+    importlib.reload(memory)
+    mem = memory.ProjectMemory(persist_directory=persist_dir)
+    mem.add('proj', 'sess', f'text-{idx}')
 
 
 def test_add_and_query_round_trip(
@@ -108,3 +118,61 @@ def test_concurrent_instances(
 
     mem = ProjectMemory(persist_directory=str(tmp_path))
     assert len(mem.query('proj', 'sess')) == 5
+
+
+def test_multiprocess_add(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    get_project_memory(monkeypatch)  # ensure fallback is loaded in parent
+    processes = [
+        multiprocessing.Process(target=_mp_worker, args=(str(tmp_path), i))
+        for i in range(5)
+    ]
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join()
+
+    ProjectMemory = get_project_memory(monkeypatch)
+    mem = ProjectMemory(persist_directory=str(tmp_path))
+    assert len(mem.query('proj', 'sess')) == 5
+
+
+def test_update_missing_file_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ProjectMemory = get_project_memory(monkeypatch)
+    mem = ProjectMemory(persist_directory=str(tmp_path))
+    with pytest.raises(KeyError):
+        mem.update('proj', 'sess', 'bad-id', text='hi')
+
+
+def test_update_corrupt_file_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ProjectMemory = get_project_memory(monkeypatch)
+    path = tmp_path / 'proj_sess.json'
+    path.write_text('not json')
+    mem = ProjectMemory(persist_directory=str(tmp_path))
+    with pytest.raises(RuntimeError):
+        mem.update('proj', 'sess', 'bad-id', text='hi')
+
+
+def test_delete_missing_file_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ProjectMemory = get_project_memory(monkeypatch)
+    mem = ProjectMemory(persist_directory=str(tmp_path))
+    with pytest.raises(KeyError):
+        mem.delete('proj', 'sess', 'bad-id')
+
+
+def test_delete_corrupt_file_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ProjectMemory = get_project_memory(monkeypatch)
+    path = tmp_path / 'proj_sess.json'
+    path.write_text('not json')
+    mem = ProjectMemory(persist_directory=str(tmp_path))
+    with pytest.raises(RuntimeError):
+        mem.delete('proj', 'sess', 'bad-id')

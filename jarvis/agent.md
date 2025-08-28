@@ -27,3 +27,7 @@ Added update/delete APIs and thread locking to fallback ProjectMemory.
 **Associated Data:**
 File: memory/__init__.py
 - Added file-backed fallback MemoryManager and ProjectMemory.
+
+## Agent Log 2025-09-07
+- Added process-level file locking to fallback ProjectMemory.
+
