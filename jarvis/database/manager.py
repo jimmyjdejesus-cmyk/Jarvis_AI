@@ -90,9 +90,9 @@ class DatabaseManager:
         if LEGACY_DB_AVAILABLE:
             try:
                 return get_user(username)
-            except:
+            except Exception:
                 pass
-        
+
         # Fallback implementation
         with self._lock:
             conn = sqlite3.connect(self.db_path)
@@ -180,9 +180,9 @@ class DatabaseManager:
         if LEGACY_DB_AVAILABLE:
             try:
                 return get_user_preferences(username)
-            except:
+            except Exception:
                 pass
-        
+
         # Fallback implementation
         prefs = {}
         try:

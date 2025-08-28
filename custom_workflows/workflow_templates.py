@@ -206,7 +206,7 @@ class ResearchWorkflow(CustomWorkflowTemplate):
     def execution_phase(self, plan):
         print("\n📚 Conducting Research")
         results = {}
-        
+
         # Simulate research
         results['sources_found'] = 15
         results['key_papers'] = [

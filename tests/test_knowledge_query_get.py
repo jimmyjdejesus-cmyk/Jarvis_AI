@@ -16,9 +16,13 @@ class Neo4jGraph:  # type: ignore[override]
 
 neo_module.Neo4jGraph = Neo4jGraph
 sys.modules.setdefault("jarvis", types.ModuleType("jarvis"))
-sys.modules.setdefault("jarvis.world_model", types.ModuleType("jarvis.world_model"))
+sys.modules.setdefault(
+    "jarvis.world_model", types.ModuleType("jarvis.world_model")
+)
 sys.modules["jarvis.world_model.neo4j_graph"] = neo_module
-sys.modules.setdefault("jarvis.workflows", types.ModuleType("jarvis.workflows"))
+sys.modules.setdefault(
+    "jarvis.workflows", types.ModuleType("jarvis.workflows")
+)
 workflows_engine = types.ModuleType("jarvis.workflows.engine")
 workflows_engine.workflow_engine = object()
 sys.modules["jarvis.workflows.engine"] = workflows_engine
@@ -30,7 +34,10 @@ client = TestClient(app)
 
 def test_get_knowledge_query_success():
     """Valid queries return results from KnowledgeGraph."""
-    with patch("app.main.knowledge_graph.query", return_value=["n1"]) as mock_query:
+    with patch(
+        "app.main.knowledge_graph.query",
+        return_value=["n1"],
+    ) as mock_query:
         response = client.get("/knowledge/query", params={"q": "nodes"})
     assert response.status_code == 200
     assert response.json() == {"results": ["n1"]}
@@ -40,7 +47,8 @@ def test_get_knowledge_query_success():
 def test_get_knowledge_query_bad_request():
     """Unsupported queries return HTTP 400."""
     with patch(
-        "app.main.knowledge_graph.query", side_effect=ValueError("Unsupported query")
+        "app.main.knowledge_graph.query",
+        side_effect=ValueError("Unsupported query"),
     ):
         response = client.get("/knowledge/query", params={"q": "invalid"})
     assert response.status_code == 400

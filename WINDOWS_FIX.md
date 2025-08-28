@@ -11,8 +11,8 @@ The user is experiencing these issues:
 
 ### **Step 1: Install Dependencies**
 ```cmd
-# Install Python dependencies
-pip install fastapi uvicorn websockets pydantic langgraph
+# Install Python dependencies (FastAPI 0.111.x + Pydantic 2.7+)
+pip install fastapi==0.111.0 uvicorn websockets "pydantic>=2.7,<3" langgraph
 
 # Or install all at once
 pip install -r requirements.txt
@@ -99,8 +99,8 @@ npm install --legacy-peer-deps
 
 ### **Dependencies Missing:**
 ```cmd
-# Install all Python dependencies
-pip install fastapi uvicorn websockets pydantic langgraph python-multipart
+# Install all Python dependencies (FastAPI 0.111.x + Pydantic 2.7+)
+pip install fastapi==0.111.0 uvicorn websockets "pydantic>=2.7,<3" langgraph python-multipart
 
 # Install Node.js dependencies
 npm install --legacy-peer-deps

@@ -182,7 +182,7 @@ main() {
     print_step "Initializing configuration..."
     jarvis config --init
     print_success "Configuration initialized"
-    
+
     # Create launcher script
     print_step "Creating launcher script..."
 cat > "$INSTALL_DIR/start-jarvis.sh" << 'EOF'

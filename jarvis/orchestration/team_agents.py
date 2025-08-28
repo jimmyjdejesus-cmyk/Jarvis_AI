@@ -5,12 +5,13 @@ Defines the hierarchical agent structure for the Jarvis V2 Orchestration System.
 import uuid
 import os
 import asyncio
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, Optional
 
 from jarvis.memory.memory_bus import MemoryBus
 from jarvis.agents.research_agent import ResearchAgent
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
+from jarvis.orchestration.mission import MissionDAG
 from jarvis.orchestration.mission_planner import MissionPlanner
 from jarvis.ecosystem import superintelligence
 
@@ -71,6 +72,32 @@ class BlackInnovatorAgent(TeamMemberAgent):
     def __init__(self, orchestrator: 'OrchestratorAgent'):
         super().__init__(orchestrator, "Black")
 
+    def run(self, objective: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate disruptive strategies for the given objective.
+
+        The agent logs its reasoning to the local memory bus and shares a
+        summary with other teams via the shared docs bus.  The returned
+        strategy mentions which context keys were considered.
+
+        Parameters
+        ----------
+        objective:
+            The high level goal to address.
+        context:
+            Filtered contextual information relevant to the objective.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the proposed disruptive strategy.
+        """
+
+        self.log("Generating disruptive strategy.", data={"objective": objective, "context": context})
+        factors = ", ".join(sorted(context.keys())) if context else "no context"
+        strategy = f"Use {factors} to challenge {objective}"
+        self.share_doc("Disruptive strategy drafted", data={"strategy": strategy})
+        return {"strategy": strategy}
+
 
 class OrchestratorAgent:
     """
@@ -120,6 +147,17 @@ class OrchestratorAgent:
         """Broadcasts a significant finding to the shared memory bus for other orchestrators."""
         if self.shared_bus:
             self.shared_bus.log_interaction(self.agent_id, f"Broadcast | {self.objective[:30]}...", message, data)
+
+    @staticmethod
+    def create_black_team_orchestrator(
+        objective: str,
+        directory: str = ".",
+        shared_bus: Optional[MemoryBus] = None,
+    ) -> "BlackTeamOrchestrator":
+        """Spawn a standalone orchestrator for Black team missions."""
+        from .black_team_orchestrator import BlackTeamOrchestrator
+
+        return BlackTeamOrchestrator(objective, directory, shared_bus=shared_bus)
 
     # ---- Runtime control methods ----
     def pause_team(self, team_name: str):
@@ -204,22 +242,26 @@ class MetaAgent:
         """Logs a message from the Meta-Agent to the shared bus."""
         self.shared_memory_bus.log_interaction(self.agent_id, "Meta", message, data)
 
-    def plan_mission(self, mission_name: str) -> List[Dict[str, Any]]:
-        """Break a mission into sub-tasks and enqueue them.
+    def plan_mission(self, mission_name: str) -> MissionDAG:
+        """Create a mission plan and enqueue its tasks.
 
         Parameters
         ----------
         mission_name: str
-            Name of the mission file (without extension) located in ``config/missions``.
+            Name of the mission file (without extension) located in
+            ``config/missions``.
 
         Returns
         -------
-        List[Dict[str, Any]]
-            The tasks that were enqueued.
+        MissionDAG
+            The planned mission graph.  Tasks are already enqueued on the
+            planner's queue for downstream consumption.
         """
-        tasks = self.mission_planner.plan(mission_name)
-        self.log(f"Planned mission '{mission_name}' with {len(tasks)} tasks.")
-        return tasks
+
+        dag = self.mission_planner.plan(mission_name)
+        self.log(
+            f"Planned mission '{mission_name}' with {len(dag.nodes)} nodes.")
+        return dag
 
     def next_task(self) -> Dict[str, Any] | None:
         """Retrieve the next task from the mission queue."""
@@ -228,20 +270,33 @@ class MetaAgent:
             self.log(f"Dequeued task {task.get('id', '')}.")
         return task
 
-    def spawn_orchestrator(self, objective: str, directory: str = ".") -> OrchestratorAgent:
-        """Dynamically creates and deploys an OrchestratorAgent for a new objective.
+    def spawn_orchestrator(
+        self,
+        objective: str,
+        directory: str = ".",
+        tags: Optional[List[str]] = None,
+    ) -> "OrchestratorAgent" | "BlackTeamOrchestrator":
+        """Dynamically create and deploy an orchestrator for a new objective.
 
-        Uses a simple heuristic to score the objective and records the plan quality
-        for later analysis of emergent behavior.
+        If ``tags`` contains ``"disruptive"`` a dedicated
+        :class:`BlackTeamOrchestrator` is spawned; otherwise the standard
+        :class:`OrchestratorAgent` is used.
         """
         score = self._evaluate_objective(objective)
         self._metrics["plans"].append({"objective": objective, "score": score})
         self.log(
             f"Spawning new orchestrator for objective: '{objective}' in directory '{directory}'.",
-            data={"planning_score": score},
+            data={"planning_score": score, "tags": tags},
         )
-        orchestrator = OrchestratorAgent(self, objective, directory, shared_bus=self.shared_memory_bus)
-        self.orchestrators.append(orchestrator)
+        if tags and "disruptive" in tags:
+            orchestrator = OrchestratorAgent.create_black_team_orchestrator(
+                objective,
+                directory,
+                shared_bus=self.shared_memory_bus,
+            )
+        else:
+            orchestrator = OrchestratorAgent(self, objective, directory, shared_bus=self.shared_memory_bus)
+        self.orchestrators.append(orchestrator)  # type: ignore[arg-type]
         return orchestrator
 
     def register_result(self, orchestrator: OrchestratorAgent, result: Any) -> Dict[str, Any]:
