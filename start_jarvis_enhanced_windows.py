@@ -84,8 +84,8 @@ def install_dependencies_windows():
     try:
         print("Installing Python dependencies...")
         subprocess.run([
-            sys.executable, "-m", "pip", "install", 
-            "fastapi", "uvicorn", "websockets", "redis", "pydantic"
+            sys.executable, "-m", "pip", "install",
+            "fastapi==0.111.0", "uvicorn", "websockets", "redis", "pydantic>=2.7,<3"
         ], check=True, shell=True)
         print("✅ Python dependencies installed")
     except subprocess.CalledProcessError:

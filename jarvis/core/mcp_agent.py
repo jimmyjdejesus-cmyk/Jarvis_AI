@@ -212,7 +212,7 @@ I'll keep trying to respond once the connection is restored."""
         """Clear conversation history"""
         self.conversation_history = []
         logger.info("Conversation history cleared")
-    
+
     def get_mcp_status(self) -> Dict[str, Any]:
         """Get MCP system status"""
         if not self.enable_mcp:
