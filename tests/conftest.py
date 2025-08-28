@@ -229,102 +229,97 @@ sys.modules.setdefault("jarvis.workflows.engine", engine_module)
 
 @pytest.fixture
 def mock_neo4j_graph(monkeypatch):
-    """Provide a mock Neo4j graph for tests requiring persistence."""
+    """Provide a mock Neo4j graph for tests."""
+
     mock_graph = MagicMock()
     mock_graph.connect = MagicMock()
     mock_graph.close = MagicMock()
-    mock_graph.run = MagicMock(
-        return_value=MagicMock(data=MagicMock(return_value=[])),
-    )
+    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
     monkeypatch.setattr(
         "jarvis.world_model.neo4j_graph.Neo4jGraph",
         MagicMock(return_value=mock_graph),
     )
-    return mock_graph
+    yield mock_graph
 
 
-@pytest.fixture
-def multi_team_orchestrator_cls():
-    """Construct a `MultiTeamOrchestrator` wired to in-memory stubs.
-
-    The returned class uses `_DummyVectorStore` and lightweight module
-    replacements so orchestration tests can run without external services.
-    """
-
+def load_graph_module(monkeypatch):
+    """Load `jarvis.orchestration.graph` with isolated stubs."""
     root = Path(__file__).resolve().parents[1] / "jarvis"
+
+    # Provide fresh langgraph/networkx stubs per invocation
+    langgraph_graph = types.ModuleType("langgraph.graph")
+    langgraph_graph.END = object()
+
+    class StateGraph:  # pragma: no cover - minimal stub
+        def __init__(self, *args, **kwargs):
+            self.nodes = {}
+            self.edges = {}
+            self.entry = None
+
+        def add_node(self, name, fn):
+            self.nodes[name] = fn
+
+        def set_entry_point(self, name):
+            self.entry = name
+
+        def add_edge(self, src, dst):
+            self.edges[src] = dst
+
+        def compile(self):
+            nodes = self.nodes
+            edges = self.edges
+            entry = self.entry
+
+            class _CompiledGraph:
+                def stream(self, state):
+                    current = entry
+                    while current:
+                        fn = nodes[current]
+                        state = fn(state)
+                        yield {current: state}
+                        if state.get("halt"):
+                            break
+                        nxt = edges.get(current)
+                        if nxt is langgraph_graph.END:
+                            break
+                        current = nxt
+
+            return _CompiledGraph()
+
+    langgraph_graph.StateGraph = StateGraph
+    langgraph_module = types.ModuleType("langgraph")
+    langgraph_module.graph = langgraph_graph
+    monkeypatch.setitem(sys.modules, "langgraph", langgraph_module)
+    monkeypatch.setitem(sys.modules, "langgraph.graph", langgraph_graph)
+    monkeypatch.setitem(sys.modules, "networkx", types.ModuleType("networkx"))
 
     jarvis_stub = types.ModuleType("jarvis")
     jarvis_stub.__path__ = [str(root)]
-    sys.modules.setdefault("jarvis", jarvis_stub)
+    monkeypatch.setitem(sys.modules, "jarvis", jarvis_stub)
 
     orch_stub = types.ModuleType("jarvis.orchestration")
     orch_stub.__path__ = [str(root / "orchestration")]
-    sys.modules.setdefault("jarvis.orchestration", orch_stub)
+    monkeypatch.setitem(sys.modules, "jarvis.orchestration", orch_stub)
 
-    team_agents_stub = types.ModuleType(
-        "jarvis.orchestration.team_agents",
-    )
+    team_agents_stub = types.ModuleType("jarvis.orchestration.team_agents")
 
-    class TeamMemberAgent:
-        """Stub team member agent."""
-
+    class OrchestratorAgent:  # pragma: no cover - stub
         pass
 
-    class OrchestratorAgent:
-        """Stub orchestrator agent."""
-
+    class TeamMemberAgent:  # pragma: no cover - stub
         pass
 
-    team_agents_stub.TeamMemberAgent = TeamMemberAgent
     team_agents_stub.OrchestratorAgent = OrchestratorAgent
-    sys.modules.setdefault(
-        "jarvis.orchestration.team_agents",
-        team_agents_stub,
+    team_agents_stub.TeamMemberAgent = TeamMemberAgent
+    monkeypatch.setitem(
+        sys.modules, "jarvis.orchestration.team_agents", team_agents_stub
     )
 
     pruning_stub = types.ModuleType("jarvis.orchestration.pruning")
 
-    class PruningEvaluator:
-        def should_prune(self, team):  # pragma: no cover - simple stub
+    class PruningEvaluator:  # pragma: no cover - stub
+        def should_prune(self, *args, **kwargs):
             return False
 
-        async def evaluate(self, team, output):
-            """Simple stub evaluation."""
-            return None  # pragma: no cover
-
-    pruning_stub.PruningEvaluator = PruningEvaluator
-    sys.modules.setdefault("jarvis.orchestration.pruning", pruning_stub)
-
-    spec = importlib.util.spec_from_file_location(
-        "jarvis.orchestration.graph", root / "orchestration" / "graph.py"
-    )
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-
-    def dummy_build_graph(self):
-        class DummyGraph:
-            def invoke(_, state):
-                state = self._run_competitive_pair(state)
-                state = self._run_adversary_pair(state)
-                state = self._run_innovators_disruptors(state)
-                state = self._broadcast_findings(state)
-                state = self._run_security_quality(state)
-                return state
-
-            def stream(_, state):
-                for func, name in [
-                    (self._run_competitive_pair, "competitive_pair"),
-                    (self._run_adversary_pair, "adversary_pair"),
-                    (self._run_innovators_disruptors, "innovators_disruptors"),
-                    (self._broadcast_findings, "broadcast_findings"),
-                    (self._run_security_quality, "security_quality"),
-                ]:
-                    state = func(state)
-                    yield {name: state}
-
-        return DummyGraph()
-
-    module.MultiTeamOrchestrator._build_graph = dummy_build_graph
-    return module.MultiTeamOrchestrator
+        async def evaluate(self, *args, **kwargs):  # pragma: no cover - stub
+            pass

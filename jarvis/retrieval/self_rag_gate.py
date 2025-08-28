@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from time import perf_counter
 from typing import List, Sequence, Dict, Any
+import logging
 
 
 @dataclass
@@ -49,6 +50,7 @@ class SelfRAGGate:
         self.precision_threshold = precision_threshold
         self.max_latency_ms = max_latency_ms
         self.events: List[RetrievalMetrics] = []
+        self._logger = logging.getLogger(__name__)
 
     def _compute_precision(self, results: Sequence[Dict[str, Any]]) -> float:
         """Compute precision for retrieval results.
@@ -94,5 +96,14 @@ class SelfRAGGate:
         elif latency_ms > self.max_latency_ms:
             decision = False
 
-        self.events.append(RetrievalMetrics(precision, latency_ms, decision))
+        metrics = RetrievalMetrics(precision, latency_ms, decision)
+        self.events.append(metrics)
+        self._logger.info(
+            "retrieval decision",
+            extra={
+                "precision": precision,
+                "latency_ms": latency_ms,
+                "decision": decision,
+            },
+        )
         return decision
