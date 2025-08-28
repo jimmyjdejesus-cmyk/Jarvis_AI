@@ -49,9 +49,10 @@ if TYPE_CHECKING:  # pragma: no cover - used only for type hints
 
 logger = logging.getLogger(__name__)
 
-
-# Placeholder constant re-exported by jarvis.orchestration.__init__
-END = object()
+try:  # pragma: no cover - optional dependency
+    from langgraph.graph import END  # type: ignore
+except ImportError:  # pragma: no cover
+    END = None  # type: ignore
 
 # ---------------------------------------------------------------------------
 # Orchestrator template
