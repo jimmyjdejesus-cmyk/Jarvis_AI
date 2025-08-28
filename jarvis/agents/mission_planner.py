@@ -11,10 +11,14 @@ try:  # pragma: no cover - optional dependency
     from jarvis.memory.project_memory import MemoryManager, ProjectMemory
 except Exception:  # pragma: no cover - fallback for tests
     class MemoryManager:  # type: ignore[misc]
-        def add(self, *args: Any, **kwargs: Any) -> None:  # pragma: no cover - stub
+        def add(
+            self, *args: Any, **kwargs: Any
+        ) -> None:  # pragma: no cover - stub
             raise NotImplementedError
 
-        def query(self, *args: Any, **kwargs: Any) -> list[dict]:  # pragma: no cover - stub
+        def query(
+            self, *args: Any, **kwargs: Any
+        ) -> list[dict]:  # pragma: no cover - stub
             return []
 
     ProjectMemory = None  # type: ignore
@@ -54,7 +58,8 @@ class MissionPlanner:
 
         The planner consults project memory and the knowledge graph to propose
         initial steps and records a rationale. A ``Mission_Planned`` event is
-        emitted with the DAG payload.
+        emitted with the DAG payload. If ``knowledge_graph`` is provided, the
+        mission's nodes and edges are also persisted for historical audit.
         """
 
         project = context.get("project", "default")
@@ -110,7 +115,12 @@ class MissionPlanner:
 
         rationale_text = "; ".join(rationale) if rationale else "basic plan"
         mission_id = uuid.uuid4().hex
-        dag = MissionDAG(mission_id=mission_id, nodes=nodes, edges=edges, rationale=rationale_text)
+        dag = MissionDAG(
+            mission_id=mission_id,
+            nodes=nodes,
+            edges=edges,
+            rationale=rationale_text,
+        )
         mission = Mission(
             id=mission_id,
             title=context.get("title", goal),
@@ -120,6 +130,29 @@ class MissionPlanner:
             dag=dag,
         )
         save_mission(mission)
+        if self.knowledge_graph:
+            for node in dag.nodes.values():
+                try:
+                    self.knowledge_graph.add_node(
+                        node.step_id,
+                        "mission_node",
+                        {
+                            "mission_id": mission_id,
+                            "capability": node.capability,
+                            "team_scope": node.team_scope,
+                            "hitl_gate": node.hitl_gate,
+                            "status": node.state.status,
+                        },
+                    )
+                except Exception as e:  # pragma: no cover - optional KG
+                    logger.warning("Failed to add mission node %s to knowledge graph: %s", node.step_id, e)
+            for src, tgt in dag.edges:
+                try:
+                    self.knowledge_graph.add_edge(
+                        src, tgt, "depends_on", {"mission_id": mission_id}
+                    )
+                except Exception as e:  # pragma: no cover - optional KG
+                    logger.warning("Failed to add mission edge %s->%s to knowledge graph: %s", src, tgt, e)
         try:
             self.event_handler("Mission_Planned", dag.to_dict())
         except Exception:  # pragma: no cover - event handler optional
@@ -138,4 +171,3 @@ class MissionPlanner:
             for i in range(1, len(tasks))
         ]
         return {"nodes": nodes, "edges": edges}
-

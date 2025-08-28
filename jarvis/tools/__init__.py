@@ -8,7 +8,22 @@ try:  # Optional dependency
     from .repository_indexer import RepositoryIndexer
 except Exception:  # pragma: no cover - optional feature
     RepositoryIndexer = None  # type: ignore
-from .environment_tools import read_file, write_file, run_shell_command, run_tests
+
+try:
+    from .environment_tools import (
+        read_file,
+        write_file,
+        run_shell_command,
+        run_tests,
+    )
+except Exception:  # pragma: no cover - optional feature
+    def _missing(*_args, **_kwargs):  # type: ignore
+        raise ImportError("environment tools not available")
+
+    read_file = _missing  # type: ignore
+    write_file = _missing  # type: ignore
+    run_shell_command = _missing  # type: ignore
+    run_tests = _missing  # type: ignore
 try:  # Optional dependency
     from .web_tools import WebSearchTool, WebReaderTool
 except Exception:  # pragma: no cover - optional feature

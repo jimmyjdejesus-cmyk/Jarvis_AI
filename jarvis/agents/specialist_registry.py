@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import logging
 import pkgutil
 from typing import Any, Dict, Type
 
@@ -26,12 +27,26 @@ def _discover_specialists() -> None:
         )
 
     for _, name, _ in pkgutil.walk_packages(
-        agents_package.__path__, agents_package.__name__ + ".", onerror=lambda x: None
+        agents_package.__path__,
+        agents_package.__name__ + ".",
+        onerror=lambda _: None,
     ):
-        module = importlib.import_module(name)
+        try:
+            module = importlib.import_module(name)
+        except Exception:  # pragma: no cover - skip optional deps
+            logging.debug(
+                "Skipping specialist module %s due to import error", name
+            )
+            continue
+
         for _, cls in inspect.getmembers(module, is_specialist_class):
             # Use a more descriptive name for registration
-            specialist_name = cls.__name__.lower().replace("specialist", "").replace("agent", "")
+            specialist_name = (
+                cls.__name__
+                .lower()
+                .replace("specialist", "")
+                .replace("agent", "")
+            )
             _SPECIALIST_REGISTRY[specialist_name] = cls
 
 

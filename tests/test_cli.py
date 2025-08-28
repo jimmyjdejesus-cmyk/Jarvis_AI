@@ -1,39 +1,81 @@
-import pytest
-from unittest.mock import patch, MagicMock
 import os
-import asyncio
-
 import sys
+import types
 from pathlib import Path
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 root = Path(__file__).resolve().parents[1]
 sys.path.append(str(root / "jarvis"))
-from jarvis_ai import cli
+
+jarvis_stub = types.ModuleType("jarvis")
+ecosystem_stub = types.ModuleType("jarvis.ecosystem")
+jarvis_stub.ecosystem = ecosystem_stub
+ecosystem_stub.ExecutiveAgent = MagicMock()
+sys.modules.setdefault("jarvis", jarvis_stub)
+sys.modules.setdefault("jarvis.ecosystem", ecosystem_stub)
+
+from jarvis_ai import cli # noqa: E402
+
 
 @pytest.fixture
-def mock_orchestrator():
+def mock_agent():
     mock = MagicMock()
-    # since coordinate_specialists is an async function, we need to mock it with an async function
-    async def mock_coordinate_specialists(*args, **kwargs):
-        return {"result": "success"}
-    mock.coordinate_specialists = mock_coordinate_specialists
+    mock.execute_mission = AsyncMock(return_value={"result": "success"})
     return mock
 
-def test_cli_with_objective(mock_orchestrator):
-    with patch("jarvis_ai.cli.MultiAgentOrchestrator", return_value=mock_orchestrator):
-        with patch("sys.argv", ["jarvis", "test objective"]):
-            cli.main(mcp_client=MagicMock())
-            # We can't assert the call directly because it's in a different thread.
-            # Instead, we'll just check that the orchestrator was initialized.
-            assert cli.MultiAgentOrchestrator.called
 
-def test_cli_with_code_and_context(mock_orchestrator):
-    with patch("jarvis_ai.cli.MultiAgentOrchestrator", return_value=mock_orchestrator):
-        # Create a dummy code file
-        with open("test_code.py", "w") as f:
-            f.write("print('hello')")
+def test_cli_with_objective(mock_agent):
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        cli._run_command(
+            types.SimpleNamespace(objective="test objective", code=None, context=None),
+            None,
+        )
 
-        with patch("sys.argv", ["jarvis", "test objective", "--code", "test_code.py", "--context", "test context"]):
-            cli.main(mcp_client=MagicMock())
-            assert cli.MultiAgentOrchestrator.called
+    mock_agent.execute_mission.assert_called_once_with("test objective", {})
 
-        os.remove("test_code.py")
+def test_cli_with_code(mock_agent, tmp_path):
+    code_file = tmp_path / "code.py"
+    code_file.write_text("print('hello world')")
+
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        cli._run_command(
+            types.SimpleNamespace(objective="test objective", code=open(code_file), context=None),
+            None,
+        )
+
+    mock_agent.execute_mission.assert_called_once_with(
+        "test objective", {"code": "print('hello world')"}
+    )
+
+def test_cli_with_context(mock_agent):
+    fake_module = types.SimpleNamespace(ExecutiveAgent=MagicMock(return_value=mock_agent))
+    with patch.dict(sys.modules, {"jarvis.ecosystem": fake_module}):
+        cli._run_command(
+            types.SimpleNamespace(
+                objective="test objective", code=None, context="user context"
+            ),
+            None,
+        )
+
+    mock_agent.execute_mission.assert_called_once_with(
+        "test objective", {"user_context": "user context"}
+    )
+
+def test_cli_main_with_run_command(monkeypatch, capsys):
+    test_args = ["run", "test objective"]
+    monkeypatch.setattr(sys, "argv", ["jarvis", *test_args])
+
+    def mock_run_command(args, mcp_client):
+        assert args.objective == "test objective"
+        print("Mock run command executed")
+
+    with patch("jarvis_ai.cli._run_command", new=mock_run_command):
+        cli.main()
+    
+    captured = capsys.readouterr()
+    assert "Mock run command executed" in captured.out
