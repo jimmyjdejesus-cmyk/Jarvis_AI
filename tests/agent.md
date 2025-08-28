@@ -142,3 +142,5 @@ Added integration test verifying memory and knowledge graph persistence across m
 **Associated Data:**
 ```json
 {"files": ["test_mission_step_persistence.py"]}
+## Agent Log 2025-09-06
+- Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.

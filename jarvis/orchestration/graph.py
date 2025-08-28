@@ -3,17 +3,19 @@ Defines the LangGraph-based orchestration logic for the multi-agent teams.
 """
 
 import asyncio
-from typing import List, Dict, Any, TypedDict, Annotated
+from typing import Dict, Any, TypedDict
 from langgraph.graph import StateGraph, END
 # from langgraph.checkpoints import SqliteSaver # Temporarily removed to resolve import error
 from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
 from jarvis.orchestration.pruning import PruningEvaluator
+from jarvis.critics import RedTeamCritic, BlueTeamCritic
 
 # Define the state for our graph
 class TeamWorkflowState(TypedDict):
     objective: str
     context: Dict[str, Any]
     team_outputs: Dict[str, Any]
+    critics: Dict[str, Any]
     next_team: str
 
 class MultiTeamOrchestrator:
@@ -26,6 +28,8 @@ class MultiTeamOrchestrator:
     ) -> None:
         self.orchestrator = orchestrator_agent
         self.evaluator = evaluator
+        self.red_critic = RedTeamCritic()
+        self.blue_critic = BlueTeamCritic()
         self.graph = self._build_graph()
 
     def _build_graph(self):
@@ -95,7 +99,7 @@ class MultiTeamOrchestrator:
         return await asyncio.to_thread(self._run_team, team, state)
 
     def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
-        """Runs the Red and Blue teams in parallel."""
+        """Runs the Red and Blue teams in parallel and reviews their outputs."""
         red_agent, blue_agent = self.orchestrator.teams["adversary_pair"]
 
         async def run_pair():
@@ -105,6 +109,17 @@ class MultiTeamOrchestrator:
             )
 
         red_output, blue_output = asyncio.run(run_pair())
+
+        async def review_pair() -> list:
+            return await asyncio.gather(
+                self.red_critic.review(red_output),
+                asyncio.to_thread(self.blue_critic.review, blue_output),
+            )
+
+        red_verdict, blue_verdict = asyncio.run(review_pair())
+        state.setdefault("critics", {})
+        state["critics"]["red"] = red_verdict
+        state["critics"]["blue"] = blue_verdict
         state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
         return state
 
@@ -188,6 +203,7 @@ class MultiTeamOrchestrator:
             "objective": objective,
             "context": {},
             "team_outputs": {},
+            "critics": {},
             "next_team": "competitive_pair"
         }
         
