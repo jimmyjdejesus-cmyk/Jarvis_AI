@@ -119,7 +119,7 @@ class MultiTeamOrchestrator:
                     risk=float(output.get("risk", 0.0)),
                     notes=str(output.get("notes", "")),
                 )
-            return CriticVerdict(True, [], 0.0, str(output))
+            return CriticVerdict(False, [], 1.0, f"Unsupported output type: {type(output).__name__}")
 
         red_verdict = _to_verdict(red_output)
         blue_verdict = _to_verdict(blue_output)
