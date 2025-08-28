@@ -1,11 +1,9 @@
-import importlib.util
-import pathlib
-import sys
 import time
-import types
 import asyncio
 
 import pytest
+
+from tests.conftest import load_graph_module
 
 
 class DummyGraph:
@@ -13,62 +11,9 @@ class DummyGraph:
         return []
 
 
-def _load_graph_module(monkeypatch):
-    root = pathlib.Path(__file__).resolve().parents[1] / "jarvis"
-
-    jarvis_stub = types.ModuleType("jarvis")
-    jarvis_stub.__path__ = [str(root)]
-    monkeypatch.setitem(sys.modules, "jarvis", jarvis_stub)
-
-    orch_stub = types.ModuleType("jarvis.orchestration")
-    orch_stub.__path__ = [str(root / "orchestration")]
-    monkeypatch.setitem(sys.modules, "jarvis.orchestration", orch_stub)
-
-    team_agents_stub = types.ModuleType("jarvis.orchestration.team_agents")
-
-    class OrchestratorAgent:  # pragma: no cover - stub
-        pass
-
-    class TeamMemberAgent:  # pragma: no cover - stub
-        pass
-
-    team_agents_stub.OrchestratorAgent = OrchestratorAgent
-    team_agents_stub.TeamMemberAgent = TeamMemberAgent
-    monkeypatch.setitem(
-        sys.modules, "jarvis.orchestration.team_agents", team_agents_stub
-    )
-
-    pruning_stub = types.ModuleType("jarvis.orchestration.pruning")
-
-    class PruningEvaluator:  # pragma: no cover - stub
-        def should_prune(self, *args, **kwargs):
-            return False
-
-        async def evaluate(self, *args, **kwargs):  # pragma: no cover - stub
-            return None
-
-    pruning_stub.PruningEvaluator = PruningEvaluator
-    monkeypatch.setitem(
-        sys.modules, "jarvis.orchestration.pruning", pruning_stub
-    )
-
-    # Ensure real langgraph/networkx are used
-    sys.modules.pop("langgraph", None)
-    sys.modules.pop("langgraph.graph", None)
-    sys.modules.pop("networkx", None)
-
-    spec = importlib.util.spec_from_file_location(
-        "jarvis.orchestration.graph", root / "orchestration" / "graph.py"
-    )
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
 @pytest.fixture
 def graph_module(monkeypatch):
-    module = _load_graph_module(monkeypatch)
+    module = load_graph_module(monkeypatch)
     monkeypatch.setattr(
         module.MultiTeamOrchestrator, "_build_graph", lambda self: DummyGraph()
     )
