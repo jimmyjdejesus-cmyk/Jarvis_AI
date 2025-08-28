@@ -6,3 +6,4 @@
 - Adjusted LogViewerPane tests to match UI placeholder and status titles.
 - Added Teams tab with sliders for Black team in `SettingsView.jsx`.
 - Added test for `LogViewerPane` covering non-OK HTTP response and retry.
+- Enabled ESLint for frontend components and added repeated HTTP error test in `LogViewerPane`.

@@ -14,3 +14,8 @@
 ## Agent Log 2025-09-08
 - Expanded LogViewerPane tests with non-OK response case that succeeds after retry.
 
+## Agent Log 2025-08-28
+- Introduced ESLint configuration and lint script for the Tauri frontend.
+- Added multi-retry LogViewerPane test covering varied HTTP error statuses.
+- Noted ChatPane is temporarily ignored in lint due to parsing error.
+

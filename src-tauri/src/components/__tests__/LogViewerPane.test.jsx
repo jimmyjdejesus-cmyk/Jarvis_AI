@@ -70,3 +70,24 @@ test('handles non-OK HTTP response then succeeds after retry', async () => {
   await screen.findByText(/first line/);
   expect(screen.queryByText(/Failed to load agent logs/)).not.toBeInTheDocument();
 });
+
+test('retries multiple times on diverse HTTP errors before succeeding', async () => {
+  http.fetch
+    .mockResolvedValueOnce({ ok: false, status: 500 })
+    .mockResolvedValueOnce({ ok: false, status: 404 })
+    .mockResolvedValueOnce({ ok: true, data: 'first line' });
+
+  render(<LogViewerPane />);
+
+  // first failure
+  await screen.findByText(/Failed to load agent logs/);
+
+  // second failure after first retry
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+  await screen.findByText(/Failed to load agent logs/);
+
+  // success after second retry
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+  await screen.findByText(/first line/);
+  expect(screen.queryByText(/Failed to load agent logs/)).not.toBeInTheDocument();
+});
