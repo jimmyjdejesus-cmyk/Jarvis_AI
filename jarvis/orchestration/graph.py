@@ -123,7 +123,7 @@ class MultiTeamOrchestrator:
 
         red_verdict = _to_verdict(red_output)
         blue_verdict = _to_verdict(blue_output)
-        merged = WhiteGate().merge(red_verdict, blue_verdict)
+        merged = self.white_gate.merge(red_verdict, blue_verdict)
 
         state.setdefault("critics", {})["white_gate"] = merged.to_dict()
         state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
