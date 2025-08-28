@@ -10,11 +10,13 @@ from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
 from jarvis.orchestration.pruning import PruningEvaluator
 
 # Define the state for our graph
+
 class TeamWorkflowState(TypedDict):
     objective: str
     context: Dict[str, Any]
     team_outputs: Dict[str, Any]
     next_team: str
+
 
 class MultiTeamOrchestrator:
     """Uses LangGraph to orchestrate the five specialized teams."""
