@@ -158,6 +158,7 @@ Added integration test verifying memory and knowledge graph persistence across m
 ## Agent Log 2025-09-06
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
+- Added tests for file-backed ProjectMemory fallback.
 ## Agent Log 2025-09-07
 - Stubbed ExecutiveAgent and MultiTeamOrchestrator in conftest for WhiteGate test execution.
 ## Agent Log 2025-09-08
