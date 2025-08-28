@@ -1,179 +1,205 @@
-"""Test configuration to ensure package imports and keyring isolation."""
+from __future__ import annotations
+
+# flake8: noqa
+
+from pathlib import Path
+from unittest.mock import MagicMock
+import sys
+import types
+import importlib.util
+import enum
+from dataclasses import dataclass
 
 import pytest
-import keyring
-from keyring.backend import KeyringBackend
-import importlib.util
-import types
-from pathlib import Path
-import sys
-from unittest.mock import MagicMock
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Stub optional dependencies
+sys.modules.setdefault("neo4j", MagicMock())
+keyring_errors = types.ModuleType("keyring.errors")
 
-import asyncio
-import json
-import logging
-import os
-import uuid
-from abc import abstractmethod
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
 
-from jarvis.agents.agent_resources import (
-    AgentCapability,
-    AgentMetrics,
-    SystemEvolutionPlan,
-    SystemHealth,
+class NoKeyringError(Exception):
+    pass
+
+
+keyring_errors.NoKeyringError = NoKeyringError
+keyring_module = types.ModuleType("keyring")
+keyring_module.errors = keyring_errors
+keyring_module.get_password = lambda *args, **kwargs: None
+sys.modules.setdefault("keyring", keyring_module)
+sys.modules.setdefault("keyring.errors", keyring_errors)
+
+langgraph_graph = types.ModuleType("langgraph.graph")
+langgraph_graph.END = object()
+
+
+class StateGraph:  # pragma: no cover - minimal stub
+    pass
+
+
+langgraph_graph.StateGraph = StateGraph
+langgraph_module = types.ModuleType("langgraph")
+langgraph_module.graph = langgraph_graph
+sys.modules.setdefault("langgraph", langgraph_module)
+sys.modules.setdefault("langgraph.graph", langgraph_graph)
+
+# Minimal qdrant_client stub so imports succeed without the heavy dependency
+qdrant_client = types.ModuleType("qdrant_client")
+qdrant_client.QdrantClient = MagicMock()
+qdrant_models = types.ModuleType("qdrant_client.models")
+qdrant_client.models = qdrant_models
+sys.modules.setdefault("qdrant_client", qdrant_client)
+sys.modules.setdefault("qdrant_client.models", qdrant_models)
+for name in [
+    "Distance",
+    "FieldCondition",
+    "Filter",
+    "MatchValue",
+    "PointStruct",
+    "VectorParams",
+]:
+    setattr(qdrant_models, name, MagicMock())
+
+# Stub chromadb embedding functions to satisfy project_memory imports
+chromadb = types.ModuleType("chromadb")
+chromadb.PersistentClient = MagicMock()
+chromadb_utils = types.ModuleType("chromadb.utils")
+chromadb_embed = types.ModuleType("chromadb.utils.embedding_functions")
+
+class _EmbeddingFunction:
+    pass
+
+chromadb_embed.EmbeddingFunction = _EmbeddingFunction
+chromadb_utils.embedding_functions = chromadb_embed
+sys.modules.setdefault("chromadb", chromadb)
+sys.modules.setdefault("chromadb.utils", chromadb_utils)
+sys.modules.setdefault("chromadb.utils.embedding_functions", chromadb_embed)
+
+# Stub modules referenced by orchestration and MCP components
+sys.modules.setdefault("jarvis.monitoring.performance", MagicMock())
+sys.modules.setdefault("aiohttp", MagicMock())
+
+# Load orchestration submodules without executing their heavy package __init__
+orchestration_pkg = types.ModuleType("jarvis.orchestration")
+orchestration_pkg.__path__ = [str(ROOT / "jarvis" / "orchestration")]
+sys.modules.setdefault("jarvis.orchestration", orchestration_pkg)
+
+# Minimal Mission model and persistence helpers
+mission_module = types.ModuleType("jarvis.orchestration.mission")
+
+@dataclass
+class Mission:  # pragma: no cover - simple stub
+    id: str
+    title: str
+    goal: str
+    inputs: dict
+    risk_level: str
+    dag: object
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "goal": self.goal,
+            "inputs": self.inputs,
+            "risk_level": self.risk_level,
+            "dag": {},
+        }
+
+def save_mission(mission: Mission) -> None:  # pragma: no cover - stub
+    pass
+
+def load_mission(mission_id: str) -> Mission:  # pragma: no cover - stub
+    raise FileNotFoundError
+
+mission_module.Mission = Mission
+mission_module.save_mission = save_mission
+mission_module.load_mission = load_mission
+@dataclass
+class MissionDAG:  # pragma: no cover - simple stub
+    mission_id: str
+    nodes: dict
+    edges: list | None = None
+    rationale: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "mission_id": self.mission_id,
+            "nodes": self.nodes,
+            "edges": self.edges or [],
+            "rationale": self.rationale,
+        }
+
+mission_module.MissionDAG = MissionDAG
+
+@dataclass
+class MissionNode:  # pragma: no cover - simple stub
+    step_id: str
+    capability: str
+    team_scope: str
+    details: str | None = None
+    hitl_gate: bool = False
+    deps: list | None = None
+    state: MissionNodeState | None = None
+
+
+@dataclass
+class MissionNodeState:  # pragma: no cover - simple stub
+    status: str = "pending"
+    started_at: float | None = None
+    completed_at: float | None = None
+    provenance: dict | None = None
+
+mission_module.MissionNode = MissionNode
+mission_module.MissionNodeState = MissionNodeState
+sys.modules.setdefault("jarvis.orchestration.mission", mission_module)
+
+# Load real mission_planner implementation
+spec = importlib.util.spec_from_file_location(
+    "jarvis.orchestration.mission_planner", ROOT / "jarvis" / "orchestration" / "mission_planner.py"
 )
-from jarvis.agents.base import AIAgent
-from jarvis.agents.critics import (
-    BlueTeamCritic,
-    ConstitutionalCritic,
-    CriticFeedback,
-    CriticVerdict,
-    RedTeamCritic,
-    WhiteGate,
-)
-from jarvis.agents.curiosity_agent import CuriosityAgent
-from jarvis.agents.curiosity_router import CuriosityRouter
-from jarvis.agents.mission_planner import MissionPlanner
-from jarvis.agents.specialist import SpecialistAgent
-from jarvis.memory.project_memory import MemoryManager, ProjectMemory
-from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
-from jarvis.homeostasis import SystemMonitor
-from jarvis.orchestration.orchestrator import (
-    AgentSpec,
-    DynamicOrchestrator,
-    MultiAgentOrchestrator,
-)
-from jarvis.orchestration.sub_orchestrator import SubOrchestrator
-from jarvis.persistence.session import SessionManager
-from jarvis.world_model.knowledge_graph import KnowledgeGraph
-from jarvis.world_model.hypergraph import HierarchicalHypergraph
-from jarvis.workflows.engine import (
-    WorkflowEngine,
-    WorkflowStatus,
-    add_custom_task,
-    create_workflow,
-)
+mission_planner_module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(mission_planner_module)
+sys.modules["jarvis.orchestration.mission_planner"] = mission_planner_module
 
-# Provide lightweight stand-ins for optional external dependencies
-jarvis_pkg = types.ModuleType("jarvis")
-critics_pkg = types.ModuleType("jarvis.agents.critics")
-critics_pkg.__path__ = [str(JARVIS_PATH / "agents" / "critics")]
-constitutional_critic = types.ModuleType("jarvis.agents.critics.constitutional_critic")
-class ConstitutionalCritic:  # pragma: no cover - stub
-    def __init__(self, *args, **kwargs):
-        pass
-constitutional_critic.ConstitutionalCritic = ConstitutionalCritic
-sys.modules.setdefault("jarvis.agents.critics", critics_pkg)
-sys.modules.setdefault("jarvis.agents.critics.constitutional_critic", constitutional_critic)
+# Minimal workflow engine stub with WorkflowStatus enum
+workflow_engine = types.ModuleType("jarvis.workflows.engine")
+class _WorkflowStatus(enum.Enum):
+    PENDING = "PENDING"
+workflow_engine.WorkflowStatus = _WorkflowStatus
+sys.modules.setdefault("jarvis.workflows.engine", workflow_engine)
 
-orch_pkg = types.ModuleType("jarvis.orchestration")
-orch_pkg.__path__ = [str(JARVIS_PATH / "orchestration")]
-sys.modules.setdefault("jarvis.orchestration", orch_pkg)
+# Provide a default model_client for agent mission planner patching
+import jarvis.agents.mission_planner as _agent_mp
+_agent_mp.model_client = MagicMock()
 
-jarvis_pkg.__path__ = [str(JARVIS_PATH)]
-sys.modules.setdefault("jarvis", jarvis_pkg)
+# In-memory task queue to replace RedisTaskQueue
+task_queue_module = types.ModuleType("jarvis.orchestration.task_queue")
 
-# Provide lightweight stand-ins for optional external dependencies
-chromadb = types.ModuleType('chromadb')
-chromadb.utils = types.ModuleType('utils')
-memory_service = types.ModuleType("memory_service")
-class PathRecord:
-    pass
-class PathSignature:
-    pass
-class Outcome:
-    pass
-class Metrics:
-    pass
-class NegativeCheck:
-    pass
-def record_path(*args, **kwargs):
-    return None
-def avoid_negative(*args, **kwargs):
-    return False
-memory_service.record_path = record_path
-memory_service.avoid_negative = avoid_negative
-memory_service.PathRecord = PathRecord
-memory_service.PathSignature = PathSignature
-memory_service.Outcome = Outcome
-memory_service.Metrics = Metrics
-memory_service.NegativeCheck = NegativeCheck
-class _VectorStore:
-    def add_text(self, *args, **kwargs):
-        return None
-    def query_text(self, query, n_results=1):
-        return {"documents": [[]]}
-memory_service.vector_store = _VectorStore()
+class RedisTaskQueue:  # pragma: no cover - simple stub
+    def __init__(self, name: str = "tasks") -> None:
+        self.name = name
+        self.tasks: list = []
 
-sys.modules.setdefault("memory_service", memory_service)
+    def enqueue(self, task: dict) -> None:
+        self.tasks.append(task)
 
-pydantic = types.ModuleType("pydantic")
-class BaseModel:  # pragma: no cover - stub
-    pass
-def Field(default=None, *args, **kwargs):  # pragma: no cover - stub
-    return default
-pydantic.BaseModel = BaseModel
-pydantic.Field = Field
-sys.modules.setdefault("pydantic", pydantic)
+task_queue_module.RedisTaskQueue = RedisTaskQueue
+sys.modules.setdefault("jarvis.orchestration.task_queue", task_queue_module)
+mission_planner_module.RedisTaskQueue = RedisTaskQueue
 
-langgraph = types.ModuleType("langgraph")
-langgraph.graph = types.ModuleType("graph")
-langgraph.graph.END = object()
-class StateGraph:  # pragma: no cover - stub
-    pass
-langgraph.graph.StateGraph = StateGraph
-sys.modules.setdefault("langgraph", langgraph)
-sys.modules.setdefault("langgraph.graph", langgraph.graph)
-
-chromadb.utils.embedding_functions = types.ModuleType('embedding_functions')
-
-class EmbeddingFunction:  # pragma: no cover - simple stub
-    """Minimal base embedding function stub."""
-
-class HashEmbeddingFunction(EmbeddingFunction):  # pragma: no cover - simple stub
-    """Hash-based embedding function stub."""
-
-chromadb.utils.embedding_functions.EmbeddingFunction = EmbeddingFunction
-chromadb.utils.embedding_functions.HashEmbeddingFunction = HashEmbeddingFunction
-sys.modules.setdefault('chromadb', chromadb)
-sys.modules.setdefault('chromadb.utils', chromadb.utils)
-sys.modules.setdefault('chromadb.utils.embedding_functions', chromadb.utils.embedding_functions)
-
-neo4j_module = types.ModuleType('neo4j')
-
-class GraphDatabase:  # pragma: no cover - simple stub
-    """Stub GraphDatabase with no-op driver."""
-
-    @staticmethod
-    def driver(*args, **kwargs):
-        return None
 
 @pytest.fixture
 def mock_neo4j_graph(monkeypatch):
-    """Provide a mock Neo4j graph for tests.
-
-    This fixture patches both the Neo4jGraph class used by core modules and the
-    instantiated ``neo4j_graph`` in ``app.main`` so tests can run without a
-    real database connection.
-    """
+    """Provide a mock Neo4j graph for tests."""
 
     mock_graph = MagicMock()
-    # Mock methods that are called during tests
-    mock_graph.connect = MagicMock()
-    mock_graph.close = MagicMock()
-    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
-
     monkeypatch.setattr(
-        "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
+        "jarvis.world_model.neo4j_graph.Neo4jGraph",
+        MagicMock(return_value=mock_graph),
     )
-    yield mock_graph
-
-class ExecutiveAgent(AIAgent):
+    return mock_graph
