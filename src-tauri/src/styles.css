@@ -403,6 +403,34 @@ body {
   gap: var(--spacing-md);
 }
 
+.settings-tabs {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-tabs button {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.settings-tabs button.active {
+  border-bottom: 2px solid var(--accent-color);
+  font-weight: bold;
+}
+
+.team-section {
+  margin-bottom: var(--spacing-md);
+}
+
+.team-section.black-team {
+  border-left: 4px solid #000;
+  padding-left: var(--spacing-sm);
+}
+
 /* Chat Messages */
 .chat-messages {
   padding: 0;
