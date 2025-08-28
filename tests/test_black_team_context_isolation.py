@@ -3,19 +3,26 @@ import pathlib
 import sys
 import time
 import types
-
 import asyncio
+
 import pytest
 
 
-def load_graph_module():
+class DummyGraph:
+    def stream(self, *_args, **_kwargs):
+        return []
+
+
+def _load_graph_module(monkeypatch):
     root = pathlib.Path(__file__).resolve().parents[1] / "jarvis"
+
     jarvis_stub = types.ModuleType("jarvis")
     jarvis_stub.__path__ = [str(root)]
-    sys.modules.setdefault("jarvis", jarvis_stub)
+    monkeypatch.setitem(sys.modules, "jarvis", jarvis_stub)
+
     orch_stub = types.ModuleType("jarvis.orchestration")
     orch_stub.__path__ = [str(root / "orchestration")]
-    sys.modules.setdefault("jarvis.orchestration", orch_stub)
+    monkeypatch.setitem(sys.modules, "jarvis.orchestration", orch_stub)
 
     team_agents_stub = types.ModuleType("jarvis.orchestration.team_agents")
 
@@ -27,8 +34,8 @@ def load_graph_module():
 
     team_agents_stub.OrchestratorAgent = OrchestratorAgent
     team_agents_stub.TeamMemberAgent = TeamMemberAgent
-    sys.modules.setdefault(
-        "jarvis.orchestration.team_agents", team_agents_stub
+    monkeypatch.setitem(
+        sys.modules, "jarvis.orchestration.team_agents", team_agents_stub
     )
 
     pruning_stub = types.ModuleType("jarvis.orchestration.pruning")
@@ -37,59 +44,18 @@ def load_graph_module():
         def should_prune(self, *args, **kwargs):
             return False
 
+        async def evaluate(self, *args, **kwargs):  # pragma: no cover - stub
+            return None
+
     pruning_stub.PruningEvaluator = PruningEvaluator
-    sys.modules.setdefault("jarvis.orchestration.pruning", pruning_stub)
+    monkeypatch.setitem(
+        sys.modules, "jarvis.orchestration.pruning", pruning_stub
+    )
 
-    critics_stub = types.ModuleType("jarvis.critics")
-
-    class CriticVerdict:  # pragma: no cover - stub
-        pass
-
-    class WhiteGate:  # pragma: no cover - stub
-        def merge(self, red, blue):
-            return CriticVerdict()
-
-    class RedTeamCritic:  # pragma: no cover - stub
-        async def review(self, *args, **kwargs):
-            return CriticVerdict()
-
-    class BlueTeamCritic:  # pragma: no cover - stub
-        async def review(self, *args, **kwargs):
-            return CriticVerdict()
-
-    critics_stub.CriticVerdict = CriticVerdict
-    critics_stub.WhiteGate = WhiteGate
-    critics_stub.RedTeamCritic = RedTeamCritic
-    critics_stub.BlueTeamCritic = BlueTeamCritic
-    sys.modules.setdefault("jarvis.critics", critics_stub)
-
-    langgraph_stub = types.ModuleType("langgraph.graph")
-
-    class StateGraph:  # pragma: no cover - stub
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def add_node(self, *args, **kwargs):
-            pass
-
-        def set_entry_point(self, *args, **kwargs):
-            pass
-
-        def add_edge(self, *args, **kwargs):
-            pass
-
-        def compile(self):
-            return self
-
-        def stream(self, *_args, **_kwargs):
-            return []
-
-    langgraph_stub.StateGraph = StateGraph
-    langgraph_stub.END = object()
-    sys.modules.setdefault("langgraph.graph", langgraph_stub)
-    langgraph_pkg = types.ModuleType("langgraph")
-    langgraph_pkg.graph = langgraph_stub
-    sys.modules.setdefault("langgraph", langgraph_pkg)
+    # Ensure real langgraph/networkx are used
+    sys.modules.pop("langgraph", None)
+    sys.modules.pop("langgraph.graph", None)
+    sys.modules.pop("networkx", None)
 
     spec = importlib.util.spec_from_file_location(
         "jarvis.orchestration.graph", root / "orchestration" / "graph.py"
@@ -100,18 +66,13 @@ def load_graph_module():
     return module
 
 
-graph_module = load_graph_module()
-MultiTeamOrchestrator = graph_module.MultiTeamOrchestrator
-
-
-class DummyGraph:  # pragma: no cover - stub
-    def stream(self, *_args, **_kwargs):
-        return []
-
-
-graph_module.MultiTeamOrchestrator._build_graph = (
-    lambda self: DummyGraph()
-)
+@pytest.fixture
+def graph_module(monkeypatch):
+    module = _load_graph_module(monkeypatch)
+    monkeypatch.setattr(
+        module.MultiTeamOrchestrator, "_build_graph", lambda self: DummyGraph()
+    )
+    return module
 
 
 class DummyBlackAgent:
@@ -129,8 +90,9 @@ class DummyBlackAgent:
 
 
 class DummyOrchestrator:
-    def __init__(self):
-        self.teams = {"innovators_disruptors": DummyBlackAgent()}
+    def __init__(self, mod):
+        self.teams = {mod.INNOVATORS_DISRUPTORS_TEAM: DummyBlackAgent()}
+        self.team_status = {}
 
     def log(self, *args, **kwargs):  # pragma: no cover - noop
         pass
@@ -145,13 +107,14 @@ class DummyAgent:
 
 
 class PairOrchestrator:
-    def __init__(self):
+    def __init__(self, mod):
         self.teams = {
-            "competitive_pair": (
+            mod.COMPETITIVE_PAIR_TEAM: (
                 DummyAgent("Yellow"),
                 DummyAgent("Green"),
             )
         }
+        self.team_status = {}
 
     def log(self, *args, **kwargs):  # pragma: no cover - noop
         pass
@@ -160,41 +123,47 @@ class PairOrchestrator:
         pass
 
 
-def test_black_team_excludes_white_team_context():
-    orchestrator = DummyOrchestrator()
-    mto = MultiTeamOrchestrator(orchestrator)
+def test_black_team_excludes_white_team_context(graph_module):
+    orchestrator = DummyOrchestrator(graph_module)
+    mto = graph_module.MultiTeamOrchestrator(orchestrator)
     state = {
         "objective": "test",
         "context": {"foo": "bar", "leak": "secret"},
-        "team_outputs": {"security_quality": {"leak": "classified"}},
+        "team_outputs": {
+            graph_module.SECURITY_QUALITY_TEAM: {"leak": "classified"}
+        },
     }
 
     mto._run_innovators_disruptors(state)
 
-    received = orchestrator.teams["innovators_disruptors"].received_context
+    received = orchestrator.teams[
+        graph_module.INNOVATORS_DISRUPTORS_TEAM
+    ].received_context
     assert "leak" not in received
     assert received["foo"] == "bar"
 
 
 @pytest.mark.parametrize("white_output", [None, "ok", [1, 2], 42])
-def test_black_team_handles_non_dict_white_output(white_output):
-    orchestrator = DummyOrchestrator()
-    mto = MultiTeamOrchestrator(orchestrator)
+def test_black_team_handles_non_dict_white_output(graph_module, white_output):
+    orchestrator = DummyOrchestrator(graph_module)
+    mto = graph_module.MultiTeamOrchestrator(orchestrator)
     state = {
         "objective": "test",
         "context": {"foo": "bar", "leak": "secret"},
-        "team_outputs": {"security_quality": white_output},
+        "team_outputs": {graph_module.SECURITY_QUALITY_TEAM: white_output},
     }
 
     mto._run_innovators_disruptors(state)
 
-    received = orchestrator.teams["innovators_disruptors"].received_context
+    received = orchestrator.teams[
+        graph_module.INNOVATORS_DISRUPTORS_TEAM
+    ].received_context
     assert received["leak"] == "secret"
 
 
-def test_competitive_pair_runs_in_parallel():
-    orchestrator = PairOrchestrator()
-    mto = MultiTeamOrchestrator(orchestrator)
+def test_competitive_pair_runs_in_parallel(graph_module):
+    orchestrator = PairOrchestrator(graph_module)
+    mto = graph_module.MultiTeamOrchestrator(orchestrator)
 
     async def fake_run(team, state):
         await asyncio.sleep(0.1)
@@ -207,4 +176,4 @@ def test_competitive_pair_runs_in_parallel():
     elapsed = time.perf_counter() - start
 
     assert elapsed < 0.2
-    assert len(state["team_outputs"]["competitive_pair"]) == 2
+    assert len(state["team_outputs"][graph_module.COMPETITIVE_PAIR_TEAM]) == 2

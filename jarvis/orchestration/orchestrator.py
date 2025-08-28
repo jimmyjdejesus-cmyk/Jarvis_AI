@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 import sys
 import types
+import importlib
 
 import pytest
 
@@ -145,7 +146,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Lightweight workflows package to avoid circular imports
-spec = importlib.util.spec_from_file_location("jarvis.workflows.engine", ROOT / "jarvis/workflows/engine.py")
+spec = importlib.util.spec_from_file_location(
+    "jarvis.workflows.engine", ROOT / "workflows/engine.py"
+)
 engine_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(engine_module)
 workflows_pkg = types.ModuleType("jarvis.workflows")
