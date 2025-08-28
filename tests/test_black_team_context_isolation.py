@@ -1,21 +1,25 @@
 import importlib.util
 import pathlib
 import sys
-import time
 import types
-
 import asyncio
+import time
+
 import pytest
 
 
-def load_graph_module():
+@pytest.fixture
+def mto_cls(monkeypatch):
+    """Load MultiTeamOrchestrator with stubbed dependencies."""
     root = pathlib.Path(__file__).resolve().parents[1] / "jarvis"
+
     jarvis_stub = types.ModuleType("jarvis")
     jarvis_stub.__path__ = [str(root)]
-    sys.modules.setdefault("jarvis", jarvis_stub)
+    monkeypatch.setitem(sys.modules, "jarvis", jarvis_stub)
+
     orch_stub = types.ModuleType("jarvis.orchestration")
     orch_stub.__path__ = [str(root / "orchestration")]
-    sys.modules.setdefault("jarvis.orchestration", orch_stub)
+    monkeypatch.setitem(sys.modules, "jarvis.orchestration", orch_stub)
 
     team_agents_stub = types.ModuleType("jarvis.orchestration.team_agents")
 
@@ -27,8 +31,8 @@ def load_graph_module():
 
     team_agents_stub.OrchestratorAgent = OrchestratorAgent
     team_agents_stub.TeamMemberAgent = TeamMemberAgent
-    sys.modules.setdefault(
-        "jarvis.orchestration.team_agents", team_agents_stub
+    monkeypatch.setitem(
+        sys.modules, "jarvis.orchestration.team_agents", team_agents_stub
     )
 
     pruning_stub = types.ModuleType("jarvis.orchestration.pruning")
@@ -38,7 +42,9 @@ def load_graph_module():
             return False
 
     pruning_stub.PruningEvaluator = PruningEvaluator
-    sys.modules.setdefault("jarvis.orchestration.pruning", pruning_stub)
+    monkeypatch.setitem(
+        sys.modules, "jarvis.orchestration.pruning", pruning_stub
+    )
 
     critics_stub = types.ModuleType("jarvis.critics")
 
@@ -61,7 +67,7 @@ def load_graph_module():
     critics_stub.WhiteGate = WhiteGate
     critics_stub.RedTeamCritic = RedTeamCritic
     critics_stub.BlueTeamCritic = BlueTeamCritic
-    sys.modules.setdefault("jarvis.critics", critics_stub)
+    monkeypatch.setitem(sys.modules, "jarvis.critics", critics_stub)
 
     langgraph_stub = types.ModuleType("langgraph.graph")
 
@@ -86,32 +92,29 @@ def load_graph_module():
 
     langgraph_stub.StateGraph = StateGraph
     langgraph_stub.END = object()
-    sys.modules.setdefault("langgraph.graph", langgraph_stub)
+    monkeypatch.setitem(sys.modules, "langgraph.graph", langgraph_stub)
     langgraph_pkg = types.ModuleType("langgraph")
     langgraph_pkg.graph = langgraph_stub
-    sys.modules.setdefault("langgraph", langgraph_pkg)
+    monkeypatch.setitem(sys.modules, "langgraph", langgraph_pkg)
 
     spec = importlib.util.spec_from_file_location(
         "jarvis.orchestration.graph", root / "orchestration" / "graph.py"
     )
     module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
+    monkeypatch.setitem(sys.modules, spec.name, module)
     spec.loader.exec_module(module)
-    return module
 
+    class DummyGraph:  # pragma: no cover - stub
+        def stream(self, *_args, **_kwargs):
+            return []
 
-graph_module = load_graph_module()
-MultiTeamOrchestrator = graph_module.MultiTeamOrchestrator
+    monkeypatch.setattr(
+        module.MultiTeamOrchestrator,
+        "_build_graph",
+        lambda self: DummyGraph(),
+    )
 
-
-class DummyGraph:  # pragma: no cover - stub
-    def stream(self, *_args, **_kwargs):
-        return []
-
-
-graph_module.MultiTeamOrchestrator._build_graph = (
-    lambda self: DummyGraph()
-)
+    return module.MultiTeamOrchestrator
 
 
 class DummyBlackAgent:
@@ -160,9 +163,9 @@ class PairOrchestrator:
         pass
 
 
-def test_black_team_excludes_white_team_context():
+def test_black_team_excludes_white_team_context(mto_cls):
     orchestrator = DummyOrchestrator()
-    mto = MultiTeamOrchestrator(orchestrator)
+    mto = mto_cls(orchestrator)
     state = {
         "objective": "test",
         "context": {"foo": "bar", "leak": "secret"},
@@ -177,9 +180,9 @@ def test_black_team_excludes_white_team_context():
 
 
 @pytest.mark.parametrize("white_output", [None, "ok", [1, 2], 42])
-def test_black_team_handles_non_dict_white_output(white_output):
+def test_black_team_handles_non_dict_white_output(mto_cls, white_output):
     orchestrator = DummyOrchestrator()
-    mto = MultiTeamOrchestrator(orchestrator)
+    mto = mto_cls(orchestrator)
     state = {
         "objective": "test",
         "context": {"foo": "bar", "leak": "secret"},
@@ -192,9 +195,9 @@ def test_black_team_handles_non_dict_white_output(white_output):
     assert received["leak"] == "secret"
 
 
-def test_competitive_pair_runs_in_parallel():
+def test_competitive_pair_runs_in_parallel(mto_cls):
     orchestrator = PairOrchestrator()
-    mto = MultiTeamOrchestrator(orchestrator)
+    mto = mto_cls(orchestrator)
 
     async def fake_run(team, state):
         await asyncio.sleep(0.1)

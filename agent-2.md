@@ -22,28 +22,23 @@
 - Stubbed heavy dependencies in tests/conftest.py and provided in-memory task queue to restore pytest execution.
 - Adjusted mission tests to patch jarvis.models.client and run against FastAPI mission endpoints.
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
-## Agent Log 2025-08-28
-- Integrated PolicyOptimizer and hypergraph journaling in orchestrator.
-- Wired ProjectMemory context retrieval and storage and added SelfRAGGate decision logging with tests.
-- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).- Added BlackTeamOrchestrator and disruptive mission spawning logic.
-## Agent Log 2025-09-06
 - Introduced team settings tab with sliders for Black team curiosity, risk balance, token usage, and compute usage.
 - Fixed trailing class stub in `tests/conftest.py` to restore pytest execution.
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).\n## Agent Log 2025-09-06\n- Integrated WhiteGate into adversary pair to merge critic verdicts and halt workflow when rejected.\n- Added tests verifying WhiteGate gating.\n
 - Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
-## Agent Log 2025-09-06
 - Wired Red/Blue critics into multi-team graph with concurrent review and tests.
 - Implemented ExecutiveAgent planning and dynamic sub-orchestrator spawning.
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
 ## Agent Log 2025-08-28
+- Integrated PolicyOptimizer and hypergraph journaling in orchestrator.
+- Wired ProjectMemory context retrieval and storage and added SelfRAGGate decision logging with tests.
+- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).- Added BlackTeamOrchestrator and disruptive mission spawning logic.
 - Refactored orchestration graph for PEP8 compliance, removed unused context variable, wrapped long lines, and added WhiteGate initialization. Ran flake8 with no errors.
 ## Agent Log 2025-09-07
 - Removed trailing spaces from various modules to ensure blank lines are empty.
 - Installed FastAPI and executed pytest; collection failed with import errors and syntax issues across multiple tests.
-## Agent Log 2025-09-07
 - Removed trailing spaces from various modules to ensure blank lines are empty.
-## Agent Log 2025-09-07
 - Added `networkx>=3.0` to requirements to align runtime dependencies with imports.
 ## Agent Interaction
 **Timestamp:** 2025-08-28T02:28:19+00:00
@@ -59,10 +54,8 @@ Logged action in tests/agent.md.
 File: tests/test_knowledge_query_get.py
 ```
 ---
-## Agent Log 2025-09-07
 - Centralized team context filtering via new helper and expanded tests for parallel executions.
 
-## Agent Log 2025-09-07
 - Applied `filter_team_outputs` across adversary and competitive pairs for consistent White-team isolation.
 - Hardened helper to accept missing team outputs and added concurrent and missing-team tests.
 - Ran flake8 and pytest on updated modules.

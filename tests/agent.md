@@ -76,11 +76,36 @@ except ImportError as e:
 ## Agent Log 2025-08-31
 - Updated CLI tests to use ExecutiveAgent.
 - Added multi-step mission test verifying mission results and execution graph output.
+- Updated CLI tests to use ExecutiveAgent.
+- Added multi-step mission test verifying mission results and execution graph output.
 ## Agent Log 2025-09-01
+- Added docstrings and failure scenario tests for CLI.
+- Ensured tests meet PEP 8 using flake8.
 - Added docstrings and failure scenario tests for CLI.
 - Ensured tests meet PEP 8 using flake8.
 ## Agent Log 2025-09-02
 - Verified CLI returns mission result through updated unit test.
+- Verified CLI returns mission result through updated unit test.
+## Dev Log
+- Added tests for curiosity routing to ensure directives execute when enabled and skip when disabled.
+- [2025-08-27T20:19:33+00:00] Covered router sanitization and logging checks.
+---
+# Agent Log
+- Added test_mission_neo4j_roundtrip.py to verify MissionDAG persistence.
+## Agent Interaction
+**Timestamp:** 2025-01-14T00:00:00
+**Agent ID:** meta_update
+**Team:** knowledge
+**Action/Message:**
+Added integration test verifying memory and knowledge graph persistence across mission steps
+**Associated Data:**
+```json
+{"files": ["test_mission_step_persistence.py"]}
+## Agent Log
+- Added API mission creation test and team assignment sub-DAG test.
+## Agent Interaction
+**Timestamp:** 2025-08-28T03:00:16+00:00
+
 ## Agent Log 2025-09-03
 - Added integration test exercising MCPClient against an aiohttp server.
 ## Agent Log 2025-09-04
@@ -119,34 +144,6 @@ File: test_cli.py
 - Added tests for specialist dispatch timeout and retry behavior.
 - Consolidated dependency stubs in `conftest.py` and added successful retry test for dispatch logic.
 - Refactored `test_orchestrator_auction` to run without async plugin.
-## Agent Log 2025-08-31
-- Updated CLI tests to use ExecutiveAgent.
-- Added multi-step mission test verifying mission results and execution graph output.
-## Agent Log 2025-09-01
-- Added docstrings and failure scenario tests for CLI.
-- Ensured tests meet PEP 8 using flake8.
-## Agent Log 2025-09-02
-- Verified CLI returns mission result through updated unit test.
-## Dev Log
-- Added tests for curiosity routing to ensure directives execute when enabled and skip when disabled.
-- [2025-08-27T20:19:33+00:00] Covered router sanitization and logging checks.
----
-# Agent Log
-- Added test_mission_neo4j_roundtrip.py to verify MissionDAG persistence.
-## Agent Interaction
-**Timestamp:** 2025-01-14T00:00:00
-**Agent ID:** meta_update
-**Team:** knowledge
-**Action/Message:**
-Added integration test verifying memory and knowledge graph persistence across mission steps
-**Associated Data:**
-```json
-{"files": ["test_mission_step_persistence.py"]}
-## Agent Log
-- Added API mission creation test and team assignment sub-DAG test.
-## Agent Interaction
-**Timestamp:** 2025-08-28T03:00:16+00:00
-
 ## Agent Log 2025-08-28
 - Added tests for SelfRAGGate logging and policy optimizer integration.
 ## Agent Log
@@ -155,7 +152,6 @@ Added integration test verifying memory and knowledge graph persistence across m
 ## Agent Log 2025-09-06
 - Fixed stray class definition in conftest.py causing IndentationError during pytest setup.
 {"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
-## Agent Log 2025-09-06
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
 ## Agent Interaction
@@ -184,12 +180,9 @@ File: tests/test_knowledge_query_get.py
 ## Agent Log 2025-09-07
 - Added test verifying Black team ignores White team context during graph execution.
 - File remains lengthy; consider archiving to agent-2.md soon.
-## Agent Log 2025-09-07
 - Added edge-case test for non-dict White team outputs to ensure Black team
   context remains unchanged.
 
-## Agent Log 2025-09-07
 - Parameterized non-dict White output test and added parallel execution coverage for the competitive pair.
 
-## Agent Log 2025-09-07
 - Added concurrency and missing-team tests for `filter_team_outputs` helper.
