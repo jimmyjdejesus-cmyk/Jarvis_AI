@@ -141,7 +141,7 @@ def test_black_team_excludes_white_team_context():
     state = {
         "objective": "test",
         "context": {"foo": "bar", "leak": "secret"},
-        "team_outputs": {"security_quality": {"leak": "classified"}},
+        "team_outputs": {},
     }
 
     mto._run_innovators_disruptors(state)

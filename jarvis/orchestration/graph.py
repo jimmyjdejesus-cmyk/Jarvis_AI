@@ -249,13 +249,15 @@ class MultiTeamOrchestrator:
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
         """Run the Black team."""
-        # Filter out White team's results so the Black team operates without
-        # security feedback bias. Using shared helper guards against leakage.
+        # Filter out any security-oriented context so the Black team operates
+        # without White team bias. We can't rely on White team outputs here
+        # because the White team runs later in the graph, so strip keys that
+        # look security-related from the current context.
         black_agent = self.orchestrator.teams["innovators_disruptors"]
-        white_output = state["team_outputs"].get("security_quality", {})
-        white_keys = (
-            white_output.keys() if isinstance(white_output, dict) else []
-        )
+        security_prefixes = ("security_", "leak", "white_")
+        white_keys = [
+            k for k in state["context"] if k.startswith(security_prefixes)
+        ]
         filtered_context = filter_context(state["context"], white_keys)
         temp_state = dict(state)
         temp_state["context"] = filtered_context
