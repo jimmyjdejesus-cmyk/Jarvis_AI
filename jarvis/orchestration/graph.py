@@ -287,9 +287,6 @@ def _run_adversary_pair(
         state["team_outputs"][SECURITY_QUALITY_TEAM] = white_output
         return state
 
-    def _run_innovators_disruptors(
-        self, state: TeamWorkflowState
-    ) -> TeamWorkflowState:
 def _run_innovators_disruptors(
     self, state: TeamWorkflowState
 ) -> TeamWorkflowState:
@@ -306,11 +303,6 @@ def _run_innovators_disruptors(
     black_output = self._run_team(black_agent, temp_state)
     state["team_outputs"][INNOVATORS_DISRUPTORS_TEAM] = black_output
     return state
-        temp_state = dict(state)
-        temp_state["context"] = filtered_context
-
-        black_output = self._run_team(black_agent, temp_state)
-state["team_outputs"][INNOVATORS_DISRUPTORS_TEAM] = black_output
         return state
 
     def _broadcast_findings(

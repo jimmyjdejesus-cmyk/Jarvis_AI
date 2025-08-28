@@ -153,6 +153,9 @@ File: test_cli.py
 - Fixed stray class definition in conftest.py causing IndentationError during pytest setup.
 {"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
+- Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
+## Agent Log 2025-09-20
+- Added test ensuring Black team runs without White team outputs in context.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.## Agent Log 2025-08-28
 - Restored conftest.py and added create_model stub to pydantic mock.
 ## Agent Log 2025-09-07
