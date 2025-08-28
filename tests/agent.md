@@ -67,6 +67,7 @@ try:
     logger.info("✅ Jarvis orchestration system loaded successfully")
 except ImportError as e:
     logger.warning(f"⚠️ Jarvis orchestration not available, using mock objects: {e}")
+    
     JARVIS_AVAILABLE = False
 # Agent Log - tests
 - Added unit tests for `CuriosityRouter` covering enqueue behavior and disabled mode.

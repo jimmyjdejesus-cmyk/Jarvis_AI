@@ -38,10 +38,24 @@ cd src-tauri
 npm run dev
 ```
 
+### Environment Variables
+
+The backend reads Neo4j connection details from the environment. Tests mock the
+database, but you can override defaults by setting:
+
+| Variable         | Default                    |
+|------------------|----------------------------|
+| `NEO4J_URI`      | `bolt://localhost:7687`    |
+| `NEO4J_USER`     | `neo4j`                    |
+| `NEO4J_PASSWORD` | `test`                     |
+
+These values allow the application or tests to connect to a real Neo4j instance
+when desired.
+
 ### **Option 3: Manual Setup**
 ```bash
 # 1. Install Python dependencies
-pip install fastapi uvicorn websockets redis pydantic
+pip install fastapi uvicorn websockets redis pydantic pyjwt python-multipart
 
 # 2. Start backend
 cd app
@@ -54,6 +68,44 @@ npm run dev
 
 # 4. Open browser to http://localhost:5173
 ```
+
+## 🔐 Authentication
+
+
+The backend exposes an OAuth2 password flow and returns JWTs for authenticated
+requests. Retrieve a token via the `/token` endpoint:
+
+```bash
+curl -X POST -F "username=admin" -F "password=adminpass" http://localhost:8000/token
+```
+
+Use the token in the `Authorization` header when calling protected routes:
+`Authorization: Bearer <token>`.
+
+Sample in-memory users:
+
+| Username | Password   | Role  |
+|----------|------------|-------|
+| admin    | adminpass  | admin |
+| user     | userpass   | user  |
+
+## Endpoints like `/api/logs` require the `admin` role.
+The backend secures selected endpoints using OAuth2 bearer tokens with JWT.
+
+1. Request a token:
+
+   ```bash
+   curl -X POST -F "username=alice" -F "password=secret" http://localhost:8000/token
+   ```
+
+2. Use the token:
+
+   ```bash
+   curl -H "Authorization: Bearer <token>" http://localhost:8000/api/logs
+   ```
+
+Endpoints such as `/api/logs` require the `admin` role and return `403` for unauthorized users.
+
 
 ## 🎯 What You'll See
 

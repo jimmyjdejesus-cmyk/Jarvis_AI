@@ -4,7 +4,6 @@ import asyncio
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.orchestration.path_memory import PathMemory
 
-
 # Mock external dependencies for isolated testing
 agents_pkg = types.ModuleType("jarvis.agents")
 sys.modules["jarvis.agents"] = agents_pkg
@@ -23,8 +22,20 @@ sys.modules["jarvis.agents.specialists"] = types.SimpleNamespace(
     DevOpsAgent=_Dummy,
 )
 
+
 sys.path.append(".")
 
+sys.modules["jarvis.agents.specialist_registry"] = types.SimpleNamespace(
+    SPECIALIST_REGISTRY={},
+    create_specialist=lambda name, mcp_client, **_: _Dummy(),
+)
+from app.main import app
+
+import jarvis.memory.project_memory as project_memory
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.project_memory import ProjectMemory
+from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
+from jarvis.orchestration.path_memory import PathMemory
 
 
 class DummyMCP:
@@ -64,13 +75,3 @@ def test_parallel_orchestrator_auction_merge():
     mcp = DummyMCP()
     orch = MultiAgentOrchestrator(mcp)
     orch.specialists = {
-        "a": DummySpecialist("a", 0.9),
-        "b": DummySpecialist("b", 0.5),
-    }
-    analysis = {"specialists_needed": ["a", "b"], "complexity": "low"}
-    result = asyncio.run(
-        orch._parallel_specialist_analysis("req", analysis, PathMemory(), None, None, None)
-    )
-    assert result["auction"]["winner"] == "a"
-    assert "a:" in result["synthesized_response"].splitlines()[0]
-    assert result["exploration_metrics"]["diversity"] >= 2

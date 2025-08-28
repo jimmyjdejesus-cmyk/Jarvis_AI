@@ -64,6 +64,19 @@ docker run -p 8501:8501 \
   jarvis-ai
 ```
 
+To configure Neo4j, store credentials in the OS keyring using ``keyring``:
+
+```bash
+python -m keyring set jarvis NEO4J_URI bolt://localhost:7687
+python -m keyring set jarvis NEO4J_USER neo4j
+python -m keyring set jarvis NEO4J_PASSWORD test
+```
+
+Rotate these secrets regularly and update the keyring entries accordingly.
+
+The desktop application now writes these values to the OS keyring when entered
+in its settings panel, allowing credentials to be added securely at runtime.
+
 ### 3. One-Click Installer
 
 For non-technical users:

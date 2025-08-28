@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Dict, Optional, TYPE_CHECKING
-
 from neo4j import GraphDatabase, Driver
 
+from jarvis.security.secret_manager import get_secret
 if TYPE_CHECKING:  # pragma: no cover
     from jarvis.orchestration.mission import MissionDAG, MissionNode
 
 
 class Neo4jGraph:
     """Persist graph entities to a Neo4j database."""
+
+    SENSITIVE_FIELDS = {"password", "secret", "token"}
 
     def __init__(
         self,
@@ -21,20 +24,50 @@ class Neo4jGraph:
         password: Optional[str] = None,
         driver: Optional[Driver] = None,
     ) -> None:
+        """Initialize a Neo4j driver.
+
+        Parameters
+        ----------
+        uri, user, password:
+            Optional overrides for connection information. When omitted, values
+            are loaded from the OS keyring via ``keyring`` using the service
+            name ``jarvis``.
+        driver:
+            Pre-configured :class:`neo4j.Driver` instance to reuse instead of
+            creating a new connection.
+        """
+
         if driver is not None:
             self.driver = driver
         else:
-            uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
-            user = user or os.getenv("NEO4J_USER", "neo4j")
-            password = password or os.getenv("NEO4J_PASSWORD", "test")
+            uri = uri or get_secret("NEO4J_URI", "bolt://localhost:7687")
+            user = user or get_secret("NEO4J_USER", "neo4j")
+            password = password or get_secret("NEO4J_PASSWORD", "test")
             self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
     def close(self) -> None:
+        """Close the underlying Neo4j driver."""
+
         self.driver.close()
 
     # ------------------------------------------------------------------
-    def add_node(self, node_id: str, node_type: str, attributes: Optional[Dict[str, Any]] = None) -> None:
-        """Create or update a node in Neo4j."""
+    def add_node(
+        self,
+        node_id: str,
+        node_type: str,
+        attributes: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Create or update a node in Neo4j.
+
+        Parameters
+        ----------
+        node_id:
+            Identifier for the node.
+        node_type:
+            Domain-specific node type label.
+        attributes:
+            Optional properties to store on the node.
+        """
 
         props = attributes or {}
         with self.driver.session() as session:
@@ -53,21 +86,44 @@ class Neo4jGraph:
         relationship_type: str,
         attributes: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Create or update an edge in Neo4j."""
+        """Create or update an edge in Neo4j.
+
+        Parameters
+        ----------
+        source_id:
+            Identifier of the source node.
+        target_id:
+            Identifier of the target node.
+        relationship_type:
+            Type of relationship between ``source_id`` and ``target_id``.
+        attributes:
+            Optional edge properties.
+
+        Raises
+        ------
+        ValueError
+            If ``relationship_type`` does not match the allowed pattern.
+        """
 
         props = attributes or {}
         rel = relationship_type.upper()
+        if not re.fullmatch(r"[A-Z_][A-Z0-9_]*", rel):
+            raise ValueError("Invalid relationship type")
         with self.driver.session() as session:
             session.run(
-                f"MATCH (a:Node {{id: $source}}), (b:Node {{id: $target}}) "
-                f"MERGE (a)-[r:{rel}]->(b) SET r += $props",
+                (
+                    "MATCH (a:Node {id: $source}), "
+                    "(b:Node {id: $target}) "
+                    f"MERGE (a)-[r:{rel}]->(b) SET r += $props"
+                ),
                 source=source_id,
                 target=target_id,
                 props=props,
             )
 
     # ------------------------------------------------------------------
-    # Mission DAG operations
+# Mission DAG operations
+
     def write_mission_dag(self, dag: "MissionDAG") -> None:
         """Persist an entire :class:`MissionDAG` to Neo4j."""
 
@@ -143,4 +199,4 @@ class Neo4jGraph:
             )
             edges = [(rec["src"], rec["dst"]) for rec in edge_records]
 
-        return MissionDAG(mission_id=mission_id, nodes=nodes, edges=edges, rationale=rationale)
+            return MissionDAG(mission_id=mission_id, rationale=rationale, nodes=nodes, edges=edges)

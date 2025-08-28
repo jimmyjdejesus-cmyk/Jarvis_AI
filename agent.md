@@ -141,6 +141,7 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 *   **[2025-08-25]** Added Documentation, Database, Localization, EthicalHacker, CloudCostOptimizer, and UserFeedback specialist agents with prompts, methods, and tests.
 * [2025-08-27] Added docs, database, security, and localization specialists with modular prompt loading and dynamic registry; updated orchestrator and tests.
 * [2025-08-27] Refactored `SpecialistAgent` for backward compatibility and updated auction orchestrator test stubs.
+
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests.
 * [2025-08-27] Consolidated legacy specialists into dynamic registry and extended factory tests
 * [2025-08-27] Replaced print/return logic with assertions in `test_backend.py` and removed manual execution block for pytest.
@@ -276,8 +277,8 @@ This file documents the development process for the J.A.R.V.I.S. desktop applica
 - Refactored ChatPane to delegate Neo4j credential inputs to new Neo4jConfigForm component and expanded config API tests for invalid URI and auth failures.
 - Centralized form styling into `components/formStyles.css` and imported in ChatPane and Neo4jConfigForm.
 - Introduced in-memory `apiKeyStore` and updated Neo4jConfigForm to avoid localStorage for API key retrieval.
+
 - Noted this log file is growing large; consider splitting logs by domain for future clarity.
-=======
 ## Agent Interaction
 **Timestamp:** 2025-08-27T15:11:57.089609
 **Agent ID:** replay_memory
@@ -2654,3 +2655,6 @@ Note: root agent.md file is large; consider archival for future entries.
 
 ## NOTE FOR AGENTS and DEVS
 Do not comment on this file-2 or agent_2, and so on
+
+- Noted this log file is growing large; consider splitting logs by domain for future clarity.
+

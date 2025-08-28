@@ -1,11 +1,71 @@
-"""Test configuration and dependency stubs for unit tests."""
+"""Test configuration to ensure package imports and keyring isolation."""
 
-import sys
+import pytest
+import keyring
+from keyring.backend import KeyringBackend
+import importlib.util
 import types
 from pathlib import Path
-JARVIS_PATH = Path(__file__).resolve().parent.parent / "jarvis"
+import sys
+from unittest.mock import MagicMock
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+
+import asyncio
+import json
+import logging
+import os
+import uuid
+from abc import abstractmethod
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
+
+from jarvis.agents.agent_resources import (
+    AgentCapability,
+    AgentMetrics,
+    SystemEvolutionPlan,
+    SystemHealth,
+)
+from jarvis.agents.base import AIAgent
+from jarvis.agents.critics import (
+    BlueTeamCritic,
+    ConstitutionalCritic,
+    CriticFeedback,
+    CriticVerdict,
+    RedTeamCritic,
+    WhiteGate,
+)
+from jarvis.agents.curiosity_agent import CuriosityAgent
+from jarvis.agents.curiosity_router import CuriosityRouter
+from jarvis.agents.mission_planner import MissionPlanner
+from jarvis.agents.specialist import SpecialistAgent
+from jarvis.memory.project_memory import MemoryManager, ProjectMemory
+from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
+from jarvis.homeostasis import SystemMonitor
+from jarvis.orchestration.orchestrator import (
+    AgentSpec,
+    DynamicOrchestrator,
+    MultiAgentOrchestrator,
+)
+from jarvis.orchestration.sub_orchestrator import SubOrchestrator
+from jarvis.persistence.session import SessionManager
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.world_model.hypergraph import HierarchicalHypergraph
+from jarvis.workflows.engine import (
+    WorkflowEngine,
+    WorkflowStatus,
+    add_custom_task,
+    create_workflow,
+)
+
+# Provide lightweight stand-ins for optional external dependencies
 jarvis_pkg = types.ModuleType("jarvis")
 critics_pkg = types.ModuleType("jarvis.agents.critics")
+critics_pkg.__path__ = [str(JARVIS_PATH / "agents" / "critics")]
 constitutional_critic = types.ModuleType("jarvis.agents.critics.constitutional_critic")
 class ConstitutionalCritic:  # pragma: no cover - stub
     def __init__(self, *args, **kwargs):
@@ -20,7 +80,6 @@ sys.modules.setdefault("jarvis.orchestration", orch_pkg)
 
 jarvis_pkg.__path__ = [str(JARVIS_PATH)]
 sys.modules.setdefault("jarvis", jarvis_pkg)
-
 
 # Provide lightweight stand-ins for optional external dependencies
 chromadb = types.ModuleType('chromadb')
@@ -92,25 +151,29 @@ neo4j_module = types.ModuleType('neo4j')
 
 class GraphDatabase:  # pragma: no cover - simple stub
     """Stub GraphDatabase with no-op driver."""
+
     @staticmethod
     def driver(*args, **kwargs):
         return None
 
-neo4j_module.GraphDatabase = GraphDatabase
-neo4j_module.Driver = object  # type: ignore[attr-defined]
-sys.modules.setdefault('neo4j', neo4j_module)
+@pytest.fixture
+def mock_neo4j_graph(monkeypatch):
+    """Provide a mock Neo4j graph for tests.
 
-specialist_registry = types.ModuleType('jarvis.agents.specialist_registry')
-specialist_registry.get_specialist_registry = lambda: []  # pragma: no cover - stub
-specialist_registry.create_specialist = (
-    lambda name, mcp_client, knowledge_graph=None: None
-)  # pragma: no cover - stub
-sys.modules.setdefault('jarvis.agents.specialist_registry', specialist_registry)
+    This fixture patches both the Neo4jGraph class used by core modules and the
+    instantiated ``neo4j_graph`` in ``app.main`` so tests can run without a
+    real database connection.
+    """
 
-# Ensure standard library modules required by tests are present
-sys.modules.setdefault('psutil', types.ModuleType('psutil'))
-sys.modules.setdefault('networkx', types.ModuleType('networkx'))
+    mock_graph = MagicMock()
+    # Mock methods that are called during tests
+    mock_graph.connect = MagicMock()
+    mock_graph.close = MagicMock()
+    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+    monkeypatch.setattr(
+        "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
+    )
+    yield mock_graph
+
+class ExecutiveAgent(AIAgent):
