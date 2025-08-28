@@ -226,7 +226,10 @@ class ExecutiveAgent(AIAgent):
         if question:
             logger.info(f"Curiosity agent generated a new question: {question}")
             if self.curiosity_router:
-                self.curiosity_router.route(question)
+                try:
+                    self.curiosity_router.route(question)
+                except RuntimeError as err:
+                    logger.warning(f"Failed to route curiosity question: {err}")
             self.log_event("curiosity_triggered", {"question": question})
 
     async def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:

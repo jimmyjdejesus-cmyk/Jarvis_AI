@@ -45,8 +45,28 @@ backend:
   redis_enabled: false
   redis_url: "redis://localhost:6379"
 
+# Authentication defaults
+auth:
+  secret_key: "change_me"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
 # Logging Configuration
 logging:
   level: INFO
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   real_time_streaming: true
+
+# Authentication configuration
+auth:
+  secret_key: "CHANGE_ME"
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+# Neo4j Database Connection
+neo4j:
+  uri: null       # retrieved from keyring service "jarvis"
+  user: null      # retrieved from keyring service "jarvis"
+  password: null  # retrieved from keyring service "jarvis"
+  # For production, store credentials in the OS keyring and rotate them
+  # regularly rather than committing them to configuration files.

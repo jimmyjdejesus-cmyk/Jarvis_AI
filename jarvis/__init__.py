@@ -14,45 +14,45 @@ DEFAULT_MULTI_AGENT_ENABLED = True
 DEFAULT_WORKFLOWS_ENABLED = True  # Phase 4: Advanced Workflows!
 
 # Import with error handling - only working components
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.core.simple_agent import JarvisAgent as SimpleJarvisAgent
-except ImportError:
+except Exception:  # pragma: no cover
     SimpleJarvisAgent = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.core.enhanced_agent import EnhancedJarvisAgent
-except ImportError:
+except Exception:  # pragma: no cover
     EnhancedJarvisAgent = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.core.mcp_agent import MCPJarvisAgent
-except ImportError:
+except Exception:  # pragma: no cover
     MCPJarvisAgent = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.database.db_manager import DatabaseManager, get_database_manager
-except ImportError:
+except Exception:  # pragma: no cover
     DatabaseManager = None
     get_database_manager = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.auth.security_manager import SecurityManager, get_security_manager
-except ImportError:
+except Exception:  # pragma: no cover
     SecurityManager = None
     get_security_manager = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.agents.coding_agent import CodingAgent
-except ImportError:
+except Exception:  # pragma: no cover
     CodingAgent = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.workflows.workflow_agent import WorkflowJarvisAgent, create_workflow_jarvis
-except ImportError:
+except Exception:  # pragma: no cover
     WorkflowJarvisAgent = None
     create_workflow_jarvis = None
 
-try:
+try:  # pragma: no cover - optional dependencies
     from jarvis.workflows import (
         WorkflowEngine,
         create_workflow,
@@ -62,7 +62,7 @@ try:
         create_project_analysis_workflow,
         create_bug_fix_workflow,
     )
-except ImportError:
+except Exception:  # pragma: no cover
     WorkflowEngine = None
     WorkflowTemplates = None
     create_workflow = None
