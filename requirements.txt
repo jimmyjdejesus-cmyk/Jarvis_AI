@@ -62,6 +62,7 @@ ruff>=0.12.10
 setuptools>=80.9.0
 fakeredis>=2.0.0
 setuptools>=80.9.0
+httpx>=0.28.1
 
 # --- Optional & Tooling ---
 # Web automation, image processing
