@@ -225,8 +225,8 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
                     data.get("synthesized_response", ""),
                     {"request": step_ctx.request},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to add step context to project memory for run_id {run_id}: {e}")
         return StepResult(data=data, run_id=run_id or "", depth=step_ctx.recursion_depth)
 
     def list_child_orchestrators(self) -> List[str]:
