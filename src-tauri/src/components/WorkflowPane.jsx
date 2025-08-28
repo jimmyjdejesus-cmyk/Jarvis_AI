@@ -183,9 +183,9 @@ const WorkflowPane = () => {
         <div className="workflow-controls">
           <div className="view-mode-toggle">
             <button
-                className={viewMode === 'galaxy' ? 'active' : ''}
-                onClick={() => setViewMode('galaxy')}
-              >
+              className={viewMode === 'galaxy' ? 'active' : ''}
+              onClick={() => setViewMode('galaxy')}
+            >
               🌌 Galaxy
             </button>
             <button 
