@@ -6,4 +6,5 @@
 
 ## Agent Log 2025-09-06
 - Added team settings tab and sliders for Black team configuration in SettingsView.
+- Mocked `http.fetch` in LogViewerPane.test.jsx to supply sample logs and verify rendering.
 
