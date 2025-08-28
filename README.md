@@ -55,7 +55,8 @@ when desired.
 ### **Option 3: Manual Setup**
 ```bash
 # 1. Install Python dependencies
-pip install fastapi uvicorn websockets redis pydantic pyjwt python-multipart
+# FastAPI 0.111.x is compatible with Pydantic 2.7+
+pip install fastapi==0.111.0 uvicorn websockets redis "pydantic>=2.7,<3" pyjwt python-multipart
 
 # 2. Start backend
 cd app
