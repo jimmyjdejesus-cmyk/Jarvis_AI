@@ -12,12 +12,20 @@ Updated package init to gracefully handle coding_agent import errors.
 ```json
 {"files": ["__init__.py"]}
 ```
+---
+## Agent Log 2025-08-28
+ - Integrated policy optimization and vector memory hooks across orchestration and retrieval modules.
+ - Integrated BlackTeamOrchestrator export and spawn hook in team agent.
+ - Updated orchestration graph for style compliance and removed unused context variable.
+ - Added context filtering for Black team to exclude White team outputs and ran flake8.
+
+## Agent Log 2025-09-06
+- Wired WhiteGate into multi-team orchestration to merge red/blue critic verdicts.
 
 ## Agent Log 2025-08-28
 - Integrated policy optimization and vector memory hooks across orchestration and retrieval modules.
 - Updated orchestration graph for style compliance and removed unused context variable.
 - Added context filtering for Black team to exclude White team outputs and ran flake8.
-
 ## Agent Log 2025-09-07
 - Introduced `context_utils.filter_context` and wired graph to use it.
 - Logged security rationale and added test for White/Black context isolation.

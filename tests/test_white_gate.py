@@ -64,7 +64,14 @@ def test_white_gate_blocks_downstream_when_rejected(build_orchestrator):
     red_verdict = CriticVerdict(approved=False, fixes=[], risk=0.2, notes="")
     blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
     orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
-    orchestrator.run("test objective")
+    state = {
+        "objective": "test",
+        "context": {},
+        "team_outputs": {},
+        "critics": {},
+    }
+    state = orchestrator._run_adversary_pair(state)
+    assert state["halt"]
     assert not black_agent.called
 
 
@@ -72,5 +79,13 @@ def test_white_gate_allows_downstream_when_approved(build_orchestrator):
     red_verdict = CriticVerdict(approved=True, fixes=[], risk=0.0, notes="")
     blue_verdict = CriticVerdict(approved=True, fixes=[], risk=0.1, notes="")
     orchestrator, black_agent = build_orchestrator(red_verdict, blue_verdict)
-    orchestrator.run("test objective")
+    state = {
+        "objective": "test",
+        "context": {},
+        "team_outputs": {},
+        "critics": {},
+    }
+    state = orchestrator._run_adversary_pair(state)
+    assert not state["halt"]
+    orchestrator._run_innovators_disruptors(state)
     assert black_agent.called

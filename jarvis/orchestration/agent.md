@@ -39,12 +39,9 @@ File: graph.py
 ## Agent Log
 - Implemented `SubOrchestrator` specialist filtering and DAG execution.
 ## Agent Log 2025-09-07
-- Refactored Black team context filtering into shared `filter_context` utility
-  and documented leakage safeguards.
+- Refactored Black team context filtering into shared `filter_context` utility and documented leakage safeguards.
 - Added unit test verifying White team data is removed from Black team context.
 - Expanded Black team isolation docstring and clarified context filtering comments.
-
 - Added `filter_team_outputs` utility and applied it in `graph._run_innovators_disruptors` to centralize team context filtering.
-
 - Filtered White team outputs before adversary and competitive pair runs.
 - Made `filter_team_outputs` resilient to missing data.

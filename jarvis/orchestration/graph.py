@@ -27,6 +27,13 @@ SECURITY_QUALITY_TEAM = "security_quality"
 INNOVATORS_DISRUPTORS_TEAM = "innovators_disruptors"
 
 
+# Team identifiers used throughout the orchestration graph
+ADVERSARY_PAIR_TEAM = "adversary_pair"
+COMPETITIVE_PAIR_TEAM = "competitive_pair"
+SECURITY_QUALITY_TEAM = "security_quality"
+INNOVATORS_DISRUPTORS_TEAM = "innovators_disruptors"
+
+
 # Define the state for our graph
 
 
