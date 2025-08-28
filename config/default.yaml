@@ -8,9 +8,6 @@ ENABLE_BLUE_TEAM: true
 # Route curiosity-generated questions into the directive queue
 ENABLE_CURIOSITY_ROUTING: true
 
-# Route curiosity-generated questions into the directive queue
-ENABLE_CURIOSITY_ROUTING: true
-
 orch:
   min_novelty: 0.25
   min_growth: 0.0
@@ -48,9 +45,9 @@ backend:
   redis_enabled: false
   redis_url: "redis://localhost:6379"
 
-# Authentication defaults
+# Authentication configuration
 auth:
-  secret_key: "change_me"
+  secret_key: "CHANGE_ME"
   algorithm: "HS256"
   access_token_expire_minutes: 30
 
@@ -59,12 +56,6 @@ logging:
   level: INFO
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   real_time_streaming: true
-
-# Authentication configuration
-auth:
-  secret_key: "CHANGE_ME"
-  algorithm: "HS256"
-  access_token_expire_minutes: 30
 
 # Neo4j Database Connection
 neo4j:

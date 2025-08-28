@@ -11,5 +11,4 @@
 - Added `summary_score_threshold` configuration to filter low-scoring severity groups.
 - Added `summary_score_ratio` option for dynamic score-based pruning of summary groups.
 ## Dev Log
-
 - Added ENABLE_CURIOSITY_ROUTING flag for controlling curiosity directive execution.- Marked sample mission with disruptive tag for black-team orchestration.
