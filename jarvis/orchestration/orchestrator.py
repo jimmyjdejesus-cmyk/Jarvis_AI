@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 try:  # pragma: no cover - optional dependency
     from langgraph.graph import END  # type: ignore
 except ImportError:  # pragma: no cover
-    END = None  # type: ignore
+    END = object()  # type: ignore
 
 # ---------------------------------------------------------------------------
 # Orchestrator template
