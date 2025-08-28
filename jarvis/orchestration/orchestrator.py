@@ -13,16 +13,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
-from pathlib import Path
-from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TYPE_CHECKING
-import json
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from langgraph.graph import END, StateGraph
-
+from jarvis.agents.specialist_registry import (
+    create_specialist,
+    get_specialist_registry,
+)
+from jarvis.memory.project_memory import ProjectMemory
+from jarvis.monitoring.performance import PerformanceTracker
+from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
+from .message_bus import HierarchicalMessageBus
+from .path_memory import PathMemory
+from .semantic_cache import SemanticCache
 
 
 @dataclass
@@ -37,16 +42,6 @@ class DynamicOrchestrator:
     """Placeholder dynamic orchestrator for tests."""
     pass
 
-from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
-from .path_memory import PathMemory
-from .semantic_cache import SemanticCache
-from .message_bus import HierarchicalMessageBus
-from jarvis.memory.project_memory import ProjectMemory
-from jarvis.agents.specialist_registry import (
-    get_specialist_registry,
-    create_specialist,
-)
-from jarvis.monitoring.performance import PerformanceTracker
 
 if TYPE_CHECKING:  # pragma: no cover - used only for type hints
     from .sub_orchestrator import SubOrchestrator
@@ -132,7 +127,6 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.message_bus = message_bus or HierarchicalMessageBus()
         self.budgets = budgets or {}
         self.performance_tracker = performance_tracker or PerformanceTracker()
-        from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         self.critic = ConstitutionalCritic(mcp_client=self.mcp_client)
 

@@ -16,3 +16,4 @@ Dev Log
 
 - Integrated BlackTeamOrchestrator export and spawn hook in team agent.
 \n## Agent Log 2025-09-06\n- Wired WhiteGate into multi-team orchestration to merge red/blue critic verdicts.\n
+- Removed duplicate ConstitutionalCritic import in orchestration/orchestrator.py, alphabetized imports, and ran flake8/pytest (lint issues pre-existing; pytest failed in tests/conftest.py).
