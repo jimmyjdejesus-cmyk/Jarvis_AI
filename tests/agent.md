@@ -146,3 +146,6 @@ Added integration test verifying memory and knowledge graph persistence across m
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
 
+
+## Note
+File is very long; starting new logs in agent-2.md.

@@ -20,3 +20,6 @@
 - Implemented ExecutiveAgent planning and dynamic sub-orchestrator spawning.
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
+## Agent Log 2025-09-07
+- Expanded CriticInsightMerger with weighted scoring and argument synthesis; added tests.
+
