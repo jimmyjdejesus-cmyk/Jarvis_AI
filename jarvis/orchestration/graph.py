@@ -1,20 +1,22 @@
 """
 Defines the LangGraph-based orchestration logic for the multi-agent teams.
 """
-
 import asyncio
 from typing import Dict, Any, TypedDict
 from langgraph.graph import StateGraph, END
 # from langgraph.checkpoints import SqliteSaver # Temporarily removed to resolve import error
 from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
 from jarvis.orchestration.pruning import PruningEvaluator
+
 from jarvis.critics import WhiteGate, CriticVerdict
+from jarvis.critics import RedTeamCritic, BlueTeamCritic
 
 # Define the state for our graph
 class TeamWorkflowState(TypedDict, total=False):
     objective: str
     context: Dict[str, Any]
     team_outputs: Dict[str, Any]
+    critics: Dict[str, Any]
     next_team: str
     critics: Dict[str, Any]
     halt: bool
@@ -29,6 +31,8 @@ class MultiTeamOrchestrator:
     ) -> None:
         self.orchestrator = orchestrator_agent
         self.evaluator = evaluator
+        self.red_critic = RedTeamCritic()
+        self.blue_critic = BlueTeamCritic()
         self.graph = self._build_graph()
 
     def _build_graph(self):
@@ -98,6 +102,7 @@ class MultiTeamOrchestrator:
         return await asyncio.to_thread(self._run_team, team, state)
 
     def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
+def _run_adversary_pair(self, state: TeamWorkflowState) -> TeamWorkflowState:
         """Runs the Red and Blue teams and merges critic verdicts via WhiteGate."""
         red_agent, blue_agent = self.orchestrator.teams["adversary_pair"]
 
@@ -126,6 +131,13 @@ class MultiTeamOrchestrator:
         merged = self.white_gate.merge(red_verdict, blue_verdict)
 
         state.setdefault("critics", {})["white_gate"] = merged.to_dict()
+        state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
+        state["halt"] = not merged.approved
+
+        self.orchestrator.log("WhiteGate merged verdict", data=merged.to_dict())
+        if state["halt"]:
+            self.orchestrator.log("Downstream execution halted by WhiteGate.")
+        return state
         state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
         state["halt"] = not merged.approved
 

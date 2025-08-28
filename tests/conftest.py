@@ -1,179 +1,165 @@
-"""Test configuration to ensure package imports and keyring isolation."""
+"""Shared pytest fixtures for the test suite."""
 
-import pytest
-import keyring
-from keyring.backend import KeyringBackend
-import importlib.util
+import sys
 import types
 from pathlib import Path
-import sys
 from unittest.mock import MagicMock
+import importlib.util
 
+import pytest
+
+# Stub external dependencies
+neo4j_module = types.ModuleType("neo4j")
+neo4j_module.GraphDatabase = object
+neo4j_module.Driver = object
+sys.modules.setdefault("neo4j", neo4j_module)
+
+langgraph_module = types.ModuleType("langgraph")
+graph_submodule = types.ModuleType("langgraph.graph")
+graph_submodule.StateGraph = object
+graph_submodule.END = None
+sys.modules.setdefault("langgraph", langgraph_module)
+sys.modules.setdefault("langgraph.graph", graph_submodule)
+
+aiohttp_module = types.ModuleType("aiohttp")
+sys.modules.setdefault("aiohttp", aiohttp_module)
+
+keyring_module = types.ModuleType("keyring")
+keyring_module.get_password = lambda *a, **k: None
+sys.modules.setdefault("keyring", keyring_module)
+keyring_errors_module = types.ModuleType("keyring.errors")
+class NoKeyringError(Exception):
+    pass
+keyring_errors_module.NoKeyringError = NoKeyringError
+sys.modules.setdefault("keyring.errors", keyring_errors_module)
+
+pydantic_module = types.ModuleType("pydantic")
+class BaseModel:  # minimal stand-in
+    pass
+
+def Field(*args, **kwargs):
+    return None
+pydantic_module.BaseModel = BaseModel
+pydantic_module.Field = Field
+sys.modules.setdefault("pydantic", pydantic_module)
+
+chromadb_module = types.ModuleType("chromadb")
+chromadb_utils = types.ModuleType("chromadb.utils")
+chromadb_embedding = types.ModuleType("chromadb.utils.embedding_functions")
+class EmbeddingFunction:
+    pass
+chromadb_embedding.EmbeddingFunction = EmbeddingFunction
+chromadb_utils.embedding_functions = chromadb_embedding
+sys.modules.setdefault("chromadb", chromadb_module)
+sys.modules.setdefault("chromadb.utils", chromadb_utils)
+sys.modules.setdefault("chromadb.utils.embedding_functions", chromadb_embedding)
+
+nx_module = types.ModuleType("networkx")
+class DiGraph:
+    def __init__(self):
+        self._nodes = {}
+        self._edges = {}
+    def add_node(self, node, **attrs):
+        self._nodes[node] = attrs
+    def add_edge(self, s, t, **attrs):
+        self._edges.setdefault(s, []).append((t, attrs))
+    def nodes(self, data=False):
+        return list(self._nodes.items()) if data else list(self._nodes.keys())
+    def edges(self, data=False):
+        edges = []
+        for s, lst in self._edges.items():
+            for t, attrs in lst:
+                edges.append((s, t, attrs) if data else (s, t))
+        return edges
+    def out_edges(self, node, data=False):
+        lst = self._edges.get(node, [])
+        return [(node, t, attrs) if data else (node, t) for t, attrs in lst]
+nx_module.DiGraph = DiGraph
+sys.modules.setdefault("networkx", nx_module)
+
+# Additional stubs
+requests_module = types.ModuleType('requests')
+sys.modules.setdefault('requests', requests_module)
+critics_pkg = types.ModuleType('jarvis.agents.critics')
+const_module = types.ModuleType('jarvis.agents.critics.constitutional_critic')
+class ConstitutionalCritic:
+    def __init__(self, *a, **k):
+        pass
+const_module.ConstitutionalCritic = ConstitutionalCritic
+critics_pkg.constitutional_critic = const_module
+sys.modules.setdefault('jarvis.agents.critics', critics_pkg)
+sys.modules.setdefault('jarvis.agents.critics.constitutional_critic', const_module)
+
+# Internal package stubs
+homeostasis_module = types.ModuleType("jarvis.homeostasis")
+monitor_submodule = types.ModuleType("jarvis.homeostasis.monitor")
+class SystemMonitor:
+    pass
+monitor_submodule.SystemMonitor = SystemMonitor
+sys.modules.setdefault("jarvis.homeostasis", homeostasis_module)
+sys.modules.setdefault("jarvis.homeostasis.monitor", monitor_submodule)
+
+memory_service = types.ModuleType("memory_service")
+models_sub = types.ModuleType("memory_service.models")
+class Metrics:
+    def __init__(self, novelty=0.0, growth=0.0, cost=0.0):
+        self.novelty = novelty
+        self.growth = growth
+        self.cost = cost
+class NegativeCheck:  # pragma: no cover - stub
+    def __init__(self, *a, **k):
+        pass
+class Outcome:
+    def __init__(self, result="", oracle_score=0.0):
+        self.result = result
+        self.oracle_score = oracle_score
+class PathRecord:
+    def __init__(self, *a, **k):
+        pass
+class PathSignature:
+    def __init__(self, *a, **k):
+        pass
+
+def avoid_negative(*a, **k):
+    return {"avoid": False, "results": []}
+
+def record_path(*a, **k):
+    return None
+
+memory_service.Metrics = Metrics
+memory_service.NegativeCheck = NegativeCheck
+memory_service.Outcome = Outcome
+memory_service.PathRecord = PathRecord
+memory_service.PathSignature = PathSignature
+memory_service.avoid_negative = avoid_negative
+memory_service.record_path = record_path
+memory_service.vector_store = None
+sys.modules.setdefault("memory_service", memory_service)
+sys.modules.setdefault("memory_service.models", models_sub)
+
+# Ensure repository root on path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Lightweight workflows package to avoid circular imports
+spec = importlib.util.spec_from_file_location("jarvis.workflows.engine", ROOT / "jarvis/workflows/engine.py")
+engine_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(engine_module)
+workflows_pkg = types.ModuleType("jarvis.workflows")
+workflows_pkg.engine = engine_module
+sys.modules.setdefault("jarvis.workflows", workflows_pkg)
+sys.modules.setdefault("jarvis.workflows.engine", engine_module)
 
-import asyncio
-import json
-import logging
-import os
-import uuid
-from abc import abstractmethod
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
-
-from jarvis.agents.agent_resources import (
-    AgentCapability,
-    AgentMetrics,
-    SystemEvolutionPlan,
-    SystemHealth,
-)
-from jarvis.agents.base import AIAgent
-from jarvis.agents.critics import (
-    BlueTeamCritic,
-    ConstitutionalCritic,
-    CriticFeedback,
-    CriticVerdict,
-    RedTeamCritic,
-    WhiteGate,
-)
-from jarvis.agents.curiosity_agent import CuriosityAgent
-from jarvis.agents.curiosity_router import CuriosityRouter
-from jarvis.agents.mission_planner import MissionPlanner
-from jarvis.agents.specialist import SpecialistAgent
-from jarvis.memory.project_memory import MemoryManager, ProjectMemory
-from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
-from jarvis.homeostasis import SystemMonitor
-from jarvis.orchestration.orchestrator import (
-    AgentSpec,
-    DynamicOrchestrator,
-    MultiAgentOrchestrator,
-)
-from jarvis.orchestration.sub_orchestrator import SubOrchestrator
-from jarvis.persistence.session import SessionManager
-from jarvis.world_model.knowledge_graph import KnowledgeGraph
-from jarvis.world_model.hypergraph import HierarchicalHypergraph
-from jarvis.workflows.engine import (
-    WorkflowEngine,
-    WorkflowStatus,
-    add_custom_task,
-    create_workflow,
-)
-
-# Provide lightweight stand-ins for optional external dependencies
-jarvis_pkg = types.ModuleType("jarvis")
-critics_pkg = types.ModuleType("jarvis.agents.critics")
-critics_pkg.__path__ = [str(JARVIS_PATH / "agents" / "critics")]
-constitutional_critic = types.ModuleType("jarvis.agents.critics.constitutional_critic")
-class ConstitutionalCritic:  # pragma: no cover - stub
-    def __init__(self, *args, **kwargs):
-        pass
-constitutional_critic.ConstitutionalCritic = ConstitutionalCritic
-sys.modules.setdefault("jarvis.agents.critics", critics_pkg)
-sys.modules.setdefault("jarvis.agents.critics.constitutional_critic", constitutional_critic)
-
-orch_pkg = types.ModuleType("jarvis.orchestration")
-orch_pkg.__path__ = [str(JARVIS_PATH / "orchestration")]
-sys.modules.setdefault("jarvis.orchestration", orch_pkg)
-
-jarvis_pkg.__path__ = [str(JARVIS_PATH)]
-sys.modules.setdefault("jarvis", jarvis_pkg)
-
-# Provide lightweight stand-ins for optional external dependencies
-chromadb = types.ModuleType('chromadb')
-chromadb.utils = types.ModuleType('utils')
-memory_service = types.ModuleType("memory_service")
-class PathRecord:
-    pass
-class PathSignature:
-    pass
-class Outcome:
-    pass
-class Metrics:
-    pass
-class NegativeCheck:
-    pass
-def record_path(*args, **kwargs):
-    return None
-def avoid_negative(*args, **kwargs):
-    return False
-memory_service.record_path = record_path
-memory_service.avoid_negative = avoid_negative
-memory_service.PathRecord = PathRecord
-memory_service.PathSignature = PathSignature
-memory_service.Outcome = Outcome
-memory_service.Metrics = Metrics
-memory_service.NegativeCheck = NegativeCheck
-class _VectorStore:
-    def add_text(self, *args, **kwargs):
-        return None
-    def query_text(self, query, n_results=1):
-        return {"documents": [[]]}
-memory_service.vector_store = _VectorStore()
-
-sys.modules.setdefault("memory_service", memory_service)
-
-pydantic = types.ModuleType("pydantic")
-class BaseModel:  # pragma: no cover - stub
-    pass
-def Field(default=None, *args, **kwargs):  # pragma: no cover - stub
-    return default
-pydantic.BaseModel = BaseModel
-pydantic.Field = Field
-sys.modules.setdefault("pydantic", pydantic)
-
-langgraph = types.ModuleType("langgraph")
-langgraph.graph = types.ModuleType("graph")
-langgraph.graph.END = object()
-class StateGraph:  # pragma: no cover - stub
-    pass
-langgraph.graph.StateGraph = StateGraph
-sys.modules.setdefault("langgraph", langgraph)
-sys.modules.setdefault("langgraph.graph", langgraph.graph)
-
-chromadb.utils.embedding_functions = types.ModuleType('embedding_functions')
-
-class EmbeddingFunction:  # pragma: no cover - simple stub
-    """Minimal base embedding function stub."""
-
-class HashEmbeddingFunction(EmbeddingFunction):  # pragma: no cover - simple stub
-    """Hash-based embedding function stub."""
-
-chromadb.utils.embedding_functions.EmbeddingFunction = EmbeddingFunction
-chromadb.utils.embedding_functions.HashEmbeddingFunction = HashEmbeddingFunction
-sys.modules.setdefault('chromadb', chromadb)
-sys.modules.setdefault('chromadb.utils', chromadb.utils)
-sys.modules.setdefault('chromadb.utils.embedding_functions', chromadb.utils.embedding_functions)
-
-neo4j_module = types.ModuleType('neo4j')
-
-class GraphDatabase:  # pragma: no cover - simple stub
-    """Stub GraphDatabase with no-op driver."""
-
-    @staticmethod
-    def driver(*args, **kwargs):
-        return None
 
 @pytest.fixture
 def mock_neo4j_graph(monkeypatch):
-    """Provide a mock Neo4j graph for tests.
-
-    This fixture patches both the Neo4jGraph class used by core modules and the
-    instantiated ``neo4j_graph`` in ``app.main`` so tests can run without a
-    real database connection.
-    """
-
+    """Provide a mock Neo4j graph for tests requiring persistence."""
     mock_graph = MagicMock()
-    # Mock methods that are called during tests
     mock_graph.connect = MagicMock()
     mock_graph.close = MagicMock()
     mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
-
     monkeypatch.setattr(
         "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
     )
-    yield mock_graph
-
-class ExecutiveAgent(AIAgent):
+    return mock_graph
