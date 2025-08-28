@@ -1,79 +1,53 @@
-"""
-This module provides orchestration templates for coordinating AI agents.
-
-This module provides two lightweight orchestration helpers:
-
-- ``MultiAgentOrchestrator``: Coordinates a dictionary of specialist agents,
-  records the reasoning path, and manages specialist coordination.
-- ``DynamicOrchestrator``: Builds and runs LangGraph workflows from simple
-  ``AgentSpec`` definitions, primarily for testing arbitrary workflows.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import logging
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
+import sys
+import types
+import importlib.util
 
+from jarvis.agent.prompt import Prompter
 from jarvis.agents.specialist_registry import (
     create_specialist,
     get_specialist_registry,
 )
+from jarvis.auction.vickrey_auction import Candidate, run_vickrey_auction
+from jarvis.memory.memory_manager import PathMemory
 from jarvis.memory.project_memory import ProjectMemory
+from jarvis.memory.semantic_cache import SemanticCache
 from jarvis.monitoring.performance import PerformanceTracker
-from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
+from jarvis.world_model.world_model import WorldModel
 from .message_bus import HierarchicalMessageBus
-from .path_memory import PathMemory
-from .semantic_cache import SemanticCache
+
+
+try:
+    from langgraph.graph import END
+except ImportError:
+    END = object()
 
 
 @dataclass
 class AgentSpec:
-    """Minimal agent specification for dynamic workflows."""
+    """Data class for agent specification."""
 
     name: str
-    orchestrator: Any | None = None
-
-
-class DynamicOrchestrator:
-    """Placeholder dynamic orchestrator for tests."""
-
-    pass
-
-
-if TYPE_CHECKING:  # pragma: no cover - used only for type hints
-    from .sub_orchestrator import SubOrchestrator
-
-logger = logging.getLogger(__name__)
-
-try:  # pragma: no cover - optional dependency
-    from langgraph.graph import END  # type: ignore
-except ImportError:  # pragma: no cover
-    END = object()  # type: ignore
-
-# ---------------------------------------------------------------------------
-# Orchestrator template
-# ---------------------------------------------------------------------------
+    description: str
+    prompter: Prompter
 
 
 @dataclass
 class StepContext:
-    """Execution context for a single DAG step."""
+    """Data class for step context."""
 
-    request: str
-    allowed_specialists: Optional[List[str]] = None
-    tools: Optional[List[str]] = None
-    budgets: Optional[Dict[str, Any]] = None
-    retry_policy: Optional[Dict[str, Any]] = None
-    prune_policy: Optional[Dict[str, Any]] = None
-    auction_policy: Optional[Dict[str, Any]] = None
-    recursion_depth: int = 0
-    user_context: Optional[str] = None
-    context: Any | None = None
-    timeout: Optional[float] = None
+    iteration: int
+    world_model: WorldModel
+    path_memory: PathMemory
+    semantic_cache: SemanticCache
+    previous_outcomes: list
 
 
 @dataclass
@@ -90,11 +64,6 @@ class OrchestratorTemplate:
 
     async def run_step(self, step_ctx: StepContext) -> StepResult:
         raise NotImplementedError
-
-
-# ---------------------------------------------------------------------------
-# Multi agent orchestration
-# ---------------------------------------------------------------------------
 
 
 class MultiAgentOrchestrator(OrchestratorTemplate):
@@ -304,7 +273,7 @@ JSON Response:
                 raise ValueError("Invalid JSON structure from analysis model")
             return analysis
         except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Failed to analyze request complexity: {e}")
+            logging.error(f"Failed to analyze request complexity: {e}")
             return {"specialists_needed": [], "complexity": "unknown"}
 
     async def coordinate_specialists(
@@ -342,7 +311,7 @@ JSON Response:
         if not analysis["specialists_needed"]:
             return self._create_simple_response(request)
 
-        logger.info(
+        logging.info(
             "Coordinating %s specialists for %s complexity task",
             len(analysis["specialists_needed"]),
             analysis["complexity"],
@@ -402,7 +371,7 @@ JSON Response:
                     self.semantic_cache.add(cache_key, result)
                     return result
                 except Exception as e:
-                    logger.warning(
+                    logging.warning(
                         "Attempt %s/%s for %s failed: %s",
                         attempt,
                         retries,
@@ -428,7 +397,7 @@ JSON Response:
         """Create and register a child :class:`SubOrchestrator`."""
         from .sub_orchestrator import (
             SubOrchestrator,
-        )  # Local import to avoid cycle
+        )
 
         child = SubOrchestrator(self.mcp_client, **spec)
         self.child_orchestrators[name] = child
@@ -530,7 +499,7 @@ JSON Response:
                 "exploration_metrics": auction.metrics,
             }
         except Exception as e:
-            logger.error(f"Single specialist analysis failed: {e}")
+            logging.error(f"Single specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
 
     async def _parallel_specialist_analysis(
@@ -578,7 +547,7 @@ JSON Response:
                 group_info, batch_results
             ):
                 if isinstance(responses, Exception):
-                    logger.error(f"Batch {server}/{model} failed: {responses}")
+                    logging.error(f"Batch {server}/{model} failed: {responses}")
                     for stype, _spec, _prompt, mods in items:
                         try:
                             res = await self.dispatch_specialist(
@@ -646,7 +615,7 @@ JSON Response:
                 "exploration_metrics": auction.metrics if auction else {},
             }
         except Exception as e:
-            logger.error(f"Parallel specialist analysis failed: {e}")
+            logging.error(f"Parallel specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
 
     async def _sequential_specialist_analysis(
@@ -695,7 +664,7 @@ JSON Response:
                     }
                 )
                 path_memory.add_decisions(decisions)
-                logger.info(
+                logging.info(
                     "Completed %s; passing context to next specialist",
                     specialist_type,
                 )
@@ -733,7 +702,7 @@ JSON Response:
                 "exploration_metrics": auction.metrics if auction else {},
             }
         except Exception as e:
-            logger.error(f"Sequential specialist analysis failed: {e}")
+            logging.error(f"Sequential specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
 
     def _create_specialist_task(
@@ -776,7 +745,7 @@ JSON Response:
                 "ollama", "llama3.2", prompt
             )
         except Exception as e:
-            logger.error(f"Synthesis failed: {e}")
+            logging.error(f"Synthesis failed: {e}")
             return self._create_fallback_synthesis(results)
 
     async def _synthesize_sequential_results(
@@ -805,7 +774,7 @@ JSON Response:
                 "ollama", "llama3.2", prompt
             )
         except Exception as e:
-            logger.error(f"Sequential synthesis failed: {e}")
+            logging.error(f"Sequential synthesis failed: {e}")
             return self._create_fallback_synthesis(list(results.values()))
 
     def _create_fallback_synthesis(self, results: List[Dict]) -> str:

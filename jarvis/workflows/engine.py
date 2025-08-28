@@ -1,10 +1,6 @@
 """
-🚀 PHASE 4: ADVANCED WORKFLOW ENGINE
-
-Core workflow orchestration system for complex multi-step task execution
-with dependency management, conditional execution, and state tracking.
+Defines the LangGraph-based orchestration logic for the multi-agent teams.
 """
-
 import asyncio
 import uuid
 from datetime import datetime
