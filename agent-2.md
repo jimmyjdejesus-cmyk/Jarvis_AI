@@ -18,5 +18,7 @@
 ## Agent Log 2025-09-06
 - Wired Red/Blue critics into multi-team graph with concurrent review and tests.
 - Implemented ExecutiveAgent planning and dynamic sub-orchestrator spawning.
-- Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
+
+## Agent Log 2025-09-07
+- Added stub ExecutiveAgent and MultiTeamOrchestrator in tests to support WhiteGate tests.

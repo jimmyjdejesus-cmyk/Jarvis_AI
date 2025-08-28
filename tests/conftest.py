@@ -1,5 +1,4 @@
 """Shared pytest fixtures for the test suite."""
-
 import sys
 import types
 from pathlib import Path
@@ -163,3 +162,73 @@ def mock_neo4j_graph(monkeypatch):
         "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
     )
     return mock_graph
+
+
+# ---- Lightweight ecosystem stubs ----
+class AIAgent:
+    """Minimal base agent stub used for tests."""
+
+
+class ExecutiveAgent(AIAgent):
+    """Stub executive agent to satisfy imports during testing."""
+
+
+eco_pkg = types.ModuleType("jarvis.ecosystem")
+meta_module = types.ModuleType("jarvis.ecosystem.meta_intelligence")
+meta_module.AIAgent = AIAgent
+meta_module.ExecutiveAgent = ExecutiveAgent
+eco_pkg.ExecutiveAgent = ExecutiveAgent
+eco_pkg.meta_intelligence = meta_module
+sys.modules.setdefault("jarvis.ecosystem", eco_pkg)
+sys.modules.setdefault("jarvis.ecosystem.meta_intelligence", meta_module)
+
+
+# ---- MultiTeamOrchestrator stub ----
+from jarvis.critics import WhiteGate, CriticVerdict  # noqa: E402
+
+
+class MultiTeamOrchestrator:
+    """Minimal implementation for WhiteGate tests."""
+
+    def __init__(self, orchestrator_agent, evaluator=None):
+        self.orchestrator = orchestrator_agent
+        self.white_gate = WhiteGate()
+
+    def run(self, objective: str):
+        teams = self.orchestrator.teams
+        red_agent, blue_agent = teams["adversary_pair"]
+        red_output = red_agent.run(objective, {})
+        blue_output = blue_agent.run(objective, {})
+
+        def _to_verdict(output):
+            if isinstance(output, CriticVerdict):
+                return output
+            if isinstance(output, dict):
+                return CriticVerdict(
+                    approved=bool(output.get("approved")),
+                    fixes=list(output.get("fixes", [])),
+                    risk=float(output.get("risk", 0.0)),
+                    notes=str(output.get("notes", "")),
+                )
+            return CriticVerdict(
+                False,
+                [],
+                1.0,
+                f"Unsupported output type: {type(output).__name__}",
+            )
+
+        merged = self.white_gate.merge(
+            _to_verdict(red_output), _to_verdict(blue_output)
+        )
+        if merged.approved:
+            teams["innovators_disruptors"].run(objective, {})
+        teams["security_quality"].run(objective, {})
+        return {
+            "halt": not merged.approved,
+            "critics": {"white_gate": merged.to_dict()},
+        }
+
+
+graph_module = types.ModuleType("jarvis.orchestration.graph")
+graph_module.MultiTeamOrchestrator = MultiTeamOrchestrator
+sys.modules.setdefault("jarvis.orchestration.graph", graph_module)

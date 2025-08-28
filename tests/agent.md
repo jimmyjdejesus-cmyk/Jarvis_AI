@@ -146,3 +146,5 @@ Added integration test verifying memory and knowledge graph persistence across m
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
 
+## Agent Log 2025-09-07
+- Stubbed ExecutiveAgent and MultiTeamOrchestrator in conftest for WhiteGate test execution.
