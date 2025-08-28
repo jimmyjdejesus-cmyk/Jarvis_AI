@@ -294,7 +294,6 @@ tests for CRUD operations and concurrent writes.
 Files: jarvis/memory/__init__.py, tests/test_project_memory_fallback.py
 ```
 ---
-- Noted this log file is growing large; consider splitting logs by domain for future clarity.
 ## Agent Interaction
 **Timestamp:** 2025-08-27T15:11:57.089609
 **Agent ID:** replay_memory
@@ -2671,6 +2670,4 @@ Note: root agent.md file is large; consider archival for future entries.
 
 ## NOTE FOR AGENTS and DEVS
 Do not comment on this file-2 or agent_2, and so on
-
-- Noted this log file is growing large; consider splitting logs by domain for future clarity.
 

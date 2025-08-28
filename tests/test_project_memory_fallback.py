@@ -87,3 +87,24 @@ def test_concurrent_add(
         t.join()
 
     assert len(mem.query('proj', 'sess')) == 5
+
+
+def test_concurrent_instances(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Separate instances writing to the same directory should not clobber."""
+
+    ProjectMemory = get_project_memory(monkeypatch)
+
+    def worker(idx: int) -> None:
+        mem = ProjectMemory(persist_directory=str(tmp_path))
+        mem.add('proj', 'sess', f'text-{idx}')
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    mem = ProjectMemory(persist_directory=str(tmp_path))
+    assert len(mem.query('proj', 'sess')) == 5
