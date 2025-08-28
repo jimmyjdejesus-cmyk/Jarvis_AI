@@ -1,3 +1,4 @@
+# flake8: noqa
 """Shared pytest fixtures for the test suite."""
 
 import sys
@@ -13,6 +14,16 @@ neo4j_module = types.ModuleType("neo4j")
 neo4j_module.GraphDatabase = object
 neo4j_module.Driver = object
 sys.modules.setdefault("neo4j", neo4j_module)
+neo4j_exceptions = types.ModuleType("neo4j.exceptions")
+class ServiceUnavailable(Exception):
+    pass
+
+
+class TransientError(Exception):
+    pass
+neo4j_exceptions.ServiceUnavailable = ServiceUnavailable
+neo4j_exceptions.TransientError = TransientError
+sys.modules.setdefault("neo4j.exceptions", neo4j_exceptions)
 
 langgraph_module = types.ModuleType("langgraph")
 graph_submodule = types.ModuleType("langgraph.graph")
@@ -33,15 +44,6 @@ class NoKeyringError(Exception):
 keyring_errors_module.NoKeyringError = NoKeyringError
 sys.modules.setdefault("keyring.errors", keyring_errors_module)
 
-pydantic_module = types.ModuleType("pydantic")
-class BaseModel:  # minimal stand-in
-    pass
-
-def Field(*args, **kwargs):
-    return None
-pydantic_module.BaseModel = BaseModel
-pydantic_module.Field = Field
-sys.modules.setdefault("pydantic", pydantic_module)
 
 chromadb_module = types.ModuleType("chromadb")
 chromadb_utils = types.ModuleType("chromadb.utils")
@@ -52,7 +54,10 @@ chromadb_embedding.EmbeddingFunction = EmbeddingFunction
 chromadb_utils.embedding_functions = chromadb_embedding
 sys.modules.setdefault("chromadb", chromadb_module)
 sys.modules.setdefault("chromadb.utils", chromadb_utils)
-sys.modules.setdefault("chromadb.utils.embedding_functions", chromadb_embedding)
+sys.modules.setdefault(
+    "chromadb.utils.embedding_functions",
+    chromadb_embedding,
+)
 
 nx_module = types.ModuleType("networkx")
 class DiGraph:
@@ -88,7 +93,10 @@ class ConstitutionalCritic:
 const_module.ConstitutionalCritic = ConstitutionalCritic
 critics_pkg.constitutional_critic = const_module
 sys.modules.setdefault('jarvis.agents.critics', critics_pkg)
-sys.modules.setdefault('jarvis.agents.critics.constitutional_critic', const_module)
+sys.modules.setdefault(
+    'jarvis.agents.critics.constitutional_critic',
+    const_module,
+)
 
 # Internal package stubs
 homeostasis_module = types.ModuleType("jarvis.homeostasis")
@@ -143,7 +151,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Lightweight workflows package to avoid circular imports
-spec = importlib.util.spec_from_file_location("jarvis.workflows.engine", ROOT / "jarvis/workflows/engine.py")
+spec = importlib.util.spec_from_file_location(
+    "jarvis.workflows.engine",
+    ROOT / "jarvis/workflows/engine.py",
+)
 engine_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(engine_module)
 workflows_pkg = types.ModuleType("jarvis.workflows")
@@ -158,8 +169,11 @@ def mock_neo4j_graph(monkeypatch):
     mock_graph = MagicMock()
     mock_graph.connect = MagicMock()
     mock_graph.close = MagicMock()
-    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
+    mock_graph.run = MagicMock(
+        return_value=MagicMock(data=MagicMock(return_value=[]))
+    )
     monkeypatch.setattr(
-        "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
+        "jarvis.world_model.neo4j_graph.Neo4jGraph",
+        MagicMock(return_value=mock_graph),
     )
     return mock_graph
