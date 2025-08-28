@@ -1,5 +1,5 @@
-"""
-Jarvis AI - Enhanced Core Package
+"""Jarvis AI - Enhanced Core Package
+
 Modern architecture with MCP, multi-agent, and advanced workflow capabilities.
 """
 
@@ -13,46 +13,15 @@ DEFAULT_MCP_ENABLED = True
 DEFAULT_MULTI_AGENT_ENABLED = True
 DEFAULT_WORKFLOWS_ENABLED = True  # Phase 4: Advanced Workflows!
 
-# Import minimal components; heavy submodules are optional and loaded lazily
-try:
+# Import with error handling for optional components
+try:  # pragma: no cover - optional dependencies
     from jarvis.core.simple_agent import JarvisAgent as SimpleJarvisAgent
-except ImportError:
-    SimpleJarvisAgent = None
-
-try:
     from jarvis.core.enhanced_agent import EnhancedJarvisAgent
-except ImportError:
-    EnhancedJarvisAgent = None
-
-try:
     from jarvis.core.mcp_agent import MCPJarvisAgent
-except ImportError:
-    MCPJarvisAgent = None
-
-try:
     from jarvis.database.db_manager import DatabaseManager, get_database_manager
-except ImportError:
-    DatabaseManager = None
-    get_database_manager = None
-
-try:
     from jarvis.auth.security_manager import SecurityManager, get_security_manager
-except ImportError:
-    SecurityManager = None
-    get_security_manager = None
-
-try:
     from jarvis.agents.coding_agent import CodingAgent
-except Exception:
-    CodingAgent = None
-
-try:
     from jarvis.workflows.workflow_agent import WorkflowJarvisAgent, create_workflow_jarvis
-except ImportError:
-    WorkflowJarvisAgent = None
-    create_workflow_jarvis = None
-
-try:
     from jarvis.workflows import (
         WorkflowEngine,
         create_workflow,
@@ -62,7 +31,17 @@ try:
         create_project_analysis_workflow,
         create_bug_fix_workflow,
     )
-except ImportError:
+except (ImportError, SyntaxError, Exception):  # pragma: no cover
+    SimpleJarvisAgent = None
+    EnhancedJarvisAgent = None
+    MCPJarvisAgent = None
+    DatabaseManager = None
+    get_database_manager = None
+    SecurityManager = None
+    get_security_manager = None
+    CodingAgent = None
+    WorkflowJarvisAgent = None
+    create_workflow_jarvis = None
     WorkflowEngine = None
     WorkflowTemplates = None
     create_workflow = None

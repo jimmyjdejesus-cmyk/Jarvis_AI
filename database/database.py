@@ -3,13 +3,7 @@ Database module for Jarvis AI
 Provides database operations and user management functionality
 """
 
-# Import from the legacy database implementation
-import sys
 from pathlib import Path
-
-# Add legacy path to sys.path for imports
-legacy_path = Path(__file__).parent.parent / "legacy"
-sys.path.insert(0, str(legacy_path))
 
 # Import all database functions from legacy implementation
 try:

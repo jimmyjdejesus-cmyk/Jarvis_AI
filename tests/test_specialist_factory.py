@@ -76,11 +76,11 @@ create_specialist = registry.create_specialist
 @pytest.mark.parametrize(
     "name, method, args, header",
     [
-        ("docs", "create_report", ("system overview",), "REPORT REQUEST"),
+        ("documentation", "create_report", ("system overview",), "REPORT REQUEST"),
         ("database", "optimize_query", ("SELECT 1", None), "QUERY OPTIMIZATION REQUEST"),
         ("security", "penetration_test", ("test system",), "PENETRATION TEST REQUEST"),
         ("localization", "translate_content", ("Hello", "es"), "LOCALIZATION REQUEST"),
-        ("code_review", "review_code", ("print('hi')",), "CODE REVIEW REQUEST"),
+        ("codereview", "review_code", ("print('hi')",), "CODE REVIEW REQUEST"),
     ],
 )
 def test_specialist_factory(monkeypatch, name, method, args, header):
@@ -91,7 +91,7 @@ def test_specialist_factory(monkeypatch, name, method, args, header):
         return {"ok": True}
 
     # Patch process_task for the specific specialist class
-    specialist_cls = registry.SPECIALIST_REGISTRY[name]
+    specialist_cls = registry.get_specialist_registry()[name]
     monkeypatch.setattr(specialist_cls, "process_task", fake_process, raising=False)
 
     agent = create_specialist(name, mcp_client=None)

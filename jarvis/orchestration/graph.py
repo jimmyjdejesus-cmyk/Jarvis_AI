@@ -6,7 +6,7 @@ import asyncio
 from typing import List, Dict, Any, TypedDict, Annotated
 from langgraph.graph import StateGraph, END
 # from langgraph.checkpoints import SqliteSaver # Temporarily removed to resolve import error
-from jarvis.orchestration.agents import OrchestratorAgent, TeamMemberAgent
+from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
 from jarvis.orchestration.pruning import PruningEvaluator
 
 # Define the state for our graph

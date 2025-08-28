@@ -14,6 +14,54 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+import asyncio
+import json
+import logging
+import os
+import uuid
+from abc import abstractmethod
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Type, Callable, Awaitable
+
+from jarvis.agents.agent_resources import (
+    AgentCapability,
+    AgentMetrics,
+    SystemEvolutionPlan,
+    SystemHealth,
+)
+from jarvis.agents.base import AIAgent
+from jarvis.agents.critics import (
+    BlueTeamCritic,
+    ConstitutionalCritic,
+    CriticFeedback,
+    CriticVerdict,
+    RedTeamCritic,
+    WhiteGate,
+)
+from jarvis.agents.curiosity_agent import CuriosityAgent
+from jarvis.agents.curiosity_router import CuriosityRouter
+from jarvis.agents.mission_planner import MissionPlanner
+from jarvis.agents.specialist import SpecialistAgent
+from jarvis.memory.project_memory import MemoryManager, ProjectMemory
+from jarvis.monitoring.performance import CriticInsightMerger, PerformanceTracker
+from jarvis.homeostasis import SystemMonitor
+from jarvis.orchestration.orchestrator import (
+    AgentSpec,
+    DynamicOrchestrator,
+    MultiAgentOrchestrator,
+)
+from jarvis.orchestration.sub_orchestrator import SubOrchestrator
+from jarvis.persistence.session import SessionManager
+from jarvis.world_model.knowledge_graph import KnowledgeGraph
+from jarvis.world_model.hypergraph import HierarchicalHypergraph
+from jarvis.workflows.engine import (
+    WorkflowEngine,
+    WorkflowStatus,
+    add_custom_task,
+    create_workflow,
+)
+
 @pytest.fixture
 def mock_neo4j_graph(monkeypatch):
     """Provide a mock Neo4j graph for tests.
@@ -24,48 +72,14 @@ def mock_neo4j_graph(monkeypatch):
     """
 
     mock_graph = MagicMock()
+    # Mock methods that are called during tests
+    mock_graph.connect = MagicMock()
+    mock_graph.close = MagicMock()
+    mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
 
-    try:
-        import jarvis.world_model.neo4j_graph as neo_module
-        monkeypatch.setattr(neo_module, "Neo4jGraph", MagicMock(return_value=mock_graph))
-    except Exception:
-        pass
+    monkeypatch.setattr(
+        "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
+    )
+    yield mock_graph
 
-    try:
-        import app.main as main_app
-        monkeypatch.setattr(main_app, "neo4j_graph", mock_graph)
-    except Exception:
-        pass
-
-    return mock_graph
-
-# Stub minimal ``jarvis.security.secret_manager`` to avoid heavy package imports
-SEC_PATH = ROOT / "jarvis" / "security" / "secret_manager.py"
-spec = importlib.util.spec_from_file_location("jarvis.security.secret_manager", SEC_PATH)
-secret_manager = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(secret_manager)
-jarvis_pkg = types.ModuleType("jarvis")
-security_pkg = types.ModuleType("jarvis.security")
-security_pkg.secret_manager = secret_manager
-jarvis_pkg.security = security_pkg
-sys.modules.setdefault("jarvis", jarvis_pkg)
-sys.modules.setdefault("jarvis.security", security_pkg)
-sys.modules["jarvis.security.secret_manager"] = secret_manager
-
-
-class _MemoryKeyring(KeyringBackend):
-    """In-memory keyring backend for tests."""
-
-    priority = 1
-
-    def __init__(self) -> None:
-        self._store: dict[tuple[str, str], str] = {}
-
-    def get_password(self, service: str, username: str) -> str | None:
-        return self._store.get((service, username))
-
-    def set_password(self, service: str, username: str, password: str) -> None:
-        self._store[(service, username)] = password
-
-    def delete_password(self, service: str, username: str) -> None:
-        self._store.pop((service, username), None)
+class ExecutiveAgent(AIAgent):

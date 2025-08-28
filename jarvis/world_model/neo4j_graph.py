@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import re
-from typing import Any, Dict, Optional
-
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from neo4j import GraphDatabase, Driver
 
 from jarvis.security.secret_manager import get_secret
+if TYPE_CHECKING:  # pragma: no cover
+    from jarvis.orchestration.mission import MissionDAG, MissionNode
 
 
 class Neo4jGraph:
@@ -120,135 +122,81 @@ class Neo4jGraph:
             )
 
     # ------------------------------------------------------------------
-    _READ_ONLY_START = re.compile(
-        r"^\s*(MATCH|RETURN)\b",
-        re.IGNORECASE,
-    )
-    _WRITE_CLAUSES = re.compile(
-        r"\b(CREATE|MERGE|DELETE|SET|DROP)\b",
-        re.IGNORECASE,
-    )
+# Mission DAG operations
 
-    def _validate_cypher(self, query: str) -> None:
-        """Ensure ``query`` is read-only and contains a single statement.
-
-        Parameters
-        ----------
-        query:
-            Cypher statement to validate.
-
-        Raises
-        ------
-        ValueError
-            If the query performs write operations or contains multiple
-            statements.
-        """
-
-        if ";" in query:
-            raise ValueError("Multiple Cypher statements are not allowed")
-
-        if not self._READ_ONLY_START.match(query):
-            raise ValueError("Query must start with MATCH or RETURN")
-
-        if self._WRITE_CLAUSES.search(query):
-            raise ValueError("Write operations are not permitted")
-
-    # ------------------------------------------------------------------
-    def query(
-        self,
-        query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> list[Dict[str, Any]]:
-        """Execute a validated read-only Cypher query.
-
-        Parameters
-        ----------
-        query:
-            Cypher statement restricted to read-only operations.
-        parameters:
-            Optional mapping of query parameters.
-
-        Returns
-        -------
-        list[Dict[str, Any]]
-            Result rows represented as dictionaries.
-
-        Raises
-        ------
-        ValueError
-            If the query fails validation.
-        """
-
-        self._validate_cypher(query)
-        with self.driver.session() as session:
-            result = session.run(query, parameters or {})
-            return [record.data() for record in result]
-
-    # ------------------------------------------------------------------
-    def _sanitize_properties(self, props: Dict[str, Any]) -> Dict[str, Any]:
-        """Remove sensitive fields from a properties dictionary."""
-
-        return {
-            k: v
-            for k, v in props.items()
-            if k.lower() not in self.SENSITIVE_FIELDS
-        }
-
-    # ------------------------------------------------------------------
-    def get_mission_history(self, mission_id: str) -> Dict[str, Any]:
-        """Fetch a mission with its steps and discovered facts.
-
-        Args:
-            mission_id: The ID of the mission to retrieve.
-
-        Returns:
-            A dictionary containing mission properties and lists of related
-            steps and facts. Sensitive fields are removed. If the mission is
-            not found, an empty dictionary is returned.
-        """
-
-        if not re.fullmatch(r"[\w-]+", mission_id):
-            raise ValueError("Invalid mission_id")
+    def write_mission_dag(self, dag: "MissionDAG") -> None:
+        """Persist an entire :class:`MissionDAG` to Neo4j."""
 
         with self.driver.session() as session:
+            session.run(
+                "MERGE (m:Mission {id: $mission_id}) SET m.rationale=$rationale",
+                mission_id=dag.mission_id,
+                rationale=dag.rationale,
+            )
+            for node in dag.nodes.values():
+                session.run(
+                    "MERGE (n:MissionNode {mission_id:$mission_id, step_id:$step_id}) "
+                    "SET n.capability=$capability, n.team_scope=$team_scope, "
+                    "n.hitl_gate=$hitl_gate, n.deps=$deps",
+                    mission_id=dag.mission_id,
+                    step_id=node.step_id,
+                    capability=node.capability,
+                    team_scope=node.team_scope,
+                    hitl_gate=node.hitl_gate,
+                    deps=node.deps,
+                )
+                session.run(
+                    "MATCH (m:Mission {id:$mission_id}), (n:MissionNode {mission_id:$mission_id, step_id:$step_id}) "
+                    "MERGE (m)-[:HAS_NODE]->(n)",
+                    mission_id=dag.mission_id,
+                    step_id=node.step_id,
+                )
+            for src, dst in dag.edges:
+                session.run(
+                    "MATCH (a:MissionNode {mission_id:$mission_id, step_id:$src}), "
+                    "(b:MissionNode {mission_id:$mission_id, step_id:$dst}) "
+                    "MERGE (a)-[:DEPENDS_ON]->(b)",
+                    mission_id=dag.mission_id,
+                    src=src,
+                    dst=dst,
+                )
+
+    # ------------------------------------------------------------------
+    def read_mission_dag(self, mission_id: str) -> "MissionDAG":
+        """Load a :class:`MissionDAG` from Neo4j."""
+
+        with self.driver.session() as session:
+            rationale = ""
             result = session.run(
-                (
-                    "MATCH (m:Mission {id: $mission_id}) "
-                    "OPTIONAL MATCH (m)-[:HAS_STEP]->(s:Step) "
-                    "OPTIONAL MATCH (s)-[:DISCOVERED]->(f:Fact) "
-                    "RETURN m, collect(DISTINCT s) AS steps, "
-                    "collect(DISTINCT f) AS facts"
-                ),
+                "MATCH (m:Mission {id:$mission_id}) RETURN m.rationale AS rationale",
                 mission_id=mission_id,
             )
-            record = result.single()
-            if not record:
-                return {}
+            for record in result:
+                rationale = record.get("rationale", "")
 
-            mission = self._sanitize_properties(dict(record["m"]))
-            steps = [
-                self._sanitize_properties(dict(step))
-                for step in record["steps"]
-                if step
-            ]
-            facts = [
-                self._sanitize_properties(dict(fact))
-                for fact in record["facts"]
-                if fact
-            ]
+            node_records = session.run(
+                "MATCH (n:MissionNode {mission_id:$mission_id}) "
+                "RETURN n.step_id AS step_id, n.capability AS capability, "
+                "n.team_scope AS team_scope, n.hitl_gate AS hitl_gate, n.deps AS deps",
+                mission_id=mission_id,
+            )
+            from jarvis.orchestration.mission import MissionNode, MissionDAG
 
-            return {"mission": mission, "steps": steps, "facts": facts}
+            nodes: Dict[str, MissionNode] = {}
+            for rec in node_records:
+                nodes[rec["step_id"]] = MissionNode(
+                    step_id=rec["step_id"],
+                    capability=rec["capability"],
+                    team_scope=rec["team_scope"],
+                    hitl_gate=rec.get("hitl_gate", False),
+                    deps=rec.get("deps", []),
+                )
 
-    # ------------------------------------------------------------------
-    def is_alive(self) -> bool:
-        """Check if the Neo4j connection is healthy.
+            edge_records = session.run(
+                "MATCH (a:MissionNode {mission_id:$mission_id})-[:DEPENDS_ON]->(b:MissionNode {mission_id:$mission_id}) "
+                "RETURN a.step_id AS src, b.step_id AS dst",
+                mission_id=mission_id,
+            )
+            edges = [(rec["src"], rec["dst"]) for rec in edge_records]
 
-        Returns:
-            True if the driver can verify connectivity, False otherwise.
-        """
-
-        try:
-            self.driver.verify_connectivity()
-            return True
-        except Exception:
-            return False
+            return MissionDAG(mission_id=mission_id, rationale=rationale, nodes=nodes, edges=edges)
