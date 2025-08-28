@@ -8,6 +8,12 @@ import importlib.util
 
 import pytest
 import keyring
+import builtins
+import logging as _logging
+
+builtins.Path = Path
+builtins.sys = sys
+builtins.logging = _logging
 
 # Provide a minimal langgraph stub if the package is unavailable
 try:  # pragma: no cover - optional dependency
@@ -72,6 +78,43 @@ memory_service.vector_store = None
 sys.modules.setdefault("memory_service", memory_service)
 sys.modules.setdefault("memory_service.models", models_sub)
 
+# Minimal ProjectMemory stub to avoid chromadb dependency
+project_memory = types.ModuleType("jarvis.memory.project_memory")
+
+
+class ProjectMemory:
+    def add(self, *a, **k):  # pragma: no cover - stub
+        pass
+
+    def query(self, *a, **k):  # pragma: no cover - stub
+        return []
+
+
+project_memory.ProjectMemory = ProjectMemory
+sys.modules.setdefault("jarvis.memory.project_memory", project_memory)
+
+# Stub neo4j module to avoid optional dependency
+neo4j_stub = types.ModuleType("neo4j")
+neo4j_stub.GraphDatabase = object
+neo4j_stub.Driver = object
+sys.modules.setdefault("neo4j", neo4j_stub)
+
+neo4j_exceptions = types.ModuleType("neo4j.exceptions")
+
+
+class ServiceUnavailable(Exception):  # pragma: no cover - stub
+    pass
+
+
+class TransientError(Exception):  # pragma: no cover - stub
+    pass
+
+
+neo4j_exceptions.ServiceUnavailable = ServiceUnavailable
+neo4j_exceptions.TransientError = TransientError
+neo4j_stub.exceptions = neo4j_exceptions
+sys.modules.setdefault("neo4j.exceptions", neo4j_exceptions)
+
 # Ensure repository root on path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -92,8 +135,16 @@ sys.modules.setdefault("jarvis.workflows.engine", engine_module)
 @pytest.fixture(autouse=True)
 def stub_keyring(monkeypatch):
     """Avoid accessing system keyring during tests."""
-    monkeypatch.setattr(keyring, "get_password", lambda *a, **k: None)
-    monkeypatch.setattr(keyring, "set_password", lambda *a, **k: None)
+    storage = {}
+
+    def _get_password(service, username):
+        return storage.get((service, username))
+
+    def _set_password(service, username, password):
+        storage[(service, username)] = password
+
+    monkeypatch.setattr(keyring, "get_password", _get_password)
+    monkeypatch.setattr(keyring, "set_password", _set_password)
 
 
 @pytest.fixture
