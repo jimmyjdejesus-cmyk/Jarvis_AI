@@ -11,6 +11,7 @@ from jarvis.memory.memory_bus import MemoryBus
 from jarvis.agents.research_agent import ResearchAgent
 from jarvis.orchestration.message_bus import MessageBus
 from jarvis.orchestration.pruning import PruningEvaluator
+from jarvis.orchestration.mission import MissionDAG
 from jarvis.orchestration.mission_planner import MissionPlanner
 from jarvis.ecosystem import superintelligence
 
@@ -241,22 +242,26 @@ class MetaAgent:
         """Logs a message from the Meta-Agent to the shared bus."""
         self.shared_memory_bus.log_interaction(self.agent_id, "Meta", message, data)
 
-    def plan_mission(self, mission_name: str) -> List[Dict[str, Any]]:
-        """Break a mission into sub-tasks and enqueue them.
+    def plan_mission(self, mission_name: str) -> MissionDAG:
+        """Create a mission plan and enqueue its tasks.
 
         Parameters
         ----------
         mission_name: str
-            Name of the mission file (without extension) located in ``config/missions``.
+            Name of the mission file (without extension) located in
+            ``config/missions``.
 
         Returns
         -------
-        List[Dict[str, Any]]
-            The tasks that were enqueued.
+        MissionDAG
+            The planned mission graph.  Tasks are already enqueued on the
+            planner's queue for downstream consumption.
         """
-        tasks = self.mission_planner.plan(mission_name)
-        self.log(f"Planned mission '{mission_name}' with {len(tasks)} tasks.")
-        return tasks
+
+        dag = self.mission_planner.plan(mission_name)
+        self.log(
+            f"Planned mission '{mission_name}' with {len(dag.nodes)} nodes.")
+        return dag
 
     def next_task(self) -> Dict[str, Any] | None:
         """Retrieve the next task from the mission queue."""
