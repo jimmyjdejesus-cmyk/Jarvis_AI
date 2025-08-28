@@ -90,7 +90,7 @@ class DatabaseManager:
         if LEGACY_DB_AVAILABLE:
             try:
                 return get_user(username)
-            except:
+            except Exception:
                 pass
 
         # Fallback implementation
