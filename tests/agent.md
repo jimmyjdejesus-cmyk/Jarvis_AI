@@ -185,5 +185,6 @@ File is quite long; consider archiving older entries soon.
 File: tests/test_knowledge_query_get.py
 ```
 - Added unit test for AgentCore dynamic components.
-
+## Note
+File is very long; starting new logs in agent-2.md.
 - Extended AgentCore unit test to assert missing component raises KeyError.

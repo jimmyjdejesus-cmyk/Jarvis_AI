@@ -43,6 +43,16 @@
 - Installed flake8 and ran linting and pytest for verification.
 - Added SubOrchestrator DAG execution support.
 - Created unit tests for ExecutiveAgent.plan and SubOrchestrator specialist filtering.
+## Agent Log 2025-09-07
+- Expanded CriticInsightMerger with weighted scoring and argument synthesis; added tests.
+## Agent Log 2025-09-08
+- Moved default credibility and unknown severity weight for critic insights into configuration.
+- Parameterized merger unit tests to exercise alternative severity mappings.
+- Ran flake8 and pytest for updated modules.
+## Agent Log 2025-09-09
+- Added configurable default severity for critic insights.
+- Expanded merger tests to vary default credibility and fallback severity weight.
+- Ran flake8 and pytest.
 ## Agent Log 2025-08-28
 - Refactored orchestration graph for PEP8 compliance, removed unused context variable, wrapped long lines, and added WhiteGate initialization. Ran flake8 with no errors.
 ## Agent Log 2025-09-07
