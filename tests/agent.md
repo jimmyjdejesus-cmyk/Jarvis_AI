@@ -1,20 +1,18 @@
+
+# Agent Log
+- Added tests for `run_step` timeout handling, retry backoff, and performance tracking.
 ## Agent Log 2025-08-31
 - Updated CLI tests to use ExecutiveAgent.
 - Added multi-step mission test verifying mission results and execution graph output.
-
 ## Agent Log 2025-09-01
 - Added docstrings and failure scenario tests for CLI.
 - Ensured tests meet PEP 8 using flake8.
-
 ## Agent Log 2025-09-02
 - Verified CLI returns mission result through updated unit test.
-
 ## Agent Log 2025-09-03
 - Added integration test exercising MCPClient against an aiohttp server.
-
 ## Agent Log 2025-09-04
 - Expanded MCPClient integration tests to include server error handling and tool execution.
-
 ## Agent Log 2025-09-05
 - Added integration tests covering authentication failures and request timeouts for MCPClient.
 ## Agent Interaction
