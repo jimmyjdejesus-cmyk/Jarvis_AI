@@ -2,5 +2,7 @@ goal: Demonstrate MissionPlanner
 tasks:
   - id: write-docs
     description: Write documentation for MissionPlanner
+    tags: []
   - id: run-tests
     description: Execute unit tests for mission planning
+    tags: [disruptive]

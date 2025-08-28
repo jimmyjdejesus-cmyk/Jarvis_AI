@@ -13,6 +13,7 @@ from .orchestrator import (
 from .path_memory import PathMemory
 from .message_bus import MessageBus, HierarchicalMessageBus, Event
 from .bandwidth_channel import BandwidthLimitedChannel
+from .black_team_orchestrator import BlackTeamOrchestrator
 
 # Optional imports for extended functionality
 try:  # pragma: no cover - optional import
@@ -67,6 +68,7 @@ __all__ = [
     "HierarchicalMessageBus",
     "Event",
     "BandwidthLimitedChannel",
+    "BlackTeamOrchestrator",
     "MissionPlanner",
     "RedisTaskQueue",
     "PruningManager",

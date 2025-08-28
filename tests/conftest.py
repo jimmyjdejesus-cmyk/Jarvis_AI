@@ -1,75 +1,78 @@
-"""Shared pytest fixtures for the test suite."""
+from __future__ import annotations
 
-import sys
-import types
 from pathlib import Path
 from unittest.mock import MagicMock
-import importlib.util
+import sys
+import types
 
 import pytest
 
-# Stub external dependencies
-neo4j_module = types.ModuleType("neo4j")
-neo4j_module.GraphDatabase = object
-neo4j_module.Driver = object
-sys.modules.setdefault("neo4j", neo4j_module)
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-langgraph_module = types.ModuleType("langgraph")
-graph_submodule = types.ModuleType("langgraph.graph")
-graph_submodule.StateGraph = object
-graph_submodule.END = None
-sys.modules.setdefault("langgraph", langgraph_module)
-sys.modules.setdefault("langgraph.graph", graph_submodule)
+# Stub optional dependencies
+sys.modules.setdefault("neo4j", MagicMock())
+keyring_errors = types.ModuleType("keyring.errors")
 
-aiohttp_module = types.ModuleType("aiohttp")
-sys.modules.setdefault("aiohttp", aiohttp_module)
 
-keyring_module = types.ModuleType("keyring")
-keyring_module.get_password = lambda *a, **k: None
-sys.modules.setdefault("keyring", keyring_module)
-keyring_errors_module = types.ModuleType("keyring.errors")
 class NoKeyringError(Exception):
     pass
-keyring_errors_module.NoKeyringError = NoKeyringError
-sys.modules.setdefault("keyring.errors", keyring_errors_module)
 
-pydantic_module = types.ModuleType("pydantic")
-class BaseModel:  # minimal stand-in
+
+keyring_errors.NoKeyringError = NoKeyringError
+keyring_module = types.ModuleType("keyring")
+keyring_module.errors = keyring_errors
+sys.modules.setdefault("keyring", keyring_module)
+sys.modules.setdefault("keyring.errors", keyring_errors)
+
+langgraph_graph = types.ModuleType("langgraph.graph")
+langgraph_graph.END = object()
+
+
+class StateGraph:  # pragma: no cover - minimal stub
     pass
 
-def Field(*args, **kwargs):
-    return None
-pydantic_module.BaseModel = BaseModel
-pydantic_module.Field = Field
-sys.modules.setdefault("pydantic", pydantic_module)
 
-chromadb_module = types.ModuleType("chromadb")
-chromadb_utils = types.ModuleType("chromadb.utils")
-chromadb_embedding = types.ModuleType("chromadb.utils.embedding_functions")
-class EmbeddingFunction:
-    pass
-chromadb_embedding.EmbeddingFunction = EmbeddingFunction
-chromadb_utils.embedding_functions = chromadb_embedding
-sys.modules.setdefault("chromadb", chromadb_module)
-sys.modules.setdefault("chromadb.utils", chromadb_utils)
-sys.modules.setdefault("chromadb.utils.embedding_functions", chromadb_embedding)
+langgraph_graph.StateGraph = StateGraph
+langgraph_module = types.ModuleType("langgraph")
+langgraph_module.graph = langgraph_graph
+sys.modules.setdefault("langgraph", langgraph_module)
+sys.modules.setdefault("langgraph.graph", langgraph_graph)
 
+# Additional stubs
 nx_module = types.ModuleType("networkx")
-class DiGraph:
-    def __init__(self):
+class DiGraph:  # pragma: no cover - simple stub
+    def __init__(self, *a, **k):
         self._nodes = {}
         self._edges = {}
-    def add_node(self, node, **attrs):
-        self._nodes[node] = attrs
-    def add_edge(self, s, t, **attrs):
-        self._edges.setdefault(s, []).append((t, attrs))
+    def add_node(self, node, **k):
+        self._nodes[node] = k
+    def add_edge(self, u, v, **k):
+        self._edges.setdefault(u, [])
+        self._edges[u].append((v, k))
     def nodes(self, data=False):
-        return list(self._nodes.items()) if data else list(self._nodes.keys())
+        return self._nodes.items() if data else self._nodes.keys()
     def edges(self, data=False):
         edges = []
-        for s, lst in self._edges.items():
-            for t, attrs in lst:
-                edges.append((s, t, attrs) if data else (s, t))
+        for u, lst in self._edges.items():
+            edges.extend([(u, v, attrs) if data else (u, v) for v, attrs in lst])
+        return edges
+    def predecessors(self, node):
+        return [u for u, v in self._edges.items() if v[0][0] == node]
+    def successors(self, node):
+        return [t for t, attrs in self._edges.get(node, [])]
+    def has_node(self, node):
+        return node in self._nodes
+    def has_edge(self, u, v):
+        lst = self._edges.get(u, [])
+        return v in [t for t, attrs in lst]
+    def in_edges(self, node, data=False):
+        edges = []
+        for u, lst in self._edges.items():
+            for v, attrs in lst:
+                if v == node:
+                    edges.append((u, v, attrs) if data else (u, v))
         return edges
     def out_edges(self, node, data=False):
         lst = self._edges.get(node, [])
@@ -77,7 +80,6 @@ class DiGraph:
 nx_module.DiGraph = DiGraph
 sys.modules.setdefault("networkx", nx_module)
 
-# Additional stubs
 requests_module = types.ModuleType('requests')
 sys.modules.setdefault('requests', requests_module)
 critics_pkg = types.ModuleType('jarvis.agents.critics')
@@ -154,12 +156,14 @@ sys.modules.setdefault("jarvis.workflows.engine", engine_module)
 
 @pytest.fixture
 def mock_neo4j_graph(monkeypatch):
-    """Provide a mock Neo4j graph for tests requiring persistence."""
+    """Provide a mock Neo4j graph for tests."""
+
     mock_graph = MagicMock()
     mock_graph.connect = MagicMock()
     mock_graph.close = MagicMock()
     mock_graph.run = MagicMock(return_value=MagicMock(data=MagicMock(return_value=[])))
+
     monkeypatch.setattr(
         "jarvis.world_model.neo4j_graph.Neo4jGraph", MagicMock(return_value=mock_graph)
     )
-    return mock_graph
+    yield mock_graph

@@ -142,9 +142,17 @@ Added integration test verifying memory and knowledge graph persistence across m
 **Associated Data:**
 ```json
 {"files": ["test_mission_step_persistence.py"]}
+## Agent Log 2025-08-28
+- Added tests for SelfRAGGate logging and policy optimizer integration.
+## Agent Log
+- Added API mission creation test and team assignment sub-DAG test.
+{"files": ["test_mission_step_persistence.py"]}- Added tests for BlackTeamOrchestrator context filtering.
 ## Agent Log 2025-09-06
+- Fixed stray class definition in conftest.py causing IndentationError during pytest setup.
+{"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
+## Agent Log 2025-09-06
+- Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
 - Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
-
 ## Agent Interaction
 **Timestamp:** 2025-08-28T02:28:19+00:00
 **Agent ID:** openai-assistant
