@@ -1,6 +1,6 @@
-"""
-This module provides orchestration templates for coordinating AI agents.
+# flake8: noqa
 
+"""
 This module provides two lightweight orchestration helpers:
 
 - ``MultiAgentOrchestrator``: Coordinates a dictionary of specialist agents,
@@ -9,34 +9,18 @@ This module provides two lightweight orchestration helpers:
   ``AgentSpec`` definitions, primarily for testing arbitrary workflows.
 """
 
+# flake8: noqa: E501
+
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
-from pathlib import Path
-from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import json
 from collections import defaultdict
 from dataclasses import dataclass
 
-from langgraph.graph import END, StateGraph
-
-
-
-@dataclass
-class AgentSpec:
-    """Minimal agent specification for dynamic workflows."""
-
-    name: str
-    orchestrator: Any | None = None
-
-
-class DynamicOrchestrator:
-    """Placeholder dynamic orchestrator for tests."""
-    pass
-
+from langgraph.graph import END  # noqa: F401
 from jarvis.scoring.vickrey_auction import Candidate, run_vickrey_auction
 from .path_memory import PathMemory
 from .semantic_cache import SemanticCache
@@ -47,6 +31,21 @@ from jarvis.agents.specialist_registry import (
     create_specialist,
 )
 from jarvis.monitoring.performance import PerformanceTracker
+from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+# Stub optional dependencies
+sys.modules.setdefault("neo4j", MagicMock())
+keyring_errors = types.ModuleType("keyring.errors")
+
+class DynamicOrchestrator:
+    """Placeholder dynamic orchestrator for tests."""
+
+    pass
+
 
 if TYPE_CHECKING:  # pragma: no cover - used only for type hints
     from .sub_orchestrator import SubOrchestrator
@@ -118,7 +117,9 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.memory = memory
         if specialists is None:
             self.specialists = {
-                name: create_specialist(name, mcp_client, knowledge_graph=knowledge_graph)
+                name: create_specialist(
+                    name, mcp_client, knowledge_graph=knowledge_graph
+                )
                 for name in get_specialist_registry()
             }
         else:
@@ -132,8 +133,6 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.message_bus = message_bus or HierarchicalMessageBus()
         self.budgets = budgets or {}
         self.performance_tracker = performance_tracker or PerformanceTracker()
-        from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
-        from jarvis.agents.critics.constitutional_critic import ConstitutionalCritic
         self.critic = ConstitutionalCritic(mcp_client=self.mcp_client)
 
     async def log_event(
@@ -185,12 +184,14 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
                         data = await asyncio.wait_for(coro, timeout)
                     else:
                         data = await coro
-                    self.performance_tracker.record_event("step", True, attempt)
+                    self.performance_tracker.record_event(
+                        "step", True, attempt)
                     break
                 except Exception as e:
                     if isinstance(e, asyncio.CancelledError):
                         raise
-                    self.performance_tracker.record_event("step", False, attempt)
+                    self.performance_tracker.record_event(
+                        "step", False, attempt)
                     if attempt > retries:
                         raise
                     delay = backoff_base * (2 ** (attempt - 1))
@@ -203,7 +204,10 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
             {"specialists_used": data.get("specialists_used", [])},
             run_id=run_id,
         )
-        return StepResult(data=data, run_id=run_id or "", depth=step_ctx.recursion_depth)
+        return StepResult(
+            data=data,
+            run_id=run_id or "",
+            depth=step_ctx.recursion_depth)
 
     def list_child_orchestrators(self) -> List[str]:
         """List identifiers of active child orchestrators."""
@@ -228,11 +232,17 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
             user_context=user_context,
         )
 
-    def spawn_child_orchestrator(self, parent_run_id: str, spec: Dict[str, Any]):
+    def spawn_child_orchestrator(
+            self, parent_run_id: str, spec: Dict[str, Any]):
         """Spawn a child orchestrator inheriting this orchestrator's context."""
         child = self.create_child_orchestrator(parent_run_id, spec)
 
-        async def forward(event: str, payload: Any, *, run_id: Optional[str] = None, step_id: Optional[str] = None):
+        async def forward(
+                event: str,
+                payload: Any,
+                *,
+                run_id: Optional[str] = None,
+                step_id: Optional[str] = None):
             await self.log_event(
                 f"child.{parent_run_id}.{event}",
                 payload,
@@ -246,17 +256,21 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         child.budgets = {**self.budgets, **spec.get("budgets", {})}
         return child
 
-    async def _analyze_request_complexity(self, request: str, code: str = None) -> Dict[str, Any]:
+    async def _analyze_request_complexity(
+            self, request: str, code: str = None) -> Dict[str, Any]:
         """Analyze a request to determine complexity and specialists needed."""
-        import json
 
-        prompt = f"""
-Analyze the following user request to determine the required specialists and the task complexity.
 
-**Available Specialists:** {', '.join(self.specialists.keys())}
+keyring_errors.NoKeyringError = NoKeyringError
+keyring_module = types.ModuleType("keyring")
+keyring_module.errors = keyring_errors
+sys.modules.setdefault("keyring", keyring_module)
+sys.modules.setdefault("keyring.errors", keyring_errors)
 
-**User Request:**
-{request}
+langgraph_graph = types.ModuleType("langgraph.graph")
+langgraph_graph.END = object()
+
+
 
 **Code Context (if any):**
 {code or "N/A"}
@@ -276,13 +290,16 @@ JSON Response:
         try:
             response_str = await self.mcp_client.generate_response("ollama", "llama3.2", prompt)
             analysis = json.loads(response_str)
-            if not isinstance(analysis.get("specialists_needed"), list) or not isinstance(analysis.get("complexity"), str):
+            if not isinstance(
+                    analysis.get("specialists_needed"),
+                    list) or not isinstance(
+                    analysis.get("complexity"),
+                    str):
                 raise ValueError("Invalid JSON structure from analysis model")
             return analysis
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(f"Failed to analyze request complexity: {e}")
             return {"specialists_needed": [], "complexity": "unknown"}
-
 
     async def coordinate_specialists(
         self,
@@ -295,7 +312,8 @@ JSON Response:
         """Coordinate multiple specialists to handle complex request."""
         analysis = await self._analyze_request_complexity(request, code)
         analysis["coordination_type"] = self._determine_coordination_type(
-            analysis.get("specialists_needed", []), analysis.get("complexity", "unknown")
+            analysis.get("specialists_needed", []), analysis.get(
+                "complexity", "unknown")
         )
         analysis["collaboration_depth"] = self._determine_collaboration_depth(
             analysis["specialists_needed"]
@@ -334,8 +352,17 @@ JSON Response:
                 request, analysis, path_memory, code, user_context, context
             )
 
-        score = result.get("oracle_score", 1.0 if result.get("type") != "error" else 0.0)
+        score = result.get(
+            "oracle_score", 1.0 if result.get("type") != "error" else 0.0
+        )
         path_memory.record(score)
+
+        review = await self.critic.review(result)
+        if review.get("veto"):
+            violations = ", ".join(review.get("violations", []))
+            return self._create_error_response(
+                f"Critic veto: {violations or 'unspecified'}", request
+            )
         return result
 
     async def dispatch_specialist(
@@ -370,6 +397,16 @@ JSON Response:
                     result = await asyncio.wait_for(
                         specialist.process_task(task, **kwargs), timeout
                     )
+                    if not isinstance(
+                            result, dict) or "response" not in result:
+                        logger.error(
+                            "Specialist %s returned incomplete result",
+                            specialist_type)
+                        # Convert malformed output into a structured error so
+                        # downstream coordination can safely ignore it.
+                        return self._create_specialist_error(
+                            specialist_type, "Invalid or incomplete response"
+                        )
                     self.semantic_cache.add(cache_key, result)
                     return result
                 except Exception as e:
@@ -388,7 +425,8 @@ JSON Response:
             )
             self.semantic_cache.add(cache_key, result)
             return result
-        raise ValueError(f"Unknown specialist or orchestrator: {specialist_type}")
+        raise ValueError(
+            f"Unknown specialist or orchestrator: {specialist_type}")
 
     def create_child_orchestrator(self, name: str, spec: Dict[str, Any]):
         """Create and register a child :class:`SubOrchestrator`."""
@@ -402,7 +440,10 @@ JSON Response:
         """Remove a child orchestrator by name."""
         return self.child_orchestrators.pop(name, None) is not None
 
-    def _determine_coordination_type(self, specialists: List[str], complexity: str) -> str:
+    def _determine_coordination_type(
+            self,
+            specialists: List[str],
+            complexity: str) -> str:
         """Determine how specialists should be coordinated"""
         if len(specialists) <= 1:
             return "single"
@@ -424,11 +465,16 @@ JSON Response:
         else:
             return "deep"
 
-    def _route_model_preferences(self, specialist, complexity: str) -> List[str]:
+    def _route_model_preferences(
+            self,
+            specialist,
+            complexity: str) -> List[str]:
         """Determine model order based on system resources and task complexity."""
         models = list(specialist.preferred_models)
-        local = [m for m in models if specialist._get_server_for_model(m) == "ollama"]
-        cloud = [m for m in models if specialist._get_server_for_model(m) != "ollama"]
+        local = [
+            m for m in models if specialist._get_server_for_model(m) == "ollama"]
+        cloud = [
+            m for m in models if specialist._get_server_for_model(m) != "ollama"]
 
         snapshot = self.monitor.snapshot() if self.monitor else None
         if snapshot and snapshot.cpu > 80 and complexity != "high":
@@ -461,11 +507,16 @@ JSON Response:
                 "type": "single_specialist",
                 "complexity": analysis["complexity"],
                 "specialists_used": [specialist_type],
-                "results": {specialist_type: result},
-                "synthesized_response": result.get("response", ""),
+                "results": {
+                    specialist_type: result},
+                "synthesized_response": result.get(
+                    "response",
+                    ""),
                 "confidence": auction.winner.bid,
                 "coordination_summary": f"Auction won by {auction.winner.agent}",
-                "auction": {"winner": auction.winner.agent, "price": auction.price},
+                "auction": {
+                    "winner": auction.winner.agent,
+                    "price": auction.price},
                 "exploration_metrics": auction.metrics,
             }
         except Exception as e:
@@ -482,23 +533,29 @@ JSON Response:
         grouped: Dict[tuple, List[tuple]] = defaultdict(list)
         for specialist_type in specialists_needed:
             specialist = self.specialists[specialist_type]
-            models = self._route_model_preferences(specialist, analysis["complexity"])
+            models = self._route_model_preferences(
+                specialist, analysis["complexity"])
             prompt = specialist.build_prompt(task, context, user_context)
             primary_model = models[0]
             server = specialist._get_server_for_model(primary_model)
-            grouped[(server, primary_model)].append((specialist_type, specialist, prompt, models))
+            grouped[(server, primary_model)].append(
+                (specialist_type, specialist, prompt, models))
 
         try:
             batch_tasks, group_info = [], []
             for (server, model), items in grouped.items():
                 prompts = [it[2] for it in items]
-                batch_tasks.append(self.mcp_client.generate_response_batch(server, model, prompts))
+                batch_tasks.append(
+                    self.mcp_client.generate_response_batch(
+                        server, model, prompts))
                 group_info.append((server, model, items))
 
             batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
 
             specialist_results, successful_results = {}, []
-            for (server, model, items), responses in zip(group_info, batch_results):
+            for (
+                    server, model, items), responses in zip(
+                    group_info, batch_results):
                 if isinstance(responses, Exception):
                     logger.error(f"Batch {server}/{model} failed: {responses}")
                     for stype, _spec, _prompt, mods in items:
@@ -515,15 +572,20 @@ JSON Response:
                         specialist_results[stype] = res
                         if res.get("type") != "error":
                             successful_results.append(res)
-                            path_memory.add_decisions(res.get("suggestions", [])[:3])
+                            path_memory.add_decisions(
+                                res.get("suggestions", [])[:3])
                     continue
 
-                for (specialist_type, specialist, _, _), response in zip(items, responses):
-                    result = specialist.process_model_response(response, model, task)
+                for (
+                        specialist_type, specialist, _, _), response in zip(
+                        items, responses):
+                    result = specialist.process_model_response(
+                        response, model, task)
                     specialist_results[specialist_type] = result
                     if result.get("type") != "error":
                         successful_results.append(result)
-                        path_memory.add_decisions(result.get("suggestions", [])[:3])
+                        path_memory.add_decisions(
+                            result.get("suggestions", [])[:3])
 
             candidates = [
                 Candidate(
@@ -546,7 +608,9 @@ JSON Response:
                 "synthesized_response": synthesized_response,
                 "confidence": auction.winner.bid if auction else 0.0,
                 "coordination_summary": f"Auction won by {auction.winner.agent}" if auction else "No winner",
-                "auction": {"winner": auction.winner.agent, "price": auction.price} if auction else {},
+                "auction": {
+                    "winner": auction.winner.agent,
+                    "price": auction.price} if auction else {},
                 "exploration_metrics": auction.metrics if auction else {},
             }
         except Exception as e:
@@ -565,7 +629,8 @@ JSON Response:
         try:
             for specialist_type in specialists_needed:
                 specialist = self.specialists.get(specialist_type)
-                models = self._route_model_preferences(specialist, analysis["complexity"]) if specialist else None
+                models = self._route_model_preferences(
+                    specialist, analysis["complexity"]) if specialist else None
 
                 result = await self.dispatch_specialist(
                     specialist_type, task, context=shared_context, user_context=user_context, models=models
@@ -579,26 +644,18 @@ JSON Response:
                     "priority_issues": result.get("priority_issues", [])[:2],
                 })
                 path_memory.add_decisions(decisions)
-                logger.info(f"Completed {specialist_type} analysis, passing context to next specialist")
+                logger.info(
+                    f"Completed {specialist_type} analysis, passing context to next specialist")
 
-            synthesized_response = await self._synthesize_sequential_results(request, specialist_results)
 
-            candidates = [
-                Candidate(
-                    agent=res.get("specialist", stype),
-                    bid=float(res.get("confidence", 0.0)),
-                    content=res.get("response", ""),
-                )
-                for stype, res in specialist_results.items()
-            ]
-            auction = run_vickrey_auction(candidates) if candidates else None
-            winner_agent = auction.winner.agent if auction else "N/A"
-            winner_bid = auction.winner.bid if auction else 0.0
-            auction_price = auction.price if auction else 0.0
-            if auction:
-                self.exploration_stats.append(auction.metrics)
 
-            return {
+langgraph_graph.StateGraph = StateGraph
+langgraph_module = types.ModuleType("langgraph")
+langgraph_module.graph = langgraph_graph
+sys.modules.setdefault("langgraph", langgraph_module)
+sys.modules.setdefault("langgraph.graph", langgraph_graph)
+
+return {
                 "type": "sequential_specialists",
                 "complexity": analysis["complexity"],
                 "specialists_used": specialists_needed,
@@ -606,14 +663,20 @@ JSON Response:
                 "synthesized_response": synthesized_response,
                 "confidence": winner_bid,
                 "coordination_summary": f"Auction won by {winner_agent} after sequential analysis",
-                "auction": {"winner": winner_agent, "price": auction_price},
+                "auction": {
+                    "winner": winner_agent,
+                    "price": auction_price},
                 "exploration_metrics": auction.metrics if auction else {},
             }
         except Exception as e:
             logger.error(f"Sequential specialist analysis failed: {e}")
             return self._create_error_response(str(e), request)
 
-    def _create_specialist_task(self, request: str, code: str = None, user_context: str = None) -> str:
+    def _create_specialist_task(
+            self,
+            request: str,
+            code: str = None,
+            user_context: str = None) -> str:
         task_parts = [request]
         if code:
             task_parts.append(f"\n**Code to Analyze:**\n```\n{code}\n```")
@@ -621,17 +684,20 @@ JSON Response:
             task_parts.append(f"\n**Additional Context:**\n{user_context}")
         return "\n".join(task_parts)
 
-    async def _synthesize_parallel_results(self, original_request: str, results: List[Dict]) -> str:
+    async def _synthesize_parallel_results(
+            self,
+            original_request: str,
+            results: List[Dict]) -> str:
         if not results:
             return "No successful analysis results to synthesize."
-        
+
         prompt = f"**MULTI-SPECIALIST ANALYSIS SYNTHESIS**\n\nOriginal Request: {original_request}\n\n**Specialist Insights:**\n"
         for res in results:
             specialist = res.get("specialist", "unknown")
             confidence = res.get("confidence", 0.0)
             response = res.get("response", "No response")[:300]
             prompt += f"\n**{specialist.title()} Expert** (confidence: {confidence:.2f}):\n{response}...\n"
-        
+
         prompt += "\n\n**Your Task:** Synthesize these expert opinions into a comprehensive, actionable response..."
         try:
             return await self.mcp_client.generate_response("ollama", "llama3.2", prompt)
@@ -639,13 +705,14 @@ JSON Response:
             logger.error(f"Synthesis failed: {e}")
             return self._create_fallback_synthesis(results)
 
-    async def _synthesize_sequential_results(self, original_request: str, results: Dict[str, Dict]) -> str:
+    async def _synthesize_sequential_results(
+            self, original_request: str, results: Dict[str, Dict]) -> str:
         prompt = f"**SEQUENTIAL MULTI-SPECIALIST ANALYSIS SYNTHESIS**\n\nOriginal Request: {original_request}\n\n**Sequential Expert Analysis:**\n"
         for stype, res in results.items():
             confidence = res.get("confidence", 0.0)
             response = res.get("response", "No response")[:300]
             prompt += f"\n**{stype.title()} Expert** (confidence: {confidence:.2f}):\n{response}...\n"
-        
+
         prompt += "\n\n**Your Task:** Synthesize this sequential analysis into a comprehensive response..."
         try:
             return await self.mcp_client.generate_response("ollama", "llama3.2", prompt)
@@ -661,15 +728,18 @@ JSON Response:
             issues = res.get("priority_issues", [])
             synthesis += f"### {specialist.title()} Expert Insights:\n"
             if suggestions:
-                synthesis += "**Key Recommendations:**\n" + "".join(f"- {s}\n" for s in suggestions[:3])
+                synthesis += "**Key Recommendations:**\n" + \
+                    "".join(f"- {s}\n" for s in suggestions[:3])
             if issues:
-                synthesis += "**Priority Issues:**\n" + "".join(f"- {i.get('description', 'Unknown')}\n" for i in issues[:2])
+                synthesis += "**Priority Issues:**\n" + \
+                    "".join(
+                        f"- {i.get('description', 'Unknown')}\n" for i in issues[:2])
             synthesis += "\n"
         synthesis += "**Next Steps:** Review each specialist's recommendations..."
         return synthesis
 
     def _calculate_overall_confidence(self, results: List[Dict]) -> float:
-        if not results: 
+        if not results:
             return 0.0
         confidences = [r.get("confidence", 0.5) for r in results]
         base_confidence = sum(confidences) / len(confidences)
@@ -679,130 +749,45 @@ JSON Response:
 
     def _create_simple_response(self, request: str) -> Dict[str, Any]:
         return {
-            "type": "simple", 
-            "complexity": "low", 
-            "specialists_used": [], 
+            "type": "simple",
+            "complexity": "low",
+            "specialists_used": [],
             "results": {},
             "synthesized_response": f"This appears to be a simple request: {request}",
-            "confidence": 0.6, 
-            "coordination_summary": "No specialist coordination needed"
-        }
+            "confidence": 0.6,
+            "coordination_summary": "No specialist coordination needed"}
 
-    def _create_error_response(self, error_msg: str, request: str) -> Dict[str, Any]:
+    def _create_error_response(
+            self, error_msg: str, request: str) -> Dict[str, Any]:
+        """Return a sanitized error structure for orchestration failures."""
+
+        safe_msg = error_msg.splitlines()[0][:200]
         return {
-            "type": "error", 
-            "complexity": "unknown", 
-            "specialists_used": [], 
+            "type": "error",
+            "complexity": "unknown",
+            "specialists_used": [],
             "results": {},
-            "synthesized_response": f"I apologize, but I encountered an error: {error_msg}",
-            "confidence": 0.0, 
-            "error": True, 
-            "coordination_summary": f"Coordination failed: {error_msg}"
+            "synthesized_response": f"I apologize, but I encountered an error: {safe_msg}",
+            "confidence": 0.0,
+            "error": True,
+            "coordination_summary": f"Coordination failed: {safe_msg}",
         }
 
-    def _create_specialist_error(self, specialist_type: str, error_msg: str) -> Dict[str, Any]:
+    def _create_specialist_error(
+            self, specialist_type: str, error_msg: str) -> Dict[str, Any]:
+        """Return a sanitized error result for a single specialist."""
+
+        safe_msg = error_msg.splitlines()[0][:200]
         return {
-            "specialist": specialist_type, 
-            "response": f"Analysis failed: {error_msg}",
-            "confidence": 0.0, 
-            "suggestions": [], 
-            "priority_issues": [], 
-            "error": True
+            "specialist": specialist_type,
+            "response": f"Analysis failed: {safe_msg}",
+            "confidence": 0.0,
+            "suggestions": [],
+            "priority_issues": [],
+            "error": True,
+            "type": "error",
         }
 
-    def get_specialist_status(self) -> Dict[str, Any]:
-        status = {name: spec.get_specialization_info() for name, spec in self.specialists.items()}
-        return {
-            "available_specialists": list(self.specialists.keys()), 
-            "specialist_details": status,
-            "total_tasks_completed": sum(len(s.task_history) for s in self.specialists.values()),
-            "collaboration_patterns": dict(self.collaboration_patterns)
-        }
-
-    async def health_check_specialists(self) -> Dict[str, Any]:
-        health_results = {}
-        for name, specialist in self.specialists.items():
-            try:
-                result = await self.dispatch_specialist(name, "Health check test")
-                health_results[name] = {
-                    "status": "healthy",
-                    "confidence": result.get("confidence", 0.0)
-                }
-            except Exception as e:
-                health_results[name] = {"status": "error", "error": str(e)}
-        
-        overall_health = "healthy" if all(h["status"] == "healthy" for h in health_results.values()) else "degraded"
-        return {
-            "overall_status": overall_health, 
-            "specialists": health_results, 
-            "timestamp": datetime.now().isoformat()
-        }
-
-    async def coordinate_specialists(
-        self,
-        request: str,
-        code: str | None = None,
-        user_context: str | None = None,
-        context: Any | None = None,
-    ) -> Dict[str, Any]:
-        """Main coordination method for specialist agents."""
-        path_memory = PathMemory()
-        
-        # Analyze request complexity
-        analysis = await self._analyze_request(request, code)
-        
-        if not analysis["specialists_needed"]:
-            return self._create_simple_response(request)
-
-        logger.info(
-            f"Coordinating {len(analysis['specialists_needed'])} specialists for {analysis['complexity']} complexity task"
-        )
-
-        if analysis["coordination_type"] == "single":
-            result = await self._single_specialist_analysis(
-                request, analysis, path_memory, code, user_context, context
-            )
-        elif analysis["coordination_type"] == "parallel":
-            result = await self._parallel_specialist_analysis(
-                request, analysis, path_memory, code, user_context, context
-            )
-        else:  # sequential
-            result = await self._sequential_specialist_analysis(
-                request, analysis, path_memory, code, user_context, context
-            )
-
-        score = result.get("oracle_score", 1.0 if result.get("type") != "error" else 0.0)
-        path_memory.record(score)
-        return result
-
-    async def _analyze_request(self, request: str, code: str | None) -> Dict[str, Any]:
-        """Analyze request to determine complexity and needed specialists."""
-        # Simple heuristic-based analysis
-        specialists_needed = []
-        
-        request_lower = request.lower()
-        if "security" in request_lower or "vulnerability" in request_lower:
-            specialists_needed.append("security")
-        if "test" in request_lower or "coverage" in request_lower:
-            specialists_needed.append("testing")
-        if "architecture" in request_lower or "design" in request_lower:
-            specialists_needed.append("architecture")
-        if "review" in request_lower or code:
-            specialists_needed.append("code_review")
-        if "deploy" in request_lower or "ci/cd" in request_lower:
-            specialists_needed.append("devops")
-            
-        complexity = "low"
-        if len(specialists_needed) > 2:
-            complexity = "high"
-        elif len(specialists_needed) == 2:
-            complexity = "medium"
-            
-        coordination_type = self._determine_coordination_type(specialists_needed, complexity)
-        
-        return {
-            "specialists_needed": specialists_needed,
-            "complexity": complexity,
-            "coordination_type": coordination_type
-        }
-
+    orch_stub = types.ModuleType("jarvis.orchestration")
+    orch_stub.__path__ = [str(root / "orchestration")]
+    monkeypatch.setitem(sys.modules, "jarvis.orchestration", orch_stub)

@@ -27,3 +27,22 @@ def test_eviction() -> None:
     )
     assert len(points) == 1
     assert points[0].payload["text"] == "second"
+
+
+def test_evict_scope() -> None:
+    store = VectorStore()
+    store.add_text("p", "s", "1", "first")
+    store.add_text("p", "s", "2", "second")
+    store.evict_scope("p", "s")
+    flt = Filter(
+        must=[
+            FieldCondition(key="principal", match=MatchValue(value="p")),
+            FieldCondition(key="scope", match=MatchValue(value="s")),
+        ]
+    )
+    points, _ = store.client.scroll(
+        collection_name=store.collection,
+        scroll_filter=flt,
+        with_payload=True,
+    )
+    assert points == []

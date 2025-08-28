@@ -58,7 +58,11 @@ class SubOrchestrator(MultiAgentOrchestrator):
                 self.create_child_orchestrator(name, spec)
 
         if custom_specialists is not None:
-            self.specialists = custom_specialists
+            self.specialists = {
+                name: agent
+                for name, agent in custom_specialists.items()
+                if allowed_specialists is None or name in set(allowed_specialists)
+            }
         elif allowed_specialists is not None:
             self.specialists = {
                 name: agent
@@ -71,9 +75,19 @@ class SubOrchestrator(MultiAgentOrchestrator):
 
         The DAG is converted to a workflow and executed using the shared
         workflow engine. Only specialists registered with this sub-orchestrator
-        (or its children) will be available during execution.
+        (or its children) will be available during execution. If the DAG
+        references a specialist outside this set, execution is aborted.
         """
         from jarvis.workflows.engine import from_mission_dag, WorkflowEngine
+
+        for node in dag.nodes.values():
+            if (
+                node.team_scope not in self.specialists
+                and node.team_scope not in self.child_orchestrators
+            ):
+                raise ValueError(
+                    f"Specialist '{node.team_scope}' not allowed in this sub-orchestrator"
+                )
 
         workflow = from_mission_dag(dag)
         engine = WorkflowEngine()

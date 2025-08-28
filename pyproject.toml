@@ -30,7 +30,7 @@ classifiers = [
 
 dependencies = [
     # Core dependencies
-    "requests>=2.31.0",
+    "requests==2.31.0",
     "pyyaml>=6.0",
     "cryptography>=40.0.0",
     "bcrypt>=4.0.0",
@@ -47,7 +47,8 @@ dependencies = [
     "keyring>=24.0.0",
     "pyotp>=2.9.0",
     "redis>=5.0.0",
-    "websockets>=12.0",
+    "qdrant-client>=1.15.1",
+    "websockets==15.0.1",
     "bleach>=6.0.0",
     
     # Lang Family Tools for V2 Architecture
@@ -58,7 +59,9 @@ dependencies = [
     "langsmith",
     
     # API Framework for V2 Backend
-    "fastapi>=0.100.0",
+    # FastAPI 0.111.x is paired with Pydantic 2.7+
+    "fastapi>=0.111,<0.112",
+    "pydantic>=2.7,<3",
     "uvicorn>=0.22.0",
     "jinja2>=3.1.0",
     "python-multipart>=0.0.6",
