@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
 import LogViewerPane from '../LogViewerPane';
 import { socket } from '../../socket';
 import { http } from '@tauri-apps/api';
@@ -35,4 +35,19 @@ test('shows connection status and HITL badge', async () => {
       screen.getByTitle('Disconnected from real-time updates')
     ).toHaveClass('disconnected')
   );
+});
+
+test('displays error and retries fetch successfully', async () => {
+  http.fetch
+    .mockRejectedValueOnce(new Error('network'))
+    .mockResolvedValueOnce({ ok: true, data: 'first line' });
+
+  render(<LogViewerPane />);
+
+  await screen.findByText(/Failed to load agent logs/);
+
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+
+  await screen.findByText(/first line/);
+  expect(screen.queryByText(/Failed to load agent logs/)).not.toBeInTheDocument();
 });
