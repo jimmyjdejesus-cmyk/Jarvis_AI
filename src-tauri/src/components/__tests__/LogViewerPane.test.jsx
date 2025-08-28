@@ -1,103 +1,93 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
+import LogViewerPane from '../LogViewerPane';
+import { socket } from '../../socket';
+import { http } from '@tauri-apps/api';
 
-import API_CONFIG, { setBackendBaseUrl, setApiKey, setServiceCredential, TEAM_SETTINGS, setTeamSetting } from '../config';
+jest.mock('@tauri-apps/api', () => ({
+  http: { fetch: jest.fn() },
+}));
 
-const SettingsView = () => {
-  const [backendUrl, updateBackendUrl] = useState(API_CONFIG.HTTP_BASE_URL);
-  const [apiKey, updateApiKey] = useState(API_CONFIG.API_KEY);
-  const [neo4jUri, setNeo4jUri] = useState(localStorage.getItem('jarvis-neo4j-uri') || '');
-  const [neo4jUser, setNeo4jUser] = useState(localStorage.getItem('jarvis-neo4j-user') || '');
-  const [neo4jPassword, setNeo4jPassword] = useState(localStorage.getItem('jarvis-neo4j-password') || '');
+beforeEach(() => {
+  http.fetch.mockReset();
+});
 
-  const [openaiKey, setOpenaiKey] = useState(localStorage.getItem('jarvis-openai-key') || '');
-  const [anthropicKey, setAnthropicKey] = useState(localStorage.getItem('jarvis-anthropic-key') || '');
+test('shows connection status and HITL badge', async () => {
+  http.fetch.mockResolvedValue({ ok: true, data: 'first line' });
 
-  const [activeTab, setActiveTab] = useState('general');
+  render(<LogViewerPane />);
+  await screen.findByText(/first line/);
 
-  const [blackTeam, setBlackTeam] = useState(TEAM_SETTINGS.Black);
+  expect(
+    screen.getByTitle('Disconnected from real-time updates')
+  ).toHaveClass('disconnected');
 
+  await act(async () => {
+    socket.emit('connect');
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByTitle('Connected to real-time updates')
+    ).toHaveClass('connected')
+  );
 
-  const handleBackendChange = (e) => {
-    const value = e.target.value;
-    updateBackendUrl(value);
-    setBackendBaseUrl(value);
-  };
+  await act(async () => {
+    socket.emit('disconnect');
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByTitle('Disconnected from real-time updates')
+    ).toHaveClass('disconnected')
+  );
+});
 
-  const handleApiKeyChange = (e) => {
-    const value = e.target.value;
-    updateApiKey(value);
-    setApiKey(value);
-  };
+test('displays error and retries fetch successfully', async () => {
+  http.fetch
+    .mockRejectedValueOnce(new Error('network'))
+    .mockResolvedValueOnce({ ok: true, data: 'first line' });
 
-  const handleNeo4jUriChange = (e) => {
-    const value = e.target.value;
-    setNeo4jUri(value);
-    localStorage.setItem('jarvis-neo4j-uri', value);
-  };
+  render(<LogViewerPane />);
 
-  const handleNeo4jUserChange = (e) => {
-    const value = e.target.value;
-    setNeo4jUser(value);
-    localStorage.setItem('jarvis-neo4j-user', value);
-  };
+  await screen.findByText(/Failed to load agent logs/);
 
-  const handleNeo4jPasswordChange = (e) => {
-    const value = e.target.value;
-    setNeo4jPassword(value);
-    localStorage.setItem('jarvis-neo4j-password', value);
-  };
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
 
+  await screen.findByText(/first line/);
+  expect(screen.queryByText(/Failed to load agent logs/)).not.toBeInTheDocument();
+});
 
-  const handleOpenaiKeyChange = (e) => {
+test('handles non-OK HTTP response then succeeds after retry', async () => {
+  http.fetch
+    .mockResolvedValueOnce({ ok: false, status: 500 })
+    .mockResolvedValueOnce({ ok: true, data: 'first line' });
 
-    const value = e.target.value;
+  render(<LogViewerPane />);
 
-    setOpenaiKey(value);
+  await screen.findByText(/Failed to load agent logs/);
 
-    localStorage.setItem('jarvis-openai-key', value);
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
 
-    setServiceCredential('OPENAI_API_KEY', value);
+  await screen.findByText(/first line/);
+  expect(screen.queryByText(/Failed to load agent logs/)).not.toBeInTheDocument();
+});
 
-  };
+test('retries multiple times on diverse HTTP errors before succeeding', async () => {
+  http.fetch
+    .mockResolvedValueOnce({ ok: false, status: 500 })
+    .mockResolvedValueOnce({ ok: false, status: 404 })
+    .mockResolvedValueOnce({ ok: true, data: 'first line' });
 
+  render(<LogViewerPane />);
 
-  const handleAnthropicKeyChange = (e) => {
+  // first failure
+  await screen.findByText(/Failed to load agent logs/);
 
-    const value = e.target.value;
+  // second failure after first retry
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+  await screen.findByText(/Failed to load agent logs/);
 
-    setAnthropicKey(value);
-
-    localStorage.setItem('jarvis-anthropic-key', value);
-
-    setServiceCredential('ANTHROPIC_API_KEY', value);
-
-  };
-
-
-  return (
-
-    <div className="settings-view">
-
-      <h1>Settings</h1>
-
-      <div className="settings-section">
-
-        <label>
-
-          Backend URL:
-
-          <input type="text" value={backendUrl} onChange={handleBackendChange} />
-
-        </label>
-
-      </div>
-
-      <div className="settings-section">
-
-        <label>
-
-          API Key:
-
-          <input type="text" value={apiKey} onChange={handleApiKeyChange} />
-
-        </label>
+  // success after second retry
+  fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+  await screen.findByText(/first line/);
+  expect(screen.queryByText(/Failed to load agent logs/)).not.toBeInTheDocument();
+});
