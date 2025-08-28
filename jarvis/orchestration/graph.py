@@ -13,6 +13,12 @@ from jarvis.orchestration.context_utils import filter_team_outputs
 from jarvis.critics import WhiteGate, CriticVerdict
 from jarvis.critics import RedTeamCritic, BlueTeamCritic
 
+# Team name constants
+COMPETITIVE_PAIR_TEAM = "competitive_pair"
+ADVERSARY_PAIR_TEAM = "adversary_pair"
+INNOVATORS_DISRUPTORS_TEAM = "innovators_disruptors"
+SECURITY_QUALITY_TEAM = "security_quality"
+
 
 # Team name constants to avoid hardcoded strings
 ADVERSARY_PAIR_TEAM = "adversary_pair"

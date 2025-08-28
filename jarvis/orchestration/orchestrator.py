@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+# flake8: noqa
+
 from pathlib import Path
 from unittest.mock import MagicMock
 import sys
 import types
 import importlib
+import importlib.util
 
 import pytest
 
