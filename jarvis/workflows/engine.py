@@ -1,10 +1,6 @@
 """
-🚀 PHASE 4: ADVANCED WORKFLOW ENGINE
-
-Core workflow orchestration system for complex multi-step task execution
-with dependency management, conditional execution, and state tracking.
+Defines the LangGraph-based orchestration logic for the multi-agent teams.
 """
-
 import asyncio
 import uuid
 from abc import ABC, abstractmethod
@@ -12,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
+
 import logging
 
 from jarvis.orchestration.mission import MissionDAG
@@ -616,11 +613,11 @@ def add_custom_task(
 
 
 def from_mission_dag(dag: MissionDAG) -> Workflow:
-    """Convert MissionDAG to a Workflow executable by the engine."""
+    """Convert a MissionDAG into an executable Workflow."""
     workflow = create_workflow(name=dag.mission_id, description=dag.rationale)
 
     for node_id, node in dag.nodes.items():
-        # Use team_scope as specialist_type and details or capability as prompt
+        # team_scope → specialist_type; details/capability supply prompt
         add_specialist_task(
             workflow=workflow,
             task_id=node.step_id,

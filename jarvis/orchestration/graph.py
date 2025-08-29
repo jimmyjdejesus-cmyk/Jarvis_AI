@@ -1,21 +1,25 @@
-"""
-Defines the LangGraph-based orchestration logic for the multi-agent teams.
-"""
+"""Defines the LangGraph-based orchestration logic for the multi-agent teams."""
 
 import asyncio
 from typing import Dict, Any, TypedDict
 from langgraph.graph import StateGraph, END
 
 # from langgraph.checkpoints import SqliteSaver
-# Removed to avoid import error
-from jarvis.orchestration.team_agents import (
-    OrchestratorAgent,
-    TeamMemberAgent,
-)
+# Temporarily removed to resolve import error
+from jarvis.orchestration.team_agents import OrchestratorAgent, TeamMemberAgent
+
 from jarvis.orchestration.pruning import PruningEvaluator
+from jarvis.orchestration.context_utils import filter_context, filter_team_outputs
 
 from jarvis.critics import CriticVerdict, WhiteGate
 from jarvis.critics import BlueTeamCritic, RedTeamCritic
+
+
+# Team name constants to avoid hardcoded strings
+ADVERSARY_PAIR_TEAM = "adversary_pair"
+COMPETITIVE_PAIR_TEAM = "competitive_pair"
+SECURITY_QUALITY_TEAM = "security_quality"
+INNOVATORS_DISRUPTORS_TEAM = "innovators_disruptors"
 
 
 # Define the state for our graph
@@ -25,7 +29,6 @@ class TeamWorkflowState(TypedDict, total=False):
     team_outputs: Dict[str, Any]
     critics: Dict[str, Any]
     next_team: str
-    critics: Dict[str, Any]
     halt: bool
 
 
@@ -36,12 +39,15 @@ class MultiTeamOrchestrator:
         self,
         orchestrator_agent: OrchestratorAgent,
         evaluator: PruningEvaluator | None = None,
+        red_critic: RedTeamCritic | None = None,
+        blue_critic: BlueTeamCritic | None = None,
+        white_gate: WhiteGate | None = None,
     ) -> None:
         self.orchestrator = orchestrator_agent
         self.evaluator = evaluator
-        self.red_critic = RedTeamCritic()
-        self.blue_critic = BlueTeamCritic()
-        self.white_gate = WhiteGate()
+        self.red_critic = red_critic or RedTeamCritic()
+        self.blue_critic = blue_critic or BlueTeamCritic()
+        self.white_gate = white_gate or WhiteGate()
         self.graph = self._build_graph()
 
     def _build_graph(self):
@@ -49,29 +55,33 @@ class MultiTeamOrchestrator:
         graph = StateGraph(TeamWorkflowState)
 
         # Define nodes for each team's execution
-        graph.add_node("adversary_pair", self._run_adversary_pair)
-        graph.add_node("competitive_pair", self._run_competitive_pair)
-        graph.add_node("security_quality", self._run_security_quality)
+        graph.add_node(ADVERSARY_PAIR_TEAM, self._run_adversary_pair)
+        graph.add_node(COMPETITIVE_PAIR_TEAM, self._run_competitive_pair)
+        graph.add_node(SECURITY_QUALITY_TEAM, self._run_security_quality)
         graph.add_node(
-            "innovators_disruptors", self._run_innovators_disruptors
+            INNOVATORS_DISRUPTORS_TEAM, self._run_innovators_disruptors
         )
         graph.add_node("broadcast_findings", self._broadcast_findings)
 
         # The graph starts with the competitive pair to generate initial ideas
-        graph.set_entry_point("competitive_pair")
+        graph.set_entry_point(COMPETITIVE_PAIR_TEAM)
 
         # Define the workflow logic
-        graph.add_edge("competitive_pair", "adversary_pair")
-        graph.add_edge("adversary_pair", "innovators_disruptors")
+        graph.add_edge(COMPETITIVE_PAIR_TEAM, ADVERSARY_PAIR_TEAM)
+        graph.add_edge(ADVERSARY_PAIR_TEAM, INNOVATORS_DISRUPTORS_TEAM)
         graph.add_edge(
-            "innovators_disruptors", "broadcast_findings"
+            INNOVATORS_DISRUPTORS_TEAM,
+            "broadcast_findings",
         )  # Broadcast after innovation
-        graph.add_edge("broadcast_findings", "security_quality")
+        graph.add_edge("broadcast_findings", SECURITY_QUALITY_TEAM)
         graph.add_edge(
-            "security_quality", END
+            SECURITY_QUALITY_TEAM,
+            END,
         )  # The White team is the final check
 
-        # Skip checkpointer to avoid import issues; state isn't persisted.
+        # Temporarily compiling without a checkpointer to resolve import
+        # issues.
+        # State will not be persisted between runs.
         return graph.compile()
 
     def _run_team(
@@ -92,7 +102,7 @@ class MultiTeamOrchestrator:
             result = {
                 f"{team.team.lower()}_output": (
                     f"Completed simulated task for {team.team} team."
-                )
+                ),
             }
             logger("Simulated task finished.", data=result)
 
@@ -134,27 +144,45 @@ class MultiTeamOrchestrator:
     def _run_adversary_pair(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
-        """Run Red and Blue teams then merge verdicts via WhiteGate."""
-        red_agent, blue_agent = self.orchestrator.teams["adversary_pair"]
+        """Run Red and Blue teams and merge critic verdicts via WhiteGate."""
+        red_agent, blue_agent = self.orchestrator.teams[ADVERSARY_PAIR_TEAM]
+        # Strip White team findings so Red and Blue operate without bias.
+        filtered_context = filter_team_outputs(
+            state["context"], state.get("team_outputs"), SECURITY_QUALITY_TEAM
+        )
+        base_state = dict(state)
+        base_state["context"] = filtered_context
 
         async def run_pair():
+            red_state = dict(base_state)
+            blue_state = dict(base_state)
             return await asyncio.gather(
-                self._run_team_async(red_agent, state),
-                self._run_team_async(blue_agent, state),
+                self._run_team_async(red_agent, red_state),
+                self._run_team_async(blue_agent, blue_state),
             )
 
         red_output, blue_output = asyncio.run(run_pair())
 
         def _to_verdict(output: Any) -> CriticVerdict:
+            """Convert arbitrary critic output to a CriticVerdict."""
+
             if isinstance(output, CriticVerdict):
                 return output
             if isinstance(output, dict):
-                return CriticVerdict(
-                    approved=bool(output.get("approved")),
-                    fixes=list(output.get("fixes", [])),
-                    risk=float(output.get("risk", 0.0)),
-                    notes=str(output.get("notes", "")),
-                )
+                try:
+                    return CriticVerdict(
+                        approved=bool(output.get("approved")),
+                        fixes=list(output.get("fixes", [])),
+                        risk=float(output.get("risk", 0.0)),
+                        notes=str(output.get("notes", "")),
+                    )
+                except (TypeError, ValueError):
+                    return CriticVerdict(
+                        False,
+                        [],
+                        1.0,
+                        "Malformed verdict structure",
+                    )
             return CriticVerdict(
                 False,
                 [],
@@ -165,40 +193,59 @@ class MultiTeamOrchestrator:
         red_verdict = _to_verdict(red_output)
         blue_verdict = _to_verdict(blue_output)
         merged = self.white_gate.merge(red_verdict, blue_verdict)
+        extra = [v.notes for v in (red_verdict, blue_verdict) if v.notes]
+        if extra:
+            merged.notes = "; ".join(filter(None, [merged.notes] + extra))
 
         state.setdefault("critics", {})["white_gate"] = merged.to_dict()
-        state["team_outputs"]["adversary_pair"] = [red_output, blue_output]
+        state["team_outputs"][ADVERSARY_PAIR_TEAM] = [
+            red_output,
+            blue_output,
+        ]
         state["halt"] = not merged.approved
 
         self.orchestrator.log(
-            "WhiteGate merged verdict", data=merged.to_dict()
+            "WhiteGate merged verdict",
+            data=merged.to_dict(),
         )
         if state["halt"]:
-            self.orchestrator.log("Downstream execution halted by WhiteGate.")
+            self.orchestrator.log(
+                "Downstream execution halted by WhiteGate."
+            )
         return state
 
     def _run_competitive_pair(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
-        """Runs the Yellow and Green teams in parallel."""
-        yellow_agent, green_agent = self.orchestrator.teams["competitive_pair"]
+        """Run Yellow and Green teams in parallel."""
+        yellow_agent, green_agent = self.orchestrator.teams[
+            COMPETITIVE_PAIR_TEAM
+        ]
+        # Early teams shouldn't see White team findings from prior runs.
+        filtered_context = filter_team_outputs(
+            state["context"], state.get("team_outputs"), SECURITY_QUALITY_TEAM
+        )
+        base_state = dict(state)
+        base_state["context"] = filtered_context
 
         async def run_pair():
+            yellow_state = dict(base_state)
+            green_state = dict(base_state)
             return await asyncio.gather(
-                self._run_team_async(yellow_agent, state),
-                self._run_team_async(green_agent, state),
+                self._run_team_async(yellow_agent, yellow_state),
+                self._run_team_async(green_agent, green_state),
             )
 
         yellow_output, green_output = asyncio.run(run_pair())
         oracle_result = self._oracle_judge(yellow_output, green_output)
-        state["team_outputs"]["competitive_pair"] = [
+        state["team_outputs"][COMPETITIVE_PAIR_TEAM] = [
             yellow_output,
             green_output,
         ]
         state["team_outputs"]["oracle_result"] = oracle_result
-        state["context"]["reinforced_strategy"] = oracle_result[
-            "winning_output"
-        ]
+        state["context"]["reinforced_strategy"] = (
+            oracle_result["winning_output"]
+        )
         return state
 
     @staticmethod
@@ -233,27 +280,35 @@ class MultiTeamOrchestrator:
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
         """Run the White team."""
-        white_agent = self.orchestrator.teams["security_quality"]
+        white_agent = self.orchestrator.teams[SECURITY_QUALITY_TEAM]
         white_output = self._run_team(white_agent, state)
-        state["team_outputs"]["security_quality"] = white_output
+        state["team_outputs"][SECURITY_QUALITY_TEAM] = white_output
         return state
 
     def _run_innovators_disruptors(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
-        """Run the Black team."""
-        black_agent = self.orchestrator.teams["innovators_disruptors"]
+        """Run the Black team in isolation from White team feedback."""
+        # Start from the shared context but drop keys derived from White team
+        # outputs so disruptive exploration isn't biased by security data.
+        black_agent = self.orchestrator.teams[INNOVATORS_DISRUPTORS_TEAM]
+        filtered_context = filter_team_outputs(
+            state["context"], state["team_outputs"], SECURITY_QUALITY_TEAM
+        )
+        temp_state = dict(state)
+        temp_state["context"] = filtered_context
 
-        black_output = self._run_team(black_agent, state)
-        state["team_outputs"]["innovators_disruptors"] = black_output
+        black_output = self._run_team(black_agent, temp_state)
+        state["team_outputs"][INNOVATORS_DISRUPTORS_TEAM] = black_output
         return state
 
     def _broadcast_findings(
         self, state: TeamWorkflowState
     ) -> TeamWorkflowState:
-        """Broadcast innovator-team findings to the shared bus."""
+        """Broadcast key findings from the innovator team to the shared bus."""
         innovator_output = state["team_outputs"].get(
-            "innovators_disruptors", {}
+            INNOVATORS_DISRUPTORS_TEAM,
+            {},
         )
         if innovator_output:
             self.orchestrator.broadcast(
@@ -269,14 +324,19 @@ class MultiTeamOrchestrator:
             "context": {},
             "team_outputs": {},
             "critics": {},
-            "next_team": "competitive_pair",
+            "next_team": COMPETITIVE_PAIR_TEAM,
         }
 
         # The `stream` method will execute the graph step-by-step
+        final_state: TeamWorkflowState | None = None
         for step in self.graph.stream(initial_state):
             node, state = next(iter(step.items()))
             self.orchestrator.log(f"Completed step: {node}", data=state)
+            final_state = state
             if state.get("halt"):
+                white_agent = self.orchestrator.teams.get("security_quality")
+                if white_agent and "security_quality" not in state["team_outputs"]:
+                    white_agent.run(state["objective"], state["context"])
                 break
 
-        return "Orchestration complete."
+        return final_state or initial_state

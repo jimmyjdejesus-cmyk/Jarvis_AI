@@ -182,7 +182,7 @@ class PatternRecognizer:
                         confidence_score=min(0.9, len(performances) / 20.0)
                     )
                     patterns.append(pattern)
-        
+
         return patterns
     
     async def _extract_interaction_patterns(self, events: List[LearningEvent]) -> List[Pattern]:
@@ -206,7 +206,7 @@ class PatternRecognizer:
         # Find successful interaction patterns
         for interaction_type, interactions in interaction_types.items():
             successful_interactions = [i for i in interactions if i["success"] and i["satisfaction"] > 0.7]
-            
+
             if len(successful_interactions) >= 3:
                 common_factors = self._find_common_success_factors(successful_interactions)
                 

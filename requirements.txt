@@ -1,13 +1,24 @@
+There are several conflicts within the `requirements.txt` file. The primary goal is to merge the dependencies from both branches while using the most recent or flexible version constraints.
+
+  * `requests`: One version pins it to `2.31.0`, while the other uses `>=2.31.0`. The flexible version is better, so the final version should be `requests>=2.31.0`.
+  * `pyyaml`: One version pins it to `6.0.2`, while the other uses `>=6.0.1`. The pinned version `6.0.2` is more specific and likely the latest required version, so that should be used.
+  * `aiohttp`: The versions are pinned to `3.12.5` in both, so that's a simple merge.
+  * `beautifulsoup4`: The versions are `4.13.5` and `>=4.12.0`. The more specific `4.13.5` should be used.
+  * `networkx`: One branch adds this dependency, while the other does not. The dependency should be included in the final file.
+
+Here is the resolved `requirements.txt` file:
+
+```
 # --- Core Dependencies ---
 # Foundation libraries for the application
-fastapi>=0.111.0
+fastapi>=0.111,<0.112  # Pin with Pydantic 2.7+ for compatibility
 uvicorn>=0.30.0
 langchain>=0.2.1
 langchain-core>=0.2.1
 langchain-openai>=0.1.1
 tiktoken>=0.7.0
 python-socketio>=5.13.0
-websockets>=15.0.1
+websockets==15.0.1
 
 # --- Database Clients ---
 # Clients for the services defined in docker-compose.yml
@@ -29,14 +40,16 @@ aiohttp>=3.12.5
 pygame
 duckduckgo-search>=4.0.0
 beautifulsoup4==4.13.5
+networkx>=3.0
+
 
 # --- Utility Libraries ---
 cachetools>=6.2.0
 marshmallow>=4.0.0
 platformdirs>=4.4.0
 posthog>=6.7.0
-pydantic>=2.11.0
-pydantic-core>=2.39.0
+pydantic>=2.7,<3
+pydantic-core>=2.18,<3
 typing-extensions>=4.15.0
 typing_extensions>=4.15.0
 
@@ -53,19 +66,12 @@ python-jose>=3.3.0
 # --- Development & Testing ---
 # Test framework, linters, code formatting
 pytest>=7.0.0
-pytest-asyncio>=0.21.0
+pytest-asyncio==1.1.0
 black>=23.0.0
-flake8>=6.0.0
+flake8==7.3.0
 mypy>=1.4.0
 pyright>=1.1.404
 ruff>=0.12.10
 setuptools>=80.9.0
 fakeredis>=2.0.0
-setuptools>=80.9.0
-
-# --- Optional & Tooling ---
-# Web automation, image processing
-playwright>=1.35.0
-pillow>=10.0.0
-keyring>=24.0.0
-chromadb>=0.4.0
+```

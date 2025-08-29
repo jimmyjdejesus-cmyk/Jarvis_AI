@@ -60,7 +60,7 @@ class ReplayMemory:
         self._bus.log_interaction(
             agent_id="replay_memory",
             team="memory",
-            message="Inserted experience into replay buffer.",
+            message="push experience into replay buffer.",
             data=asdict(experience),
         )
 
@@ -85,10 +85,17 @@ class ReplayMemory:
                 self._bus.log_interaction(
                     agent_id="replay_memory",
                     team="memory",
-                    message="Recall experience from replay buffer.",
+                    message="recall experience from replay buffer.",
                     data=asdict(exp),
                 )
         return matches
+
+    # ------------------------------------------------------------------
+    # Compatibility helpers
+    # ------------------------------------------------------------------
+    def push(self, state: Any, action: Any, reward: float, next_state: Any, done: bool) -> None:
+        """Compatibility wrapper for adding experiences."""
+        self.add(Experience(state, action, reward, next_state, done))
 
     def __len__(self) -> int:
         """Return the number of stored experiences."""

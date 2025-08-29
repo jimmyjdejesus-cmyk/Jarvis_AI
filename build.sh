@@ -26,7 +26,7 @@ if [ -f "start_jarvis_enhanced.py" ]; then
     
     # Install dependencies first
     echo "📦 Installing dependencies..."
-    pip install fastapi uvicorn websockets redis pydantic
+    pip install -r requirements.txt
     
     # Build frontend with npm
     if [ -d "src-tauri" ]; then
@@ -74,8 +74,3 @@ echo "🎉 J.A.R.V.I.S. application build process finished."
 echo "📁 Final application can be found in:"
 echo "   • Windows: src-tauri/src-tauri/target/release/J.A.R.V.I.S..exe"
 echo "   • macOS: src-tauri/src-tauri/target/release/bundle/macos/J.A.R.V.I.S..app"
-echo "   • Linux: src-tauri/src-tauri/target/release/j-a-r-v-i-s"
-echo ""
-echo "💡 To run in development mode:"
-echo "   • Windows: start_jarvis.bat"
-echo "   • Cross-platform: python start_jarvis_enhanced.py"

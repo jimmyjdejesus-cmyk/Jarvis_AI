@@ -206,7 +206,7 @@ def main():
         # Save to file
         summary_path = Path('docs/LANG_ECOSYSTEM_VALIDATION_SUMMARY.md')
         summary_path.parent.mkdir(exist_ok=True)
-        
+
         with open(summary_path, 'w') as f:
             f.write(summary)
         
