@@ -147,4 +147,18 @@ Added integration test verifying memory and knowledge graph persistence across m
 {"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
 ## Agent Log 2025-09-06
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
-- Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
+- Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.## Agent Log 2025-08-28
+- Restored conftest.py and added create_model stub to pydantic mock.
+
+## Agent Log 2025-09-07
+- Added PerformanceTracker unit tests covering success and failure retries.
+- Stubbed ecosystem and team agents in conftest to resolve import cycles.
+
+## Agent Log 2025-09-08
+- Ensured `sys` import appears before usage in `conftest.py` and installed FastAPI, qdrant-client, and fakeredis to reduce collection errors.
+## Agent Log 2025-09-08
+- Replaced malformed test_api with valid memory bus test and added oracle judge coverage.
+## Agent Log 2025-09-09
+- Corrected indentation in `conftest.py` and ensured stubs import cleanly.
+- Ran flake8 on `conftest.py` and executed `pytest` (collection failures remain
+  in unrelated modules).
