@@ -30,6 +30,20 @@ def test_get_mission_history():
     test_app = create_test_app(mission_history)
     client = TestClient(test_app)
 
+## Agent Interaction
+**Timestamp:** 2025-08-28T02:28:19+00:00
+**Agent ID:** openai-assistant
+**Team:** tests
+**Action/Message:**
+```
+Wrapped long lines in test_knowledge_query_get to satisfy flake8 E501.
+File is quite long; consider archiving older entries soon.
+```
+**Associated Data:**
+```
+File: tests/test_knowledge_query_get.py
+```
+---
     # Add a dummy mission
     mission_history["test-mission"] = {"status": "completed"}
 

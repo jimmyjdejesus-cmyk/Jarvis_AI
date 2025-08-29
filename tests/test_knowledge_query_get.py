@@ -20,6 +20,7 @@ sys.modules.setdefault(
     "jarvis.world_model", types.ModuleType("jarvis.world_model")
 )
 sys.modules["jarvis.world_model.neo4j_graph"] = neo_module
+
 sys.modules.setdefault(
     "jarvis.workflows", types.ModuleType("jarvis.workflows")
 )

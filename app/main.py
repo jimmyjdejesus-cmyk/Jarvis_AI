@@ -1,14 +1,19 @@
+"""
+Minimal FastAPI application exposing knowledge graph and mission endpoints.
+"""
+
 from __future__ import annotations
 
-import secrets
 import os
+import secrets
 from typing import Dict
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.security import OAuth2PasswordRequestForm
 
-from pydantic import BaseModel, Field
-
-from jarvis.orchestration.mission import Mission, save_mission, load_mission
+from .auth import Token, login_for_access_token, role_required
+from .knowledge_graph import knowledge_graph
+from jarvis.orchestration.mission import Mission, save_mission
 from jarvis.orchestration.mission_planner import MissionPlanner
 from jarvis.world_model.neo4j_graph import Neo4jGraph
 from jarvis.workflows.engine import WorkflowStatus
@@ -34,12 +39,37 @@ class CredentialUpdate(BaseModel):
     value: str = Field(..., description="Secret value for the service")
 
 
+@app.post("/token")
+async def token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+) -> Token:
+    """Return an access token for valid credentials."""
+    return await login_for_access_token(form_data)
+
+
+@app.get("/secret", dependencies=[Depends(role_required("admin"))])
+def get_secret() -> dict:
+    """Protected endpoint requiring an admin role."""
+    return {"secret": "classified"}
+
+
+@app.get("/knowledge/query")
+def get_knowledge_query(
+    q: str = Query(..., description="Node search"),
+) -> dict:
+    """Return results from the knowledge graph for the given query."""
+    try:
+        results = knowledge_graph.query(q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"results": results}
+
+
 @app.post("/api/missions", status_code=201)
 def create_mission(
     payload: MissionCreate, x_api_key: str = Header(...)
 ) -> Dict[str, str]:
     """Create a new mission and persist its DAG."""
-
     if not (api_key := os.environ.get("JARVIS_API_KEY")) or not secrets.compare_digest(x_api_key, api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
     dag = planner.plan(goal=payload.goal, context={"title": payload.title})

@@ -37,3 +37,15 @@ def test_secret_endpoint_insufficient_role():
     headers = {"Authorization": f"Bearer {token}"}
     response = client.get("/secret", headers=headers)
     assert response.status_code == 403
+
+
+def test_secret_endpoint_with_admin_token():
+    """Admin token grants access to the secret route."""
+    token_response = client.post(
+        "/token", data={"username": "admin", "password": "adminpass"}
+    )
+    token = token_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.get("/secret", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"secret": "classified"}

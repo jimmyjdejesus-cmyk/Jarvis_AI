@@ -1,3 +1,4 @@
+```
 # --- Core Dependencies ---
 # Foundation libraries for the application
 fastapi>=0.111,<0.112  # Pin with Pydantic 2.7+ for compatibility
@@ -63,3 +64,4 @@ pyright>=1.1.404
 ruff>=0.12.10
 setuptools>=80.9.0
 fakeredis>=2.0.0
+```

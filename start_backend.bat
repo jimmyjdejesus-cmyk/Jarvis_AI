@@ -1,3 +1,4 @@
+```batch
 @echo off
 echo 🚀 Starting Jarvis AI Backend Server
 echo ========================================
@@ -5,7 +6,7 @@ echo ========================================
 REM Check if Python is available
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ Python not found. Please install Python from https://python.org/
+    echo ❌ Python not found. Please install Python from [https://python.org/](https://python.org/)
     pause
     exit /b 1
 )
@@ -28,7 +29,7 @@ if not exist "app\main.py" (
 )
 
 echo 📦 Installing Python dependencies...
-python -m pip install fastapi==0.111.0 uvicorn websockets redis "pydantic>=2.7,<3"
+python -m pip install -r requirements.txt
 
 echo 🚀 Starting FastAPI server on http://localhost:8000...
 echo 📚 API docs will be available at: http://localhost:8000/docs
@@ -41,3 +42,8 @@ cd app
 python main.py
 
 pause
+
+
+
+
+

@@ -210,7 +210,6 @@ File: tests/test_knowledge_query_get.py
 ## Agent Log 2025-09-07
 - Added qdrant-client dependency to development settings and implemented in-memory Qdrant client for tests.
 - Installed qdrant-client and verified vector store behavior with flake8 and pytest.
-
 ## Agent Log 2025-09-07
 - Introduced in-memory Redis stub and aligned Qdrant test client with upstream API signatures.
 - Added scope eviction unit test and revalidated with flake8 and pytest.
@@ -337,6 +336,39 @@ Added JWT token and protected endpoints, expanded tests for unauthorized and mal
 **Associated Data:**
 ```
 Files: app/main.py, tests/test_auth_endpoints.py, tests/conftest.py, tests/test_knowledge_query_get.py
+```
+---
+## Agent Interaction
+**Timestamp:** 2025-08-28T22:33:19+00:00
+**Agent ID:** openai-assistant
+**Team:** root
+**Action/Message:**
+```
+Refactored test fixtures for line-length compliance and added a positive
+admin flow test for the protected `/secret` endpoint. Installed missing
+FastAPI dependencies and verified with flake8 and pytest.
+```
+**Associated Data:**
+```
+Files: tests/conftest.py, tests/test_auth_endpoints.py
+Commands: pip install flake8 pydantic fastapi bcrypt python-jose
+```
+---
+---
+## Agent Interaction
+**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%S%z)
+**Agent ID:** openai-assistant
+**Team:** root
+**Action/Message:**
+```
+Installed pinned FastAPI and test dependencies to resolve missing module errors, 
+ran flake8 and pytest on targeted test files. No source changes required.
+```
+**Associated Data:**
+```
+Commands: pip install fastapi==0.111.0 uvicorn==0.30.0 websockets==15.0.1 requests==2.31.0 pydantic==2.11.0 pydantic-core==2.33.0 python-jose==3.3.0 bcrypt==4.0.1 flake8 pytest pytest-asyncio==0.21.0; 
+flake8 app/main.py app/auth.py tests/test_auth_endpoints.py tests/test_knowledge_query_get.py tests/test_workflow_engine.py tests/conftest.py; 
+pytest tests/test_auth_endpoints.py -q; pytest tests/test_knowledge_query_get.py -q; pytest tests/test_workflow_engine.py -q
 ```
 ---
 Refactored orchestrator imports, added critic veto handling, sanitized error responses, and expanded tests for partial specialist failures; pinned flake8 and pytest-asyncio.

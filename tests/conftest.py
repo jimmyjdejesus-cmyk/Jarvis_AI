@@ -16,12 +16,16 @@ neo4j_module.GraphDatabase = object
 neo4j_module.Driver = object
 sys.modules.setdefault("neo4j", neo4j_module)
 neo4j_exceptions = types.ModuleType("neo4j.exceptions")
+
+
 class ServiceUnavailable(Exception):
     pass
 
 
 class TransientError(Exception):
     pass
+
+
 neo4j_exceptions.ServiceUnavailable = ServiceUnavailable
 neo4j_exceptions.TransientError = TransientError
 sys.modules.setdefault("neo4j.exceptions", neo4j_exceptions)
@@ -506,7 +510,8 @@ def mock_neo4j_graph(monkeypatch):
     mock_graph.connect = MagicMock()
     mock_graph.close = MagicMock()
     mock_graph.run = MagicMock(
-        return_value=MagicMock(data=MagicMock(return_value=[])))
+        return_value=MagicMock(data=MagicMock(return_value=[]))
+    )
     monkeypatch.setattr(
         "jarvis.world_model.neo4j_graph.Neo4jGraph",
         MagicMock(return_value=mock_graph),
