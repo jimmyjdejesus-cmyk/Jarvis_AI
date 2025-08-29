@@ -29,12 +29,13 @@ def check_dependencies():
         import uvicorn
         import websockets
         import redis
+        import requests
         print("✅ Python dependencies found")
     except ImportError as e:
         print(f"❌ Missing Python dependency: {e}")
         print("📦 Installing Python dependencies...")
         try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn", "websockets", "redis", "pydantic"], check=True)
+            subprocess.run([sys.executable, "-m", "pip", "install", "fastapi==0.111.0", "uvicorn", "websockets", "redis", "requests", "pydantic>=2.7,<3"], check=True)
             print("✅ Python dependencies installed successfully")
         except subprocess.CalledProcessError:
             print("❌ Failed to install Python dependencies")
@@ -113,8 +114,8 @@ def start_backend():
         # Install Python dependencies first
         print("📦 Installing Python dependencies...")
         subprocess.run([
-            sys.executable, "-m", "pip", "install", 
-            "fastapi", "uvicorn", "websockets", "redis", "pydantic"
+            sys.executable, "-m", "pip", "install",
+            "fastapi==0.111.0", "uvicorn", "websockets", "redis", "requests", "pydantic>=2.7,<3"
         ], check=True, capture_output=True)
         print("✅ Python dependencies ready")
         
@@ -144,10 +145,12 @@ def start_backend():
             
             # Test the connection
             try:
-                import urllib.request
-                urllib.request.urlopen("http://localhost:8000/health", timeout=5)
+                import requests
+                requests.get("http://localhost:8000/health", timeout=5)
                 print("✅ Backend health check passed")
-            except:
+            except ImportError:
+                print("⚠️ 'requests' not installed; skipping backend health check")
+            except Exception:
                 print("⚠️ Backend starting up, health check will retry...")
             
             return process
@@ -184,7 +187,7 @@ def start_frontend():
             cwd=frontend_path,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            shell=True if os.name == 'nt' else False  # Use shell on Windows
+            shell=False
         )
         
         # Give it a moment to start
@@ -228,11 +231,11 @@ def build_tauri_executable():
         # Install Tauri CLI if not present
         print("📦 Installing Tauri CLI...")
         result = subprocess.run(
-            ["npm", "install", "@tauri-apps/cli"], 
-            cwd=frontend_path, 
-            capture_output=True, 
+            ["npm", "install", "@tauri-apps/cli"],
+            cwd=frontend_path,
+            capture_output=True,
             text=True,
-            shell=True if os.name == 'nt' else False,
+            shell=False,
             check=True
         )
         print("✅ Tauri CLI installed successfully")
@@ -244,7 +247,7 @@ def build_tauri_executable():
             cwd=frontend_path,
             capture_output=True,
             text=True,
-            shell=True if os.name == 'nt' else False
+            shell=False
         )
         
         if result.returncode == 0:

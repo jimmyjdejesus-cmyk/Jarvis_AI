@@ -1,5 +1,5 @@
-"""Core agent components."""
+"""Core agent components with lightweight stubs for testing."""
 from .core import AgentCore
-# The error was "No module named 'agent.core.error_handling'", so I will not export it.
+from .core import JarvisAgent
 
-__all__ = ["AgentCore"]
+__all__ = ["AgentCore", "JarvisAgent"]

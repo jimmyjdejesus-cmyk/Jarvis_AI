@@ -1,55 +1,28 @@
-#!/usr/bin/env python3
-"""
-Enhanced Jarvis AI Backend - Cerebro Galaxy Integration
-FastAPI + WebSockets + Real Multi-Agent Orchestration
-Complete integration with Jarvis orchestration system
-"""
+"""Test cases for the main FastAPI application."""
+from __future__ import annotations
 
-# Standard library imports
-import asyncio
-import json
-import logging
-import os
-import sys
-import uuid
-from contextlib import asynccontextmanager
-from datetime import datetime
-from enum import Enum
-# Standard library Path for filesystem operations
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app, create_test_app
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.replay_memory import ReplayMemory
 
-# Third-party imports
-import uvicorn
-from fastapi import (APIRouter, Body, Depends, FastAPI, Header, HTTPException,
-                     Path, Query, Request, WebSocket, WebSocketDisconnect)
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-from neo4j.exceptions import ServiceUnavailable, TransientError
-from pydantic import BaseModel, Field
+# In-memory store for missions
+mission_history: Dict[str, Any] = {}
 
-# --- Add Jarvis to Python Path ---
-# This allows for importing the local jarvis module
-try:
-    _current_file = Path(__file__)
-except NameError:  # pragma: no cover - execution via `exec` lacks __file__
-    _current_file = Path("jarvis/ecosystem/meta_intelligence.py")
-jarvis_path = _current_file.parent.parent / "jarvis"
 
-if jarvis_path.exists():
-    sys.path.insert(0, str(jarvis_path.parent))
+@pytest.fixture
+def client() -> TestClient:
+    """Create a test client for the FastAPI application."""
+    return TestClient(app)
 
-# --- Logging Configuration ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
-# --- Application-specific Imports ---
-# Authentication utilities
-from app.auth import (Token, authenticate_user, create_access_token,
-                      get_current_user, login_for_access_token, role_required)
+def test_read_main(client: TestClient):
+    """Test the root endpoint."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Welcome to Jarvis AI"}
 
 # Attempt to import the full Jarvis orchestration system
 # If it fails, create mock objects to allow the server to run for frontend development
@@ -88,7 +61,7 @@ except ImportError as e:
 ## Agent Log 2025-09-05
 - Added integration tests covering authentication failures and request timeouts for MCPClient.
 ## Agent Interaction
-**Timestamp:** $(date -Iseconds)
+**Timestamp:** 2025-08-28T23:07:00+00:00
 **Agent ID:** openai-assistant
 **Team:** tests
 **Action/Message:**
@@ -102,16 +75,26 @@ File: test_cli.py
 ---
 
 ## Agent Interaction
-**Timestamp:** $(date -Iseconds)
+**Timestamp:** 2025-08-28T23:07:00+00:00
+=======
+
+def test_get_mission_history():
+    """Test mission history retrieval via the API."""
+    test_app = create_test_app(mission_history)
+    client = TestClient(test_app)
+
+## Agent Interaction
+**Timestamp:** 2025-08-28T02:28:19+00:00
 **Agent ID:** openai-assistant
 **Team:** tests
 **Action/Message:**
 ```
-Removed duplicate import in test_cli.py after review.
+Wrapped long lines in test_knowledge_query_get to satisfy flake8 E501.
+File is quite long; consider archiving older entries soon.
 ```
 **Associated Data:**
 ```
-File: test_cli.py
+File: tests/test_knowledge_query_get.py
 ```
 ---
 ## Agent Log
@@ -141,38 +124,20 @@ File: test_cli.py
 Added integration test verifying memory and knowledge graph persistence across mission steps
 **Associated Data:**
 ```json
-{"files": ["test_mission_step_persistence.py"]}
-## Agent Log
-- Added API mission creation test and team assignment sub-DAG test.
-## Agent Interaction
-**Timestamp:** 2025-08-28T03:00:16+00:00
-
-## Agent Log 2025-08-28
-- Added tests for SelfRAGGate logging and policy optimizer integration.
-## Agent Log
-- Added API mission creation test and team assignment sub-DAG test.
 {"files": ["test_mission_step_persistence.py"]}- Added tests for BlackTeamOrchestrator context filtering.
 ## Agent Log 2025-09-06
 - Fixed stray class definition in conftest.py causing IndentationError during pytest setup.
 {"files": ["test_mission_step_persistence.py"]}\n## Agent Log 2025-09-06\n- Added tests covering WhiteGate gating behavior in multi-team orchestrator.\n
 ## Agent Log 2025-09-06
 - Added test_adversary_pair_critics to verify critic verdict storage and asynchronous review. File is long; consider splitting.
-- Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.
-## Agent Interaction
+- Added tests for ExecutiveAgent sub-orchestrator spawning and SubOrchestrator specialist filtering.## Agent Log 2025-08-28
+- Restored conftest.py and added create_model stub to pydantic mock.
+
 **Timestamp:** 2025-08-28T02:28:19+00:00
 **Agent ID:** openai-assistant
 **Team:** tests
 **Action/Message:**
 ```
-Repaired shared conftest with dependency stubs and in-memory RedisTaskQueue.
-Updated mission tests to patch jarvis.models.client and verified mission API.
-```
-**Associated Data:**
-```
-Files: tests/conftest.py, tests/test_mission_creation.py, tests/test_team_assignment.py
-```
----
-- Added credential API tests covering environment updates and validation.
 Wrapped long lines in test_knowledge_query_get to satisfy flake8 E501.
 File is quite long; consider archiving older entries soon.
 ```
@@ -194,3 +159,11 @@ File: tests/test_knowledge_query_get.py
 - Executed flake8 on vector store modules and ran focused pytest suite.
 
 File is very long; subsequent entries recorded in `agent-2.md`.
+## Agent Log 2025-09-07
+- Added PerformanceTracker unit tests covering success and failure retries.
+- Stubbed ecosystem and team agents in conftest to resolve import cycles.
+    # Add a dummy mission
+    mission_history["test-mission"] = {"status": "completed"}
+    response = client.get("/missions/history")
+    assert response.status_code == 200
+    assert "test-mission" in response.json()

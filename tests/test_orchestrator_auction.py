@@ -1,77 +1,51 @@
+import importlib.util
+import pathlib
 import sys
 import types
 import asyncio
-from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.orchestration.path_memory import PathMemory
-
-# Mock external dependencies for isolated testing
-agents_pkg = types.ModuleType("jarvis.agents")
-sys.modules["jarvis.agents"] = agents_pkg
 
 
-class _Dummy:
-    def __init__(self, *args, **kwargs):
-        pass
+def load_orchestrator() -> types.ModuleType:
+    root = pathlib.Path(__file__).resolve().parents[1] / "jarvis"
+    jarvis_stub = types.ModuleType("jarvis")
+    jarvis_stub.__path__ = [str(root)]
+    sys.modules.setdefault("jarvis", jarvis_stub)
+    orch_stub = types.ModuleType("jarvis.orchestration")
+    orch_stub.__path__ = [str(root / "orchestration")]
+    sys.modules.setdefault("jarvis.orchestration", orch_stub)
+    spec = importlib.util.spec_from_file_location(
+        "jarvis.orchestration.orchestrator",
+        root / "orchestration" / "orchestrator.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-sys.modules["jarvis.agents.specialists"] = types.SimpleNamespace(
-    CodeReviewAgent=_Dummy,
-    SecurityAgent=_Dummy,
-    ArchitectureAgent=_Dummy,
-    TestingAgent=_Dummy,
-    DevOpsAgent=_Dummy,
-)
-
-
-sys.path.append(".")
-
-sys.modules["jarvis.agents.specialist_registry"] = types.SimpleNamespace(
-    SPECIALIST_REGISTRY={},
-    create_specialist=lambda name, mcp_client, **_: _Dummy(),
-)
-from app.main import app
-
-import jarvis.memory.project_memory as project_memory
-from jarvis.memory.memory_bus import MemoryBus
-from jarvis.memory.project_memory import ProjectMemory
-from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.orchestration.path_memory import PathMemory
+orchestrator_module = load_orchestrator()
+MultiAgentOrchestrator = orchestrator_module.MultiAgentOrchestrator
 
 
 class DummyMCP:
-    async def generate_response_batch(self, server, model, prompts):
-        return [f"resp_{p}" for p in prompts]
-
     async def generate_response(self, server, model, prompt):
-        # The test asserts that the winner's response is in the synthesis.
-        # Let's make the synthesis predictable for the test.
-        if "a" in prompt.lower() and "b" in prompt.lower():
-            return "a: synthesized response"
         return "synthesis"
 
 
 class DummySpecialist:
-    def __init__(self, name, confidence):
-        self.name = name
-        self.confidence = confidence
-        self.preferred_models = ["m"]
-
-    def _get_server_for_model(self, model):  # pragma: no cover - simple stub
-        return "ollama"
-
-    def build_prompt(self, task, context, user_context):  # pragma: no cover
-        return f"{self.name}_prompt"
-
-    def process_model_response(self, response, model, task):
-        return {
-            "specialist": self.name,
-            "response": response,
-            "confidence": self.confidence,
-            "suggestions": [f"{self.name}_sugg"],
-        }
+    async def process_task(self, task):  # pragma: no cover - simple stub
+        return {"response": task}
 
 
 def test_parallel_orchestrator_auction_merge():
     mcp = DummyMCP()
     orch = MultiAgentOrchestrator(mcp)
     orch.specialists = {
+        "a": DummySpecialist(),
+        "b": DummySpecialist(),
+    }
+
+    result = asyncio.run(
+        orch.coordinate_specialists("question")
+    )
+    assert result["synthesized_response"] == "synthesis"

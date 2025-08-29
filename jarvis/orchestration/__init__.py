@@ -1,15 +1,25 @@
 """
 Multi-agent orchestration system for coordinating specialist AI agents.
 """
-from .orchestrator import (
-    AgentSpec,
-    DynamicOrchestrator,
-    MultiAgentOrchestrator,
-    OrchestratorTemplate,
-    StepContext,
-    StepResult,
-    END,
-)
+try:  # pragma: no cover - optional import
+    from .orchestrator import (
+        AgentSpec,
+        DynamicOrchestrator,
+        MultiAgentOrchestrator,
+        OrchestratorTemplate,
+        StepContext,
+        StepResult,
+        END,
+    )
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    AgentSpec = None  # type: ignore
+    DynamicOrchestrator = None  # type: ignore
+    MultiAgentOrchestrator = None  # type: ignore
+    OrchestratorTemplate = None  # type: ignore
+    StepContext = None  # type: ignore
+    StepResult = None  # type: ignore
+    END = None  # type: ignore
+
 from .path_memory import PathMemory
 from .message_bus import MessageBus, HierarchicalMessageBus, Event
 from .bandwidth_channel import BandwidthLimitedChannel

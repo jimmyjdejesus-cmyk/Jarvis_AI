@@ -1,5 +1,7 @@
 """Tests for the Qdrant-backed VectorStore."""
 
+import importlib
+import sys
 import pytest
 from qdrant_client.models import (
     FieldCondition,
@@ -8,6 +10,14 @@ from qdrant_client.models import (
     PointStruct,
 )
 
+pytest.importorskip("qdrant_client")
+
+# Remove pre-existing memory_service stubs if present
+if "memory_service" in sys.modules and not getattr(sys.modules["memory_service"], "__file__", None):
+    sys.modules.pop("memory_service", None)
+    sys.modules.pop("memory_service.models", None)
+
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 from memory_service.vector_store import VectorStore
 
 
