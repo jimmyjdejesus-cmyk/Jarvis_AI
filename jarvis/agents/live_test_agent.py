@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-"""Agent that monitors GitHub issues and feeds directives to the ExecutiveAgent."""
+"""Agent that monitors GitHub issues and feeds directives to
+the ExecutiveAgent.
+"""
 
 from typing import List, Dict, Any, TYPE_CHECKING
 import time
 
-import sys
-from pathlib import Path
-root = Path(__file__).resolve().parents[2]
-sys.path.append(str(root))
-import jarvis.tools.github as github
+from jarvis.tools import github
 
 if TYPE_CHECKING:  # pragma: no cover - import for type checking only
     from jarvis.agents.benchmark_agent import BenchmarkRewardAgent
@@ -43,13 +41,18 @@ class LiveTestAgent:
     def handle_issue(self, issue: Dict[str, Any]) -> None:
         """Convert a GitHub issue into an executive directive and learn from the outcome."""
         directive = (
-            f"Analyze, reproduce, and fix the bug described in Issue #{issue['number']}."
+            "Analyze, reproduce, and fix the bug described in Issue "
+            f"#{issue['number']}."
         )
         result = self.executive.manage_directive(directive)
-        reward = self.reward_agent.get_reward(issue.get("title", ""), result.get("output", ""))
+        reward = self.reward_agent.get_reward(
+            issue.get("title", ""), result.get("output", "")
+        )
         strategy_key = result.get("strategy_key")
         if strategy_key is not None:
-            self.policy_optimizer.update_strategy(strategy_key, reward.get("reward", 0.0))
+            self.policy_optimizer.update_strategy(
+                strategy_key, reward.get("reward", 0.0)
+            )
         self.processed.add(issue["number"])
 
     def run_once(self) -> List[Dict[str, Any]]:

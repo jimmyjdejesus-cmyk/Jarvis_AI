@@ -8,14 +8,18 @@ spawned automatically for team-scoped mission steps.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Type
+from typing import Any, Dict
 
 from jarvis.agents.base import AIAgent
 from jarvis.agents.mission_planner import MissionPlanner
 from jarvis.memory.project_memory import MemoryManager
 from jarvis.orchestration.mission import Mission, MissionDAG
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.workflows.engine import WorkflowEngine, WorkflowStatus, from_mission_dag
+from jarvis.workflows.engine import (
+    WorkflowEngine,
+    WorkflowStatus,
+    from_mission_dag,
+)
 
 try:  # pragma: no cover - neo4j is optional
     from jarvis.world_model.neo4j_graph import Neo4jGraph  # type: ignore
@@ -117,14 +121,6 @@ class ExecutiveAgent(AIAgent):
             return {"success": False, "error": f"Mission planning failed: {msg}"}
 
         dag = MissionDAG.from_dict(directive["graph"])
-        mission = Mission(
-            id=dag.mission_id,
-            title=context.get("title", goal),
-            goal=goal,
-            inputs=context.get("inputs", {}),
-            risk_level=context.get("risk_level", "low"),
-            dag=dag,
-        )
 
         workflow = from_mission_dag(dag)
         completed = await workflow_engine.execute_workflow(workflow)

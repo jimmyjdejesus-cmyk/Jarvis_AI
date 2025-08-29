@@ -30,13 +30,19 @@ except Exception:
     MCPJarvisAgent = None  # type: ignore
 
 try:
-    from jarvis.database.db_manager import DatabaseManager, get_database_manager
+    from jarvis.database.db_manager import (
+        DatabaseManager,
+        get_database_manager,
+    )
 except Exception:
     DatabaseManager = None  # type: ignore
     get_database_manager = None  # type: ignore
 
 try:
-    from jarvis.auth.security_manager import SecurityManager, get_security_manager
+    from jarvis.auth.security_manager import (
+        SecurityManager,
+        get_security_manager,
+    )
 except Exception:
     SecurityManager = None  # type: ignore
     get_security_manager = None  # type: ignore

@@ -27,6 +27,7 @@ try:  # pragma: no cover
     from .coding_agent import CodingAgent, get_coding_agent
 except Exception:  # pragma: no cover
     CodingAgent = None  # type: ignore
+
     def get_coding_agent(*a, **k):  # type: ignore
         return None
 
@@ -60,4 +61,3 @@ __all__ = [
     "LiveTestAgent",
     "DecentralizedActor",
 ]
-
