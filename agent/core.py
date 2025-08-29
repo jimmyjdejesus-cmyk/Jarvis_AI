@@ -24,10 +24,13 @@ class JarvisAgent:
 
     def chat(self, message: str) -> str:
         """Echo the message and store interaction in replay memory."""
+        # Experience is already imported from jarvis.memory.replay_memory
         response = f"Echo: {message} (using {self.model_name})"
-        self.replay_memory.add(
-            Experience(message, response, 0.0, None, False)
+        # Store as transition with dummy reward and no next state yet
+        experience = Experience(
+            state=message, action=response, reward=0.0, next_state=None, done=False
         )
+        self.replay_memory.add(experience)
         return response
 
     def recall(self, state: Any, top_k: int = 1):

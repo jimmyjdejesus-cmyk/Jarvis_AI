@@ -7,7 +7,8 @@ from unittest.mock import MagicMock
 import importlib.util
 import pytest
 
-# Stub external dependencies
+
+# Stub external dependencies to keep imports clean during tests
 neo4j_module = types.ModuleType("neo4j")
 neo4j_module.GraphDatabase = object
 neo4j_module.Driver = object
@@ -140,7 +141,7 @@ sys.modules.setdefault("networkx", nx_module)
 # Additional stubs
 requests_module = types.ModuleType("requests")
 sys.modules.setdefault("requests", requests_module)
-critics_pkg = types.ModuleType("jarvis.agents.critics")
+critics_pkg = types.ModuleType("jarvis.agents.critics" )
 const_module = types.ModuleType("jarvis.agents.critics.constitutional_critic")
 
 
@@ -268,7 +269,8 @@ spec = importlib.util.spec_from_file_location(
     "jarvis.workflows.engine", ROOT / "jarvis/workflows/engine.py"
 )
 engine_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(engine_module)
+assert spec and spec.loader
+spec.loader.exec_module(engine_module)  # type: ignore[arg-type]
 workflows_pkg = types.ModuleType("jarvis.workflows")
 workflows_pkg.engine = engine_module
 sys.modules.setdefault("jarvis.workflows", workflows_pkg)
@@ -289,3 +291,4 @@ def mock_neo4j_graph(monkeypatch):
         MagicMock(return_value=mock_graph),
     )
     return mock_graph
+

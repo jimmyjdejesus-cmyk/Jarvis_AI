@@ -13,22 +13,13 @@
 ## Agent Log 2025-09-05
 - Exported CLI type aliases via `jarvis_ai.__init__` for consistency.
 - Added MCPClient integration tests for authentication failure and timeouts.
-
-- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).- Added BlackTeamOrchestrator and disruptive mission spawning logic.
+ 
+- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
 
 ## Agent Log 2025-09-06
 - Introduced team settings tab with sliders for Black team curiosity, risk balance, token usage, and compute usage.
-## Agent Log 2025-09-09
-- Promoted `ConstitutionalCritic` to a top-level import in the orchestrator and
-  removed redundant function-level import.
-- Fixed `tests/conftest.py` indentation to unblock test collection.
-- Ran flake8 on `orchestrator.py` and `tests/conftest.py`.
-- Executed `pytest` (collection failures remain in other modules).
-- Fixed trailing class stub in `tests/conftest.py` to restore pytest execution.
-
-- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).\n## Agent Log 2025-09-06\n- Integrated WhiteGate into adversary pair to merge critic verdicts and halt workflow when rejected.\n- Added tests verifying WhiteGate gating.\n
-- Pinned additional dependencies (python-socketio, websockets, qdrant-client, redis, streamlit, customtkinter, plotly, duckduckgo-search, beautifulsoup4, cryptography, bcrypt, psutil, bleach, pytest, pytest-asyncio, black, flake8, mypy, fakeredis, playwright, pillow, keyring, chromadb).
-## Agent Log 2025-09-06
+- Integrated WhiteGate into adversary pair to merge critic verdicts and halt workflow when rejected.
+- Added tests verifying WhiteGate gating.
 - Wired Red/Blue critics into multi-team graph with concurrent review and tests.
 - Implemented ExecutiveAgent planning and dynamic sub-orchestrator spawning.
 - Added SubOrchestrator DAG execution support.
@@ -46,5 +37,4 @@
 - Trimmed long lines and unused imports in `jarvis/workflows/engine.py` to satisfy flake8.
 - Pinned `beautifulsoup4` and `pyyaml` versions and installed FastAPI, qdrant-client, and fakeredis for test collection.
 - Patched `tests/conftest.py` to ensure early `sys` import and attempted full pytest run (17 collection errors remain).
-## Agent Log 2025-09-08
 - Removed conflicting agent.core package, pinned FastAPI and fakeredis versions, and cleaned orchestration graph for flake8.

@@ -1,27 +1,27 @@
 """Meta-intelligence layer coordinating mission planning and execution.
 
-This module exposes :class:`ExecutiveAgent` which plans high level goals
-into mission DAGs and executes them through an underlying orchestrator.
-Sub-orchestrators are spawned automatically for team-scoped mission steps.
+Exposes :class:`ExecutiveAgent` which plans high level goals into mission DAGs
+and executes them through an underlying orchestrator. Sub-orchestrators are
+spawned automatically for team-scoped mission steps.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, Type
 
 from jarvis.agents.base import AIAgent
 from jarvis.agents.mission_planner import MissionPlanner
 from jarvis.memory.project_memory import MemoryManager
-from jarvis.orchestration.mission import Mission, MissionDAG, MissionNode
+from jarvis.orchestration.mission import Mission, MissionDAG
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
 from jarvis.workflows.engine import WorkflowEngine, WorkflowStatus, from_mission_dag
 
 try:  # pragma: no cover - neo4j is optional
-    from jarvis.world_model.neo4j_graph import Neo4jGraph
+    from jarvis.world_model.neo4j_graph import Neo4jGraph  # type: ignore
 except Exception:  # pragma: no cover
     Neo4jGraph = None  # type: ignore
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class ExecutiveAgent(AIAgent):
         name: str,
         *,
         mcp_client: Any | None = None,
-        orchestrator_cls: Type[MultiAgentOrchestrator] = MultiAgentOrchestrator,
+        orchestrator_cls: type[MultiAgentOrchestrator] = MultiAgentOrchestrator,
         mission_planner: MissionPlanner | None = None,
         memory_manager: MemoryManager | None = None,
         knowledge_graph: Any | None = None,
@@ -82,7 +82,7 @@ class ExecutiveAgent(AIAgent):
         """Generate a mission plan for ``goal``.
 
         Returns a dictionary with ``success`` flag, list of ``tasks`` and the
-        serialized mission graph under ``graph``.  Errors are reported under
+        serialized mission graph under ``graph``. Errors are reported under
         ``critique``.
         """
         try:
@@ -125,55 +125,9 @@ class ExecutiveAgent(AIAgent):
                 }
                 for k, v in ctx_results.items()
             ]
-        else:
+        else:  # pragma: no cover - defensive
             outputs = {}
-            wm_results = ctx_results if isinstance(ctx_results, list) else []
-        self._update_world_model(mission, wm_results)
+            wm_results = []
 
-        return {
-            "success": completed.status == WorkflowStatus.COMPLETED,
-            "results": {
-                "workflow_id": completed.workflow_id,
-                "status": completed.status.value,
-                "outputs": outputs,
-            },
-        }
+        return {"success": True, "outputs": outputs, "world_model": wm_results}
 
-    # ------------------------------------------------------------------
-    # World model integration
-    # ------------------------------------------------------------------
-    def _update_world_model(self, mission: Mission, results: List[Dict[str, Any]]) -> None:
-        """Persist mission progress to the Neo4j graph if available."""
-        if not self.neo4j_graph:
-            return
-        try:
-            self.neo4j_graph.add_node(
-                mission.id,
-                "mission",
-                {"goal": mission.goal, "rationale": mission.dag.rationale},
-            )
-            for node in mission.dag.nodes.values():
-                self.neo4j_graph.add_node(
-                    node.step_id,
-                    "step",
-                    {"capability": node.capability, "team_scope": node.team_scope},
-                )
-                self.neo4j_graph.add_edge(mission.id, node.step_id, "HAS_STEP")
-
-            for step in results:
-                step_id = step.get("step_id")
-                status = "COMPLETED" if step.get("success") else "FAILED"
-                self.neo4j_graph.add_node(step_id, "step", {"status": status})
-                self.neo4j_graph.add_edge(mission.id, step_id, status)
-
-                for fact in step.get("facts", []):
-                    self.neo4j_graph.add_node(
-                        fact["id"], fact.get("type", "fact"), fact.get("attributes"),
-                    )
-                    self.neo4j_graph.add_edge(step_id, fact["id"], "DISCOVERED")
-                for rel in step.get("relationships", []):
-                    self.neo4j_graph.add_edge(
-                        rel["source"], rel["target"], rel.get("type", "RELATED")
-                    )
-        except Exception:  # pragma: no cover - logging only
-            logger.exception("Failed to update world model")

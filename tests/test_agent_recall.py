@@ -3,7 +3,7 @@ from jarvis.memory.memory_bus import MemoryBus
 
 
 def test_agent_plan_recall(tmp_path):
-    bus = MemoryBus(tmp_path)
+    bus = MemoryBus(str(tmp_path))
     agent = JarvisAgent(memory_bus=bus)
     response = agent.chat("hello")
     recalled = agent.plan("hello")

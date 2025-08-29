@@ -9,7 +9,7 @@ import logging
 from typing import List, Optional, Generator
 from urllib.parse import urlparse
 
-# Import legacy model client
+# Import legacy model client (optional)
 
 try:
     from scripts.ollama_client import *

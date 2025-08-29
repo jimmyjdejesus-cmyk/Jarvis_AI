@@ -5,9 +5,14 @@ from __future__ import annotations
 import os
 import re
 from typing import Any, Dict, Optional, TYPE_CHECKING
+
 from neo4j import GraphDatabase, Driver
 
-from jarvis.security.secret_manager import get_secret
+try:  # optional secret manager; fall back to env vars
+    from jarvis.security.secret_manager import get_secret  # type: ignore
+except Exception:  # pragma: no cover - minimal environments
+    def get_secret(key: str, default: Optional[str] = None) -> Optional[str]:  # type: ignore
+        return os.getenv(key, default)
 if TYPE_CHECKING:  # pragma: no cover
     from jarvis.orchestration.mission import MissionDAG, MissionNode
 
@@ -122,8 +127,7 @@ class Neo4jGraph:
             )
 
     # ------------------------------------------------------------------
-# Mission DAG operations
-
+    # Mission DAG operations
     def write_mission_dag(self, dag: "MissionDAG") -> None:
         """Persist an entire :class:`MissionDAG` to Neo4j."""
 
@@ -199,4 +203,6 @@ class Neo4jGraph:
             )
             edges = [(rec["src"], rec["dst"]) for rec in edge_records]
 
-            return MissionDAG(mission_id=mission_id, rationale=rationale, nodes=nodes, edges=edges)
+        return MissionDAG(
+            mission_id=mission_id, rationale=rationale, nodes=nodes, edges=edges
+        )

@@ -11,6 +11,9 @@ ENABLE_CURIOSITY_ROUTING: true
 # Route curiosity-generated questions into the directive queue
 ENABLE_CURIOSITY_ROUTING: true
 
+# Route curiosity-generated questions into the directive queue
+ENABLE_CURIOSITY_ROUTING: true
+
 orch:
   min_novelty: 0.25
   min_growth: 0.0

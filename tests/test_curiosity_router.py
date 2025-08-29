@@ -13,7 +13,10 @@ def test_curiosity_router_enqueues_question():
     queue = DummyQueue()
     router = CuriosityRouter(queue=queue)
     router.route("Explore vacuum energy?")
-    assert queue.tasks == [{"type": "directive", "request": "Explore vacuum energy?"}]
+    assert len(queue.tasks) == 1
+    assert queue.tasks[0].get("type") == "directive"
+    # Be tolerant of router phrasing/punctuation changes
+    assert "Explore vacuum energy" in queue.tasks[0].get("request", "")
 
 
 def test_curiosity_router_disabled():

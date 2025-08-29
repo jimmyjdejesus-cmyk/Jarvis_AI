@@ -31,7 +31,6 @@ from .message_bus import HierarchicalMessageBus
 from .path_memory import PathMemory
 from .semantic_cache import SemanticCache
 
-
 @dataclass
 class AgentSpec:
     """Minimal agent specification for dynamic workflows."""
@@ -44,7 +43,6 @@ class DynamicOrchestrator:
     """Placeholder dynamic orchestrator for tests."""
 
     pass
-
 
 if TYPE_CHECKING:  # pragma: no cover - used only for type hints
     from .sub_orchestrator import SubOrchestrator
@@ -119,9 +117,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self.memory = memory
         if specialists is None:
             self.specialists = {
-                name: create_specialist(
-                    name, mcp_client, knowledge_graph=knowledge_graph
-                )
+                name: create_specialist(name, mcp_client, knowledge_graph=knowledge_graph)
                 for name in get_specialist_registry()
             }
         else:
@@ -156,7 +152,7 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         )
 
     async def run_step(self, step_ctx: StepContext) -> StepResult:
-        """Execute a single step with retry and timeout control."""
+        """Execute a single orchestration step with retry and timeout control."""
         run_id = step_ctx.budgets.get("run_id") if step_ctx.budgets else None
         allowed = step_ctx.allowed_specialists
         original_specialists = self.specialists
@@ -186,16 +182,12 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
                         data = await asyncio.wait_for(coro, timeout)
                     else:
                         data = await coro
-                    self.performance_tracker.record_event(
-                        "step", True, attempt
-                    )
+                    self.performance_tracker.record_event("step", True, attempt)
                     break
                 except Exception as e:
                     if isinstance(e, asyncio.CancelledError):
                         raise
-                    self.performance_tracker.record_event(
-                        "step", False, attempt
-                    )
+                    self.performance_tracker.record_event("step", False, attempt)
                     if attempt > retries:
                         raise
                     delay = backoff_base * (2 ** (attempt - 1))
@@ -893,9 +885,7 @@ JSON Response:
         health_results = {}
         for name, specialist in self.specialists.items():
             try:
-                result = await self.dispatch_specialist(
-                    name, "Health check test"
-                )
+                result = await self.dispatch_specialist(name, "Health check test")
                 health_results[name] = {
                     "status": "healthy",
                     "confidence": result.get("confidence", 0.0),
