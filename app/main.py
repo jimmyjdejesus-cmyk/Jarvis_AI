@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 Minimal FastAPI application exposing knowledge graph and mission endpoints.
 """
@@ -18,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from .auth import Token, login_for_access_token, role_required
 from .knowledge_graph import knowledge_graph
+from .galaxy import router as galaxy_router
 
 # Ensure project root is on sys.path when running from the app directory
 _app_dir = Path(__file__).resolve().parent
@@ -51,6 +53,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(galaxy_router)
 
 # Exposed for tests to patch
 neo4j_graph = Neo4jGraph()

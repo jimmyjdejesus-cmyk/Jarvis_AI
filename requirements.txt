@@ -40,6 +40,7 @@ posthog==6.7.0
 pydantic==2.7.4
 pydantic-core==2.18.4
 typing-extensions==4.15.0
+sentence-transformers==2.2.2
 
 # --- Security & System ---
 # Cryptography, password hashing, system monitoring
