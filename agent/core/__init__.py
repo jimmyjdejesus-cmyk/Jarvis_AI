@@ -1,4 +1,5 @@
 """Core agent components."""
-from .core import AgentCore
 
-__all__ = ["AgentCore"]
+from .core import JarvisAgent
+
+__all__ = ["JarvisAgent"]

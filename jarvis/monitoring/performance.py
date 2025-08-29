@@ -317,6 +317,6 @@ class PerformanceTracker:
         if event_type == "step":
             if not success:
                 self.metrics["failed_steps"] += 1
-            # A retry is any attempt after the first one, regardless of success.
+            # Any attempt after the first counts as a retry.
             if attempt > 1:
                 self.metrics["retry_attempts"] += 1

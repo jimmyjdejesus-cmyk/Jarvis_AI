@@ -66,4 +66,3 @@ def test_mission_history_endpoint() -> None:
         resp = client.get(f"/missions/{mission_id}/history")
         assert resp.status_code == 200
         assert resp.json() == {"id": mission_id, "steps": []}
-

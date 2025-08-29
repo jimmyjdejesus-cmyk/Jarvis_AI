@@ -1,61 +1,36 @@
-"""Core agent container with extensible components."""
+"""Core agent functionality for Jarvis AI with replay memory support."""
+
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
+
+from jarvis.memory.memory_bus import MemoryBus
+from jarvis.memory.replay_memory import ReplayMemory
 
 
-class AgentCore:
-    """Hold core agent dependencies and allow dynamic component attachment.
+class JarvisAgent:
+    """Minimal agent demonstrating replay-memory integration."""
 
-    Parameters
-    ----------
-    config:
-        Optional configuration dictionary for the agent.
-    event_bus:
-        Optional event bus or message broker instance used by the agent.
-    memory:
-        Optional memory backend or service used by the agent.
-    **components:
-        Additional named components attached to the agent.
-    """
+    def __init__(self, model_name: str = "llama3.2", memory_bus: MemoryBus | None = None):
+        self.model_name = model_name
+        self.memory_bus = memory_bus or MemoryBus()
+        self.replay_memory = ReplayMemory(log_dir=str(self.memory_bus.log_file.parent))
 
-    def __init__(
-        self,
-        config: Optional[dict] = None,
-        event_bus: Any | None = None,
-        memory: Any | None = None,
-        **components: Any,
-    ) -> None:
-        self.config = config
-        self.event_bus = event_bus
-        self.memory = memory
-        self.components: Dict[str, Any] = {}
-        for name, component in components.items():
-            self.add_component(name, component)
+    def chat(self, message: str) -> str:
+        """Echo the message and store interaction in replay memory."""
+        response = f"Echo: {message} (using {self.model_name})"
+        # Store as transition with dummy reward and no next state yet
+        self.replay_memory.push(message, response, 0.0, None, False)
+        return response
 
-    def add_component(self, name: str, component: Any) -> None:
-        """Attach a named component and expose it as an attribute."""
-        self.components[name] = component
-        setattr(self, name, component)
+    def recall(self, state: Any, top_k: int = 1):
+        """Expose replay-memory recall to planning steps."""
+        return self.replay_memory.recall(state, top_k)
 
-    def get_component(self, name: str) -> Any:
-        """Retrieve a previously attached component by name.
-
-        Raises
-        ------
-        KeyError
-            If the component has not been attached to the agent.
-        """
-        try:
-            return self.components[name]
-        except KeyError as exc:
-            raise KeyError(f"Component '{name}' is not attached") from exc
-
-    def __repr__(self) -> str:
-        extras = ", ".join(self.components)
-        return (
-            "AgentCore("  # pragma: no cover - simple representation helper
-            f"config={self.config!r}, event_bus={self.event_bus!r}, "
-            f"memory={self.memory!r}, components=[{extras}]"
-            ")"
-        )
+    def plan(self, state: Any) -> Any:
+        """Very small planning example using recalled transitions."""
+        recalled = self.recall(state, top_k=1)
+        if recalled:
+            # Return the previously taken action for this state
+            return recalled[0].action
+        return None

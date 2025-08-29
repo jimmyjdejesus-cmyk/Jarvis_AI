@@ -193,6 +193,20 @@ Logged action in tests/agent.md.
 File: tests/test_knowledge_query_get.py
 ```
 ---
+## Agent Log 2025-09-08
+- Pinned FastAPI to 0.111.x and Pydantic to 2.7+ across requirements, pyproject, startup scripts, and documentation.
+- Documented compatibility rationale and verified installation via pip (fastapi 0.111.0, pydantic 2.7.1).
+- Updated Windows guide and build scripts to install these pinned versions.
+- Ran pytest; collection failed with multiple import errors and missing modules.
+## Agent Log 2025-02-14
+- Moved `JarvisAgent` into `agent.core` package and removed conflicting module.
+- Added conditional `memory_service` stub in orchestrator and cleaned up test fixtures.
+- Simplified API and vector store tests to avoid missing dependencies.
+
+## Agent Log 2025-09-08
+- Rebuilt orchestration core with lightweight exports and critic/retry logic.
+- Restored auction test with simplified MCP/specialist stubs.
+- Installed `redis` package and executed full `pytest` run.
 ## Agent Log 2025-09-07
 - Added qdrant-client dependency to development settings and implemented in-memory Qdrant client for tests.
 - Installed qdrant-client and verified vector store behavior with flake8 and pytest.

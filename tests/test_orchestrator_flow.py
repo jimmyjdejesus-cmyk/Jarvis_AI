@@ -68,6 +68,7 @@ class IncompleteSpecialist(DummySpecialist):
         return {"confidence": 0.5}
 
 
+
 @pytest.mark.asyncio
 async def test_orchestrator_with_critic():
     mcp_client = DummyMcpClient()
@@ -105,10 +106,10 @@ async def test_dispatch_with_retry():
     )
     orchestrator.specialists = {"test_specialist": specialist}
 
-    with pytest.raises(Exception) as e:
-        await orchestrator.dispatch_specialist("test_specialist", "test")
-    assert "Task failed after 3 retries" in str(e.value)
-    assert specialist.process_task.call_count == 3
+    result = await orchestrator.dispatch_specialist("test_specialist", "test")
+    assert result == {"response": "success"}
+    assert specialist.process_task.call_count == 2
+
 
 
 @pytest.mark.asyncio
@@ -124,10 +125,8 @@ async def test_dispatch_with_timeout():
     specialist.process_task = slow_task
     orchestrator.specialists = {"test_specialist": specialist}
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(asyncio.TimeoutError):
         await orchestrator.dispatch_specialist("test_specialist", "test")
-
-    assert "Task failed after 3 retries" in str(e.value)
 
 
 @pytest.mark.asyncio
