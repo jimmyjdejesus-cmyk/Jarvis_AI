@@ -47,8 +47,10 @@ class MultiTeamOrchestrator:
         # Define nodes for each team's execution
         graph.add_node("adversary_pair", self._run_adversary_pair)
         graph.add_node("competitive_pair", self._run_competitive_pair)
-        graph.add_node("innovators_disruptors",
-                       self._run_innovators_disruptors)
+        graph.add_node("security_quality", self._run_security_quality)
+        graph.add_node(
+            "innovators_disruptors", self._run_innovators_disruptors
+        )
         graph.add_node("broadcast_findings", self._broadcast_findings)
 
         # The graph starts with the competitive pair to generate initial ideas

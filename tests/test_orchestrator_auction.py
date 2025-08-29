@@ -1,8 +1,9 @@
+import asyncio
 import sys
 import types
-import asyncio
+
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.orchestration.path_memory import PathMemory
+
 
 # Mock external dependencies for isolated testing
 agents_pkg = types.ModuleType("jarvis.agents")
@@ -22,20 +23,10 @@ sys.modules["jarvis.agents.specialists"] = types.SimpleNamespace(
     DevOpsAgent=_Dummy,
 )
 
-
-sys.path.append(".")
-
 sys.modules["jarvis.agents.specialist_registry"] = types.SimpleNamespace(
     SPECIALIST_REGISTRY={},
     create_specialist=lambda name, mcp_client, **_: _Dummy(),
 )
-from app.main import app
-
-import jarvis.memory.project_memory as project_memory
-from jarvis.memory.memory_bus import MemoryBus
-from jarvis.memory.project_memory import ProjectMemory
-from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.orchestration.path_memory import PathMemory
 
 
 class DummyMCP:
@@ -75,3 +66,17 @@ def test_parallel_orchestrator_auction_merge():
     mcp = DummyMCP()
     orch = MultiAgentOrchestrator(mcp)
     orch.specialists = {
+        "a": DummySpecialist("a", 0.9),
+        "b": DummySpecialist("b", 0.8),
+    }
+
+    async def fake_analyze(request, code=None):
+        return {"specialists_needed": ["a", "b"], "complexity": "low"}
+
+    orch._analyze_request_complexity = fake_analyze
+
+    result = asyncio.run(orch.coordinate_specialists("task"))
+
+    assert result["auction"]["winner"] == "a"
+    assert result["confidence"] == 0.9
+    assert result["synthesized_response"] == "a: synthesized response"

@@ -61,7 +61,6 @@ pyright>=1.1.404
 ruff>=0.12.10
 setuptools>=80.9.0
 fakeredis==2.31.0
-setuptools>=80.9.0
 
 # --- Optional & Tooling ---
 # Web automation, image processing

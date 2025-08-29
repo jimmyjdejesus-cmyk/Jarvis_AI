@@ -12,6 +12,7 @@ This module provides two lightweight orchestration helpers:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -264,8 +265,6 @@ class MultiAgentOrchestrator(OrchestratorTemplate):
         self, request: str, code: str = None
     ) -> Dict[str, Any]:
         """Analyze a request to determine complexity and specialists needed."""
-        import json
-
         prompt = f"""
 Analyze the user request and list required specialists with complexity.
 

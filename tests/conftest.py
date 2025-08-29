@@ -11,7 +11,22 @@ import pytest
 neo4j_module = types.ModuleType("neo4j")
 neo4j_module.GraphDatabase = object
 neo4j_module.Driver = object
+exceptions_submodule = types.ModuleType("neo4j.exceptions")
+
+
+class ServiceUnavailable(Exception):
+    pass
+
+
+class TransientError(Exception):
+    pass
+
+
+exceptions_submodule.ServiceUnavailable = ServiceUnavailable
+exceptions_submodule.TransientError = TransientError
+neo4j_module.exceptions = exceptions_submodule
 sys.modules.setdefault("neo4j", neo4j_module)
+sys.modules.setdefault("neo4j.exceptions", exceptions_submodule)
 
 langgraph_module = types.ModuleType("langgraph")
 graph_submodule = types.ModuleType("langgraph.graph")
@@ -21,7 +36,22 @@ sys.modules.setdefault("langgraph", langgraph_module)
 sys.modules.setdefault("langgraph.graph", graph_submodule)
 
 aiohttp_module = types.ModuleType("aiohttp")
+web_submodule = types.ModuleType("aiohttp.web")
+
+
+class Application:  # pragma: no cover - simple stub
+    pass
+
+
+class Response:  # pragma: no cover - simple stub
+    pass
+
+
+web_submodule.Application = Application
+web_submodule.Response = Response
+aiohttp_module.web = web_submodule
 sys.modules.setdefault("aiohttp", aiohttp_module)
+sys.modules.setdefault("aiohttp.web", web_submodule)
 
 keyring_module = types.ModuleType("keyring")
 keyring_module.get_password = lambda *a, **k: None
@@ -141,6 +171,9 @@ sys.modules.setdefault("jarvis.homeostasis.monitor", monitor_submodule)
 
 memory_service = types.ModuleType("memory_service")
 models_sub = types.ModuleType("memory_service.models")
+memory_service.__path__ = []
+hypergraph_sub = types.ModuleType("memory_service.hypergraph")
+vector_store_sub = types.ModuleType("memory_service.vector_store")
 
 
 class Metrics:
@@ -186,9 +219,12 @@ memory_service.PathRecord = PathRecord
 memory_service.PathSignature = PathSignature
 memory_service.avoid_negative = avoid_negative
 memory_service.record_path = record_path
-memory_service.vector_store = None
+memory_service.hypergraph = hypergraph_sub
+memory_service.vector_store = vector_store_sub
 sys.modules.setdefault("memory_service", memory_service)
 sys.modules.setdefault("memory_service.models", models_sub)
+sys.modules.setdefault("memory_service.hypergraph", hypergraph_sub)
+sys.modules.setdefault("memory_service.vector_store", vector_store_sub)
 
 # Stub jarvis.ecosystem to prevent circular imports during test bootstrap
 ecosystem_pkg = types.ModuleType("jarvis.ecosystem")
@@ -201,6 +237,7 @@ class ExecutiveAgent:  # pragma: no cover - minimal placeholder
 
 meta_module.ExecutiveAgent = ExecutiveAgent
 ecosystem_pkg.meta_intelligence = meta_module
+ecosystem_pkg.ExecutiveAgent = ExecutiveAgent
 ecosystem_pkg.superintelligence = types.ModuleType(
     "jarvis.ecosystem.superintelligence"
 )
