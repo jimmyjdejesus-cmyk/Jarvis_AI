@@ -64,6 +64,8 @@ class VectorStore:
             )
 
     def _filter(self, principal: str, scope: str) -> Filter:
+        """Build a Qdrant ``Filter`` for ``principal`` and ``scope``."""
+
         return Filter(
             must=[
                 FieldCondition(
@@ -74,6 +76,12 @@ class VectorStore:
         )
 
     def _enforce_limit(self, principal: str, scope: str) -> None:
+        """Cap stored entries for ``principal``/``scope`` at ``max_entries``.
+
+        Older points are removed when the limit is exceeded. Missing
+        ``timestamp`` values are treated as the oldest entries.
+        """
+
         flt = self._filter(principal, scope)
         points, _ = self.client.scroll(
             collection_name=self.collection,
@@ -115,7 +123,21 @@ class VectorStore:
     def query_text(
         self, query: str, n_results: int = 5
     ) -> Dict[str, List[List[str]]]:
-        """Return documents semantically similar to ``query``."""
+        """Return documents semantically similar to ``query``.
+
+        Args:
+            query: Input text to search for similar content.
+            n_results: Number of documents to return. Must be positive.
+
+        Returns:
+            Mapping with a ``documents`` key containing lists of texts.
+
+        Raises:
+            ValueError: If ``n_results`` is less than 1.
+        """
+        if n_results < 1:
+            raise ValueError("n_results must be positive")
+
         vector = _hash_embedding(query)
         hits = self.client.search(
             collection_name=self.collection,

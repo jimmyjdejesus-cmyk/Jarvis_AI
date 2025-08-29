@@ -146,8 +146,19 @@ File is quite long; consider archiving older entries soon.
 File: tests/test_knowledge_query_get.py
 ```
 ---
+## Agent Log 2025-09-07
+- Introduced in-memory Qdrant client and Redis stub in test configuration to remove external dependencies.
+- Ran flake8 and pytest for vector store tests.
 
-=======
+## Agent Log 2025-09-07
+- Added dictionary-based Redis stub and synced Qdrant test client API with upstream.
+- Expanded vector store tests with scope eviction case and reran flake8 and pytest.
+
+## Agent Log 2025-09-07
+- Improved docstrings for Redis and Qdrant stubs in `conftest.py` and added vector store tests for empty queries and invalid limits.
+- Executed flake8 on vector store modules and ran focused pytest suite.
+
+File is very long; subsequent entries recorded in `agent-2.md`.
 ## Agent Log 2025-09-07
 - Added PerformanceTracker unit tests covering success and failure retries.
 - Stubbed ecosystem and team agents in conftest to resolve import cycles.
