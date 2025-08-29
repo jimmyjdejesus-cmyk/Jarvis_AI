@@ -7,9 +7,9 @@ import subprocess
 import json
 import logging
 from typing import List, Optional, Generator
-from pathlib import Path
 from urllib.parse import urlparse
 
+# Import legacy model client (optional)
 
 try:
     from scripts.ollama_client import *

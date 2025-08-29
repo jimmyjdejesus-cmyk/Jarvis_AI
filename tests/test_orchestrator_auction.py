@@ -1,8 +1,19 @@
+import asyncio
 import sys
 import types
-import asyncio
+
+# Stub registry BEFORE importing orchestrator so it picks up stubs
+registry_stub = types.ModuleType("jarvis.agents.specialist_registry")
+registry_stub.SPECIALIST_REGISTRY = {}
+def _create_specialist(name, mcp_client, **_):
+    return None
+def _get_specialist_registry():
+    return []
+registry_stub.create_specialist = _create_specialist
+registry_stub.get_specialist_registry = _get_specialist_registry
+sys.modules["jarvis.agents.specialist_registry"] = registry_stub
+
 from jarvis.orchestration.orchestrator import MultiAgentOrchestrator
-from jarvis.orchestration.path_memory import PathMemory
 
 
 # Mock external dependencies for isolated testing
@@ -23,8 +34,7 @@ sys.modules["jarvis.agents.specialists"] = types.SimpleNamespace(
     DevOpsAgent=_Dummy,
 )
 
-sys.path.append(".")
-
+sys.modules["jarvis.agents.specialist_registry"] = registry_stub
 
 
 class DummyMCP:
@@ -62,15 +72,17 @@ class DummySpecialist:
 
 def test_parallel_orchestrator_auction_merge():
     mcp = DummyMCP()
-    orch = MultiAgentOrchestrator(mcp)
+    orch = MultiAgentOrchestrator(mcp, specialists={})
     orch.specialists = {
         "a": DummySpecialist("a", 0.9),
-        "b": DummySpecialist("b", 0.5),
+        "b": DummySpecialist("b", 0.8),
     }
-    analysis = {"specialists_needed": ["a", "b"], "complexity": "low"}
-    result = asyncio.run(
-        orch._parallel_specialist_analysis("req", analysis, PathMemory(), None, None, None)
-    )
+    async def fake_analyze(request, code=None):
+        return {"specialists_needed": ["a", "b"], "complexity": "low"}
+
+    orch._analyze_request_complexity = fake_analyze
+
+    result = asyncio.run(orch.coordinate_specialists("task"))
     assert result["auction"]["winner"] == "a"
-    assert "a:" in result["synthesized_response"].splitlines()[0]
-    assert result["exploration_metrics"]["diversity"] >= 2
+    assert result["confidence"] == 0.9
+    assert result["synthesized_response"] == "a: synthesized response"

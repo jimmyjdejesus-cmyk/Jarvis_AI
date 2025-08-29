@@ -1,6 +1,5 @@
 """Memory management utilities for Jarvis AI."""
 
-
 from __future__ import annotations
 
 from .quantum_memory import QuantumMemory
@@ -11,9 +10,17 @@ from .replay_memory import Experience, ReplayMemory
 # attempt to import the real implementation but fall back to lightweight stubs.
 try:  # pragma: no cover - simple import guard
     from .project_memory import MemoryManager, ProjectMemory
-    __all__ = ["Experience", "ReplayMemory", "MemoryManager", "ProjectMemory", "QuantumMemory"]
+    __all__ = [
+        "Experience",
+        "ReplayMemory",
+        "MemoryManager",
+        "ProjectMemory",
+        "QuantumMemory",
+    ]
 except Exception:  # pragma: no cover - used in minimal test environments
     class MemoryManager:  # type: ignore[misc]
+        """Stub for MemoryManager when dependencies are missing."""
+
         def add(self, *args, **kwargs):  # pragma: no cover - stub
             raise NotImplementedError
 
@@ -21,5 +28,8 @@ except Exception:  # pragma: no cover - used in minimal test environments
             raise NotImplementedError
 
     class ProjectMemory(MemoryManager):  # type: ignore[misc]
+        """Stub for ProjectMemory."""
+
         pass
+
     __all__ = ["Experience", "ReplayMemory", "QuantumMemory", "MemoryManager", "ProjectMemory"]

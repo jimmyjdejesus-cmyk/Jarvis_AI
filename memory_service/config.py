@@ -1,4 +1,3 @@
-# memory_service/config.py
 """
 Configuration for the Memory Service, particularly Redis connection settings.
 """

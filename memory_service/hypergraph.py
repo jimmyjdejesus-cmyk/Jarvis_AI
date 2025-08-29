@@ -1,4 +1,3 @@
-# memory_service/hypergraph.py
 """
 Core hypergraph logic using Redis as a backend.
 Manages nodes, hyperedges, and their connections.
@@ -8,7 +7,6 @@ import redis
 from .config import REDIS_HOST, REDIS_PORT, REDIS_DB, KEY_PREFIX, MEMORY_TTL
 from .models import Node, Hyperedge
 from typing import Optional, List
-
 
 class Hypergraph:
     """A Redis-backed hypergraph implementation."""

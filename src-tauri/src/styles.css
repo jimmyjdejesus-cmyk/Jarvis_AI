@@ -403,37 +403,32 @@ body {
   gap: var(--spacing-md);
 }
 
-.settings-section {
+.settings-tabs {
   display: flex;
-  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
-.settings-section label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.settings-section select,
-.settings-section input[type="number"],
-.settings-section input[type="range"] {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
+.settings-tabs button {
+  background: none;
+  border: none;
   color: var(--text-primary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: 4px;
-  font-size: var(--font-size-sm);
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
   cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
 }
 
-.checkbox-label input[type="checkbox"] {
-  margin: 0;
+.settings-tabs button.active {
+  border-bottom: 2px solid var(--accent-color);
+  font-weight: bold;
+}
+
+.team-section {
+  margin-bottom: var(--spacing-md);
+}
+
+.team-section.black-team {
+  border-left: 4px solid #000;
+  padding-left: var(--spacing-sm);
 }
 
 /* Chat Messages */
@@ -2143,4 +2138,26 @@ select:focus-visible {
   .cerebro-status-display {
     justify-content: center;
   }
+}
+
+/* Basic styles for login form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  margin: 100px auto;
+  gap: 8px;
+}
+
+.login-form input {
+  padding: 8px;
+}
+
+.login-form button {
+  padding: 8px;
+}
+
+.login-form .error-message {
+  color: #ff5555;
+  text-align: center;
 }

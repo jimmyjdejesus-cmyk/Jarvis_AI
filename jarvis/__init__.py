@@ -1,5 +1,5 @@
-"""
-Jarvis AI - Enhanced Core Package
+"""Jarvis AI - Enhanced Core Package
+
 Modern architecture with MCP, multi-agent, and advanced workflow capabilities.
 """
 
@@ -13,45 +13,44 @@ DEFAULT_MCP_ENABLED = True
 DEFAULT_MULTI_AGENT_ENABLED = True
 DEFAULT_WORKFLOWS_ENABLED = True  # Phase 4: Advanced Workflows!
 
-# Import with error handling - only working components
-try:
+# Optional imports guarded to keep import surface clean in minimal contexts
+try:  # pragma: no cover - optional dependencies
     from jarvis.core.simple_agent import JarvisAgent as SimpleJarvisAgent
-except ImportError:
-    SimpleJarvisAgent = None
+except Exception:  # pragma: no cover
+    SimpleJarvisAgent = None  # type: ignore
 
 try:
     from jarvis.core.enhanced_agent import EnhancedJarvisAgent
-except ImportError:
-    EnhancedJarvisAgent = None
+except Exception:
+    EnhancedJarvisAgent = None  # type: ignore
 
 try:
     from jarvis.core.mcp_agent import MCPJarvisAgent
-except ImportError:
-    MCPJarvisAgent = None
+except Exception:
+    MCPJarvisAgent = None  # type: ignore
 
 try:
     from jarvis.database.db_manager import DatabaseManager, get_database_manager
-except ImportError:
-    DatabaseManager = None
-    get_database_manager = None
+except Exception:
+    DatabaseManager = None  # type: ignore
+    get_database_manager = None  # type: ignore
 
 try:
     from jarvis.auth.security_manager import SecurityManager, get_security_manager
-except ImportError:
-    SecurityManager = None
-    get_security_manager = None
+except Exception:
+    SecurityManager = None  # type: ignore
+    get_security_manager = None  # type: ignore
+
 try:
     from jarvis.agents.coding_agent import CodingAgent
-except (ImportError, SyntaxError):  # pragma: no cover - optional dependency or syntax errors
-    CodingAgent = None
+except Exception:  # pragma: no cover - optional dependency or syntax errors
+    CodingAgent = None  # type: ignore
 
 try:
-    from jarvis.workflows.workflow_agent import WorkflowJarvisAgent, create_workflow_jarvis
-except ImportError:
-    WorkflowJarvisAgent = None
-    create_workflow_jarvis = None
-
-try:
+    from jarvis.workflows.workflow_agent import (
+        WorkflowJarvisAgent,
+        create_workflow_jarvis,
+    )
     from jarvis.workflows import (
         WorkflowEngine,
         create_workflow,
@@ -61,15 +60,13 @@ try:
         create_project_analysis_workflow,
         create_bug_fix_workflow,
     )
-except ImportError:
-    WorkflowEngine = None
-    WorkflowTemplates = None
-    create_workflow = None
-    create_code_review_workflow = None
-    create_deployment_workflow = None
-    create_project_analysis_workflow = None
-    create_bug_fix_workflow = None
-
-
-def get_jarvis_agent(
-    mode: str = "auto",
+except Exception:  # pragma: no cover
+    WorkflowJarvisAgent = None  # type: ignore
+    create_workflow_jarvis = None  # type: ignore
+    WorkflowEngine = None  # type: ignore
+    WorkflowTemplates = None  # type: ignore
+    create_workflow = None  # type: ignore
+    create_code_review_workflow = None  # type: ignore
+    create_deployment_workflow = None  # type: ignore
+    create_project_analysis_workflow = None  # type: ignore
+    create_bug_fix_workflow = None  # type: ignore

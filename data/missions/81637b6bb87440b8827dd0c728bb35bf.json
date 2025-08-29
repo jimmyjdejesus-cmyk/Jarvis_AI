@@ -1,0 +1,28 @@
+{
+  "id": "81637b6bb87440b8827dd0c728bb35bf",
+  "title": "test goal",
+  "goal": "test goal",
+  "inputs": {},
+  "risk_level": "low",
+  "dag": {
+    "mission_id": "81637b6bb87440b8827dd0c728bb35bf",
+    "nodes": {
+      "task_1": {
+        "step_id": "task_1",
+        "capability": "execution",
+        "team_scope": "core",
+        "details": "test goal",
+        "hitl_gate": false,
+        "deps": [],
+        "state": {
+          "status": "pending",
+          "started_at": null,
+          "completed_at": null,
+          "provenance": null
+        }
+      }
+    },
+    "edges": [],
+    "rationale": "LLM-generated plan"
+  }
+}
