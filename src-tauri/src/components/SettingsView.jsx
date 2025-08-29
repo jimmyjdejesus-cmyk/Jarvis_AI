@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
-import API_CONFIG, { setBackendBaseUrl, setApiKey, setServiceCredential, TEAM_SETTINGS, setTeamSetting } from '../config';
+import API_CONFIG, { setBackendBaseUrl, setApiKey as setConfigApiKey, setServiceCredential, TEAM_SETTINGS, setTeamSetting } from '../config';
+import { setApiKey as setMemoryApiKey } from '../apiKeyStore';
 
 const SettingsView = () => {
   const [backendUrl, updateBackendUrl] = useState(API_CONFIG.HTTP_BASE_URL);
@@ -26,7 +27,9 @@ const SettingsView = () => {
   const handleApiKeyChange = (e) => {
     const value = e.target.value;
     updateApiKey(value);
-    setApiKey(value);
+    // Persist to config/localStorage and in-memory store
+    setConfigApiKey(value);
+    setMemoryApiKey(value);
   };
 
   const handleNeo4jUriChange = (e) => {

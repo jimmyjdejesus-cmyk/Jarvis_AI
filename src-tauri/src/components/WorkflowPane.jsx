@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import GalaxyVisualization from './GalaxyVisualization';
 import { socket } from '../socket';
+import API_CONFIG, { getApiUrl } from '../config';
 
 const WorkflowPane = () => {
   const [viewMode, setViewMode] = useState('galaxy'); // 'galaxy' or 'traditional'
@@ -25,7 +26,7 @@ const WorkflowPane = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`http://localhost:8000/api/workflow/${sessionId}`, {
+      const response = await fetch(getApiUrl(`/api/workflow/${sessionId}`), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +143,7 @@ const WorkflowPane = () => {
   // Simulate workflow execution
   const simulateWorkflow = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/workflow/${sessionId}/simulate`, {
+      const response = await fetch(getApiUrl(`/api/workflow/${sessionId}/simulate`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -12,6 +12,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { socket } from '../socket';
+import API_CONFIG, { getApiUrl } from '../config';
 
 // Cerebro-Centric Galaxy Model: Hyper-dimensional visualization
 // Cerebro (Meta-Agent) -> Orchestrators (Dynamic Multi-Agent Systems) -> Agents -> Tasks/Simulations
@@ -474,7 +475,7 @@ const GalaxyVisualization = () => {
       setError(null);
       
       // Try to fetch real workflow data
-      const response = await fetch('http://localhost:8000/api/workflow/default-session');
+      const response = await fetch(getApiUrl('/api/workflow/default-session'));
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

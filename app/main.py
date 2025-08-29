@@ -8,9 +8,11 @@ import os
 import sys
 from pathlib import Path
 import secrets
-from typing import Dict
+from typing import Dict, Any, List, Optional, Set
+import asyncio
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 
@@ -36,6 +38,19 @@ except Exception:  # pragma: no cover
         pass
 
 app = FastAPI()
+
+# Allow the Vite dev server to access the API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "tauri://localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Exposed for tests to patch
 neo4j_graph = Neo4jGraph()
@@ -188,6 +203,110 @@ def create_mission(
 def get_health() -> dict:
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+# -----------------------
+# Realtime + Workflows (minimal)
+# -----------------------
+
+workflows_db: Dict[str, Dict[str, Any]] = {}
+
+
+class ConnectionManager:
+    def __init__(self) -> None:
+        self.active: Dict[str, WebSocket] = {}
+        self.sessions: Dict[str, Set[str]] = {}
+
+    async def connect(self, ws: WebSocket, client_id: str, session_id: Optional[str] = None) -> None:
+        await ws.accept()
+        self.active[client_id] = ws
+        if session_id:
+            self.sessions.setdefault(session_id, set()).add(client_id)
+
+    def disconnect(self, client_id: str) -> None:
+        self.active.pop(client_id, None)
+        for s in list(self.sessions.values()):
+            s.discard(client_id)
+
+    async def send(self, client_id: str, payload: Dict[str, Any]) -> None:
+        ws = self.active.get(client_id)
+        if ws:
+            await ws.send_json(payload)
+
+    async def broadcast_to_session(self, session_id: str, payload: Dict[str, Any]) -> None:
+        for cid in self.sessions.get(session_id, set()):
+            await self.send(cid, payload)
+
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws/{client_id}")
+async def ws_endpoint(websocket: WebSocket, client_id: str, session_id: Optional[str] = Query(None)) -> None:
+    await manager.connect(websocket, client_id, session_id)
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                import json as _json
+
+                msg = _json.loads(raw)
+            except Exception:
+                continue
+
+            mtype = msg.get("type")
+            data = msg.get("data", {})
+
+            if mtype == "ping":
+                await websocket.send_json({"type": "pong", "timestamp": os.times()[-1]})
+            elif mtype == "chat_message":
+                # Show quick thinking indicator then echo
+                await websocket.send_json({"type": "cerebro_thinking", "data": {"status": "thinking"}})
+                await asyncio.sleep(0.4)
+                user_msg = data.get("message") if isinstance(data, dict) else data
+                await websocket.send_json({"type": "chat_response", "data": {"message": f"Echo: {user_msg}"}})
+            elif mtype == "subscribe" and isinstance(data, dict):
+                sid = data.get("session_id")
+                if sid:
+                    manager.sessions.setdefault(sid, set()).add(client_id)
+    except WebSocketDisconnect:
+        manager.disconnect(client_id)
+
+
+@app.get("/api/workflow/{session_id}")
+def get_workflow(session_id: str) -> Dict[str, Any]:
+    wf = workflows_db.get(session_id)
+    if wf is None:
+        nodes = [
+            {"id": "start", "status": "completed"},
+            {"id": "analysis-1", "status": "running"},
+            {"id": "report-1", "status": "pending"},
+        ]
+        wf = {"session_id": session_id, "nodes": nodes, "edges": [["start", "analysis-1"], ["analysis-1", "report-1"]]}
+        workflows_db[session_id] = wf
+    return wf
+
+
+async def _simulate(session_id: str) -> None:
+    wf = get_workflow(session_id)
+    nodes: List[Dict[str, Any]] = wf["nodes"]
+    await asyncio.sleep(1)
+    for n in nodes:
+        if n["status"] == "running":
+            n["status"] = "completed"
+    for n in nodes:
+        if n["status"] == "pending":
+            n["status"] = "running"
+            break
+    await manager.broadcast_to_session(session_id, {"type": "workflow_updated", "data": wf})
+    await asyncio.sleep(1.5)
+    await manager.broadcast_to_session(session_id, {"type": "task_progress", "data": {"progress": 1.0}})
+
+
+@app.post("/api/workflow/{session_id}/simulate")
+async def simulate_workflow(session_id: str) -> Dict[str, Any]:
+    asyncio.create_task(_simulate(session_id))
+    return {"status": "started"}
 
 
 if __name__ == "__main__":
