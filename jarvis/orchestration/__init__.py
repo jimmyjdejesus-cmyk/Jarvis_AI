@@ -23,7 +23,13 @@ except (ImportError, ModuleNotFoundError):  # pragma: no cover
 from .path_memory import PathMemory
 from .message_bus import MessageBus, HierarchicalMessageBus, Event
 from .bandwidth_channel import BandwidthLimitedChannel
-from .black_team_orchestrator import BlackTeamOrchestrator
+
+# Some optional orchestrator variants depend on experimental ecosystem modules
+# that may not be available in all environments. Import defensively.
+try:  # pragma: no cover - optional import
+    from .black_team_orchestrator import BlackTeamOrchestrator
+except Exception:  # pragma: no cover
+    BlackTeamOrchestrator = None  # type: ignore
 
 # Optional imports for extended functionality
 try:  # pragma: no cover - optional import

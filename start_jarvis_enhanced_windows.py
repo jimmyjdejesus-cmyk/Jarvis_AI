@@ -148,8 +148,8 @@ def start_backend_windows():
         # Start the backend server in a new console window
         print("🚀 Starting FastAPI server on http://localhost:8000...")
         process = subprocess.Popen(
-            [sys.executable, "main.py"],
-            cwd=backend_path,
+            [sys.executable, "-m", "app.main"],
+            cwd=backend_path.parent,
             shell=False,
             creationflags=subprocess.CREATE_NEW_CONSOLE
         )

@@ -36,7 +36,7 @@ def start_backend():
         
         # Start the backend server
         print("🚀 Starting FastAPI server on http://localhost:8000...")
-        subprocess.run([sys.executable, "main.py"], cwd=backend_path)
+        subprocess.run([sys.executable, "-m", "app.main"], cwd=backend_path.parent)
         
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to start backend: {e}")

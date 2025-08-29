@@ -18,7 +18,7 @@ from collections import defaultdict, deque
 
 # Import all Phase 5 components
 from .meta_intelligence import (
-    MetaIntelligenceCore, AgentCapability, SystemHealth,
+    ExecutiveAgent, AgentCapability, SystemHealth,
     meta_intelligence
 )
 from .learning_engine import (

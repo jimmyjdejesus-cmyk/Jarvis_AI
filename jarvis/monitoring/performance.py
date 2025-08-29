@@ -1,6 +1,6 @@
 """Simple performance tracking utilities used in tests."""
 
-from dataclasses import datacass, field
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
 from config.config_loader import load_config

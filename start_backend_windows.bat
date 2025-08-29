@@ -23,10 +23,10 @@ if not exist "app" (
     exit /b 1
 )
 
-cd app
+REM Running from project root (no cd)
 
 REM Check if main.py exists
-if not exist "main.py" (
+if not exist "app\main.py" (
     echo ❌ main.py not found in app directory!
     pause
     exit /b 1
@@ -40,7 +40,7 @@ echo ⚠️ Keep this window open - closing it will stop the backend
 echo 🛑 Press Ctrl+C to stop the server
 echo.
 
-REM Start the backend
-python main.py
+REM Start the backend (run package module from project root)
+python -m app.main
 
 pause

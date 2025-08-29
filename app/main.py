@@ -5,6 +5,8 @@ Minimal FastAPI application exposing knowledge graph and mission endpoints.
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 import secrets
 from typing import Dict
 
@@ -14,6 +16,13 @@ from pydantic import BaseModel, Field
 
 from .auth import Token, login_for_access_token, role_required
 from .knowledge_graph import knowledge_graph
+
+# Ensure project root is on sys.path when running from the app directory
+_app_dir = Path(__file__).resolve().parent
+_project_root = _app_dir.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
 from jarvis.orchestration.mission import Mission, save_mission
 from jarvis.orchestration.mission_planner import MissionPlanner
 from jarvis.world_model.neo4j_graph import Neo4jGraph
@@ -101,3 +110,14 @@ def create_mission(
 def get_health() -> dict:
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+if __name__ == "__main__":
+    # Run the FastAPI app via Uvicorn when executed directly
+    import os as _os
+    import uvicorn as _uvicorn
+
+    _host = _os.environ.get("JARVIS_BACKEND_HOST", "127.0.0.1")
+    _port = int(_os.environ.get("JARVIS_BACKEND_PORT", "8000"))
+
+    _uvicorn.run(app, host=_host, port=_port)

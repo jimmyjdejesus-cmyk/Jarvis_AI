@@ -125,14 +125,14 @@ def start_backend():
         if os.name == 'nt':  # Windows
             # On Windows, create a new console window for the backend
             process = subprocess.Popen(
-                [sys.executable, "main.py"],
-                cwd=backend_path,
+                [sys.executable, "-m", "app.main"],
+                cwd=backend_path.parent,
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )
         else:  # Unix/Linux/macOS
             process = subprocess.Popen(
-                [sys.executable, "main.py"],
-                cwd=backend_path
+                [sys.executable, "-m", "app.main"],
+                cwd=backend_path.parent
             )
         
         # Give it a moment to start

@@ -1,3 +1,4 @@
 {
-    "CodeGPT.apiKey": "Ollama"
+    "CodeGPT.apiKey": "Ollama",
+    "chatgpt.openOnStartup": false
 }

@@ -38,8 +38,8 @@ echo ⚠️ Keep this window open - closing it will stop the backend server
 echo 🛑 Press Ctrl+C to stop the server
 echo.
 
-cd app
-python main.py
+REM Start the backend (run package module from project root)
+python -m app.main
 
 pause
 
