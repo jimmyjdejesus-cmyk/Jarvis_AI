@@ -8,9 +8,6 @@ ENABLE_BLUE_TEAM: true
 # Route curiosity-generated questions into the directive queue
 ENABLE_CURIOSITY_ROUTING: true
 
-# Route curiosity-generated questions into the directive queue
-ENABLE_CURIOSITY_ROUTING: true
-
 orch:
   min_novelty: 0.25
   min_growth: 0.0
@@ -48,9 +45,9 @@ backend:
   redis_enabled: false
   redis_url: "redis://localhost:6379"
 
-# Authentication defaults
+# Authentication configuration
 auth:
-  secret_key: "change_me"
+  secret_key: "CHANGE_ME"
   algorithm: "HS256"
   access_token_expire_minutes: 30
 
@@ -60,12 +57,6 @@ logging:
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   real_time_streaming: true
 
-# Authentication configuration
-auth:
-  secret_key: "CHANGE_ME"
-  algorithm: "HS256"
-  access_token_expire_minutes: 30
-
 # Neo4j Database Connection
 neo4j:
   uri: null       # retrieved from keyring service "jarvis"
@@ -73,3 +64,22 @@ neo4j:
   password: null  # retrieved from keyring service "jarvis"
   # For production, store credentials in the OS keyring and rotate them
   # regularly rather than committing them to configuration files.
+
+# Monitoring configuration
+monitoring:
+  default_severity: low
+  default_credibility: 1.0
+  unknown_severity_weight: 1
+  # Maximum number of feedback examples retained per severity group
+  max_examples: 2
+  # Maximum number of severity groups included in synthesized summaries
+  max_summary_groups: null
+  # Minimum total score required for a severity group to appear in summaries
+  summary_score_threshold: null
+  # Minimum fraction of the highest group score required for inclusion
+  summary_score_ratio: null
+  severity_weights:
+    low: 1
+    medium: 2
+    high: 3
+    critical: 4

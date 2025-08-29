@@ -1,3 +1,4 @@
+```batch
 @echo off
 echo 🚀 Starting Jarvis AI Backend Server
 echo ========================================
@@ -5,7 +6,7 @@ echo ========================================
 REM Check if Python is available
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ Python not found. Please install Python from https://python.org/
+    echo ❌ Python not found. Please install Python from [https://python.org/](https://python.org/)
     pause
     exit /b 1
 )
@@ -41,3 +42,8 @@ cd app
 python main.py
 
 pause
+
+
+
+
+

@@ -21,6 +21,13 @@ sys.modules.setdefault(
 )
 sys.modules["jarvis.world_model.neo4j_graph"] = neo_module
 
+sys.modules.setdefault(
+    "jarvis.workflows", types.ModuleType("jarvis.workflows")
+)
+workflows_engine = types.ModuleType("jarvis.workflows.engine")
+workflows_engine.workflow_engine = object()
+sys.modules["jarvis.workflows.engine"] = workflows_engine
+
 from app.main import app  # noqa: E402
 
 client = TestClient(app)

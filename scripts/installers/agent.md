@@ -11,3 +11,17 @@ Updated installer scripts to pass through arguments for new CLI run subcommand.
 Files: install-windows.bat, install-unix.sh
 ```
 ---
+
+## Agent Interaction
+**Timestamp:** 2025-09-07T00:00:00Z
+**Agent ID:** openai-assistant
+**Team:** scripts/installers
+**Action/Message:**
+```
+Removed trailing whitespace in install-unix.sh.
+```
+**Associated Data:**
+```
+Files: install-unix.sh
+```
+---
