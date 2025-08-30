@@ -1,8 +1,10 @@
-"""Configuration settings for the local Meta-Agent project."""
+# config.py
 
-# --- Model Configuration ---
-# Download a GGUF model (e.g., from Hugging Face) and place it in the 'models' folder.
-# Recommended starter model: Phi-3-mini-4k-instruct-q4.gguf
-MODEL_PATH = "./models/your_model_name.gguf"
+# CRITICAL: Make sure this filename is EXACTLY correct.
+MODEL_PATH = "Jarvis_Local\models\Phi-4-mini-instruct.Q4_K_M.gguf"
 
-# --- Add other configurations as needed ---
+# This MUST be 0 for CPU only setup, -1 to offload to GPU(if available)
+N_GPU_LAYERS = 0
+
+# The context window of the model.
+N_CTX = 4096
