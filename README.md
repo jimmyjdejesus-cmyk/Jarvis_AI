@@ -1,0 +1,1 @@
+Project J.A.R.V.I.S. is an advanced, local-first AI system featuring a central Meta-Agent that orchestrates multiple specialist LLMs. The architecture is designed for optimizing and coordinating both local and cloud-based models to achieve complex reasoning and task automation, drawing on concepts like a centralized message bus, multi-agent critics, and a simulation engine.
