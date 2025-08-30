@@ -1,8 +1,0 @@
-{
-  "plugins": [
-    "sample_tool",
-    "sample_specialist",
-    "sample_critic",
-    "sample_crew"
-  ]
-}
