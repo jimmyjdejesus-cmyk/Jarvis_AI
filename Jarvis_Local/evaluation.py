@@ -7,9 +7,21 @@ from logger_config import log
 # The validator function takes the model's response and returns True (pass) or False (fail).
 TEST_SUITE = [
     {
-        "name": "Simple Reasoning",
-        "prompt": "If a train leaves City A at 8 AM traveling at 60 mph, and a car leaves City A at 9 AM traveling at 70 mph in the same direction, at what time will the car catch up to the train?",
-        "validator": lambda response: "12 PM" in response or "noon" in response.lower()
+        "name": "Forceful Chain of Though (CoT)",
+        # In evaluation.py
+"prompt": """
+You are a meticulous logic and math expert. Your task is to solve the following problem by thinking step-by-step.
+1.  First, identify the known variables.
+2.  Second, calculate the head start of the first vehicle.
+3.  Third, calculate the difference in speed (relative speed).
+4.  Fourth, use the head start and relative speed to determine the time to catch up.
+5.  Finally, add that time to the second vehicle's departure time to find the final answer.
+
+Problem: A train leaves City A at 8 AM traveling at 60 mph, and a car leaves City A at 9 AM traveling at 70 mph in the same direction. At what time will the car catch up to the train?
+
+Begin your step-by-step thinking now.
+""",
+        "validator": lambda response: "3" in response and "PM" in response or "3:00" in response.lower()
     },
     {
         "name": "Basic Code Generation",
