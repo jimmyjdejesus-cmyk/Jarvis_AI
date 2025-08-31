@@ -8,19 +8,19 @@ from logger_config import log
 TEST_SUITE = [
     {
         "name": "Forceful Chain of Though (CoT)",
-        # In evaluation.py
-"prompt": """
-You are a meticulous logic and math expert. Your task is to solve the following problem by thinking step-by-step.
-1.  First, identify the known variables.
-2.  Second, calculate the head start of the first vehicle.
-3.  Third, calculate the difference in speed (relative speed).
-4.  Fourth, use the head start and relative speed to determine the time to catch up.
-5.  Finally, add that time to the second vehicle's departure time to find the final answer.
+        "prompt": 
+        """
+        You are a meticulous logic and math expert. Your task is to solve the following problem by thinking step-by-step.
+        1.  First, identify the known variables.
+        2.  Second, calculate the head start of the first vehicle.
+        3.  Third, calculate the difference in speed (relative speed).
+        4.  Fourth, use the head start and relative speed to determine the time to catch up.
+        5.  Finally, add that time to the second vehicle's departure time to find the final answer.
 
-Problem: A train leaves City A at 8 AM traveling at 60 mph, and a car leaves City A at 9 AM traveling at 70 mph in the same direction. At what time will the car catch up to the train?
+        Problem: A train leaves City A at 8 AM traveling at 60 mph, and a car leaves City A at 9 AM traveling at 70 mph in the same direction. At what time will the car catch up to the train?
 
-Begin your step-by-step thinking now.
-""",
+        Begin your step-by-step thinking now.
+        """,
         "validator": lambda response: "3" in response and "PM" in response or "3:00" in response.lower()
     },
     {
@@ -32,6 +32,11 @@ Begin your step-by-step thinking now.
         "name": "Instruction Following",
         "prompt": "Respond to this question with a single word: What is the capital of France?",
         "validator": lambda response: len(response.split()) <= 2 and "paris" in response.lower()
+    },
+    {
+        "name": "Specialist Code Test",
+        "prompt": "Please write a python script that prints the numbers from 1 to 10.",
+        "validator": lambda response: "for i in range" in response and "print(i)" in response
     },
     # ... Add more tests as you think of them ...
 ]
