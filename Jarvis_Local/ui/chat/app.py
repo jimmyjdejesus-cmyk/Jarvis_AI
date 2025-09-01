@@ -2,25 +2,51 @@
 import tkinter as tk
 from tkinter import scrolledtext, Entry, Button, Frame
 from threading import Thread
-import config
 from orchestrator import Orchestrator
-from evaluation import run_evaluation
+from tools.autotune import find_optimal_threshold
 from logger_config import log
 
 class ChatApplication(Frame):
-    """Simple Tkinter chat interface for interacting with the Meta-Agent."""
-
     def __init__(self, master=None):
         super().__init__(master)
         self.master = master
         self.master.title("J.A.R.V.I.S. Local Console")
         self.pack(pady=10, padx=10)
+
+        # --- This now calls the single, correct widget creation method ---
         self.create_widgets()
 
         # Initialize the backend orchestrator
         self.orchestrator = Orchestrator()
         self.add_message("J.A.R.V.I.S.: Meta-Agent online. How can I help you?")
 
+    def create_widgets(self):
+        """Create all UI elements for the application."""
+        self.chat_log = scrolledtext.ScrolledText(self, state='disabled', height=25, width=80, wrap=tk.WORD)
+        self.chat_log.pack(pady=5)
+
+        self.entry_box = Entry(self, width=80)
+        self.entry_box.pack(pady=5)
+        self.entry_box.bind("<Return>", self.send_message_event)
+
+        button_frame = Frame(self)
+        button_frame.pack(pady=5)
+
+        self.send_button = Button(button_frame, text="Send", command=self.send_message)
+        self.send_button.pack(side=tk.LEFT, padx=5)
+
+        # --- The command should call a method on the class instance (self) ---
+        self.autotune_button = Button(button_frame, text="Auto-Tune Confidence", command=self.start_autotune)
+        self.autotune_button.pack(side=tk.LEFT, padx=5)
+
+    def start_autotune(self):
+        """Launches the auto-tuner in a background thread."""
+        self.add_message("J.A.R.V.I.S.: Starting auto-tuner in the background...")
+        # The target is the imported function, and we pass a method of our
+        # class instance (self.add_message) as the callback.
+        autotune_thread = Thread(target=find_optimal_threshold, args=(self.add_message,))
+        autotune_thread.start()
+        
     def create_widgets(self):
         """Create chat log, entry box, and send button."""
         self.chat_log = scrolledtext.ScrolledText(self, state='disabled', height=25, width=80, wrap=tk.WORD)

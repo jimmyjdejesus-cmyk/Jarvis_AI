@@ -44,7 +44,8 @@ TEST_SUITE = [
 def run_evaluation():
     log.info("--- STARTING EVALUATION HARNESS ---")
     orchestrator = Orchestrator()
-
+    
+    total_token_cost = 0
     passed_count = 0
     failed_tests = []
     total_count = len(TEST_SUITE)
@@ -56,8 +57,9 @@ def run_evaluation():
 
         log.info(f"--- Running Test {i+1}/{total_count}: {test_name} ---")
 
-        # Get the response from your agent
-        response = orchestrator.handle_request(prompt)
+        # Get the response and token cost from orchestrator
+        response, tokens_used = orchestrator.handle_request(prompt)
+        total_token_cost += tokens_used
 
         # Validate the response
         try:
@@ -68,22 +70,22 @@ def run_evaluation():
             else:
                 log.warning(f"--- RESULT: FAILED ---")
                 log.warning(f"   - Response was: {response}")
-                failed_tests.append(test["name"]) 
-
+                failed_tests.append(test_name) 
         except Exception as e:
             log.error(f"--- RESULT: ERROR ---")
             log.error(f"   - Validator function failed with error: {e}")
             log.error(f"   - Response was: {response}")
-            failed_tests.append(test["name"])
+            failed_tests.append(test_name)
 
     log.info("--- EVALUATION HARNESS COMPLETE ---")
-    log.info(f"--- FINAL SCORE: {passed_count} / {total_count} PASSED ---")
+    log.info(f"--- FINAL SCORE: {passed_count} / {total_count} | Total Token Cost: {total_token_cost} ---")
 
     # --- Returning a dictionary with results ---
     return {
         "passed": passed_count,
         "total" : total_count,
-        "failed": failed_tests
+        "failed": failed_tests,
+        "total_tokens": total_token_cost
     }
 
 if __name__ == "__main__":
