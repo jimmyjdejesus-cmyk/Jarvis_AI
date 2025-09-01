@@ -80,8 +80,8 @@ class ChatApplication(Frame):
 
     def get_agent_response(self, user_input):
         """Fetch response from the orchestrator in a background thread."""
-        response = self.orchestrator.handle_request(user_input)
-        self.add_message(f"J.A.R.V.I.S.: {response}")
+        response_text, tokens_used  = self.orchestrator.handle_request(user_input)
+        self.add_message(f"J.A.R.V.I.S.: {response_text} (Tokens used: {tokens_used})")
 
         # Re-enable input
         self.entry_box.config(state='normal')
