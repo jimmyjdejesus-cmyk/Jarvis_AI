@@ -1,0 +1,23 @@
+2025-08-31 15:52:21,505 - J.A.R.V.I.S. - INFO - Starting J.A.R.V.I.S. application...
+2025-08-31 15:52:21,722 - J.A.R.V.I.S. - INFO - Initializing Orchestrator and its agents...
+2025-08-31 15:52:29,389 - J.A.R.V.I.S. - INFO - Model loaded for agent with persona: MetaAgent
+2025-08-31 15:52:41,130 - J.A.R.V.I.S. - INFO - Model loaded for agent with persona: CodingAgent
+2025-08-31 15:52:41,132 - J.A.R.V.I.S. - INFO - Orchestrator initialization complete.
+2025-08-31 15:52:48,423 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Hi jarv'
+2025-08-31 15:52:48,424 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-08-31 15:52:48,424 - J.A.R.V.I.S. - INFO - Invoking model with streaming for MetaAgent...
+2025-08-31 15:53:20,555 - J.A.R.V.I.S. - INFO - Model inference complete.
+2025-08-31 15:53:20,566 - J.A.R.V.I.S. - INFO - Orchestrator processed request and received response.
+2025-08-31 15:53:26,395 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'explain agi to me'
+2025-08-31 15:53:26,398 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-08-31 15:53:26,398 - J.A.R.V.I.S. - INFO - Invoking model with streaming for MetaAgent...
+2025-08-31 15:54:02,376 - J.A.R.V.I.S. - WARNING - Stopping early! Group confidence 0.2214 fell below threshold 10.0
+2025-08-31 15:54:02,431 - J.A.R.V.I.S. - INFO - Model inference complete.
+2025-08-31 15:54:02,768 - J.A.R.V.I.S. - INFO - Orchestrator processed request and received response.
+2025-08-31 15:55:09,321 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'how would that look in reality? can you be detailed?'
+2025-08-31 15:55:09,332 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-08-31 15:55:09,333 - J.A.R.V.I.S. - INFO - Invoking model with streaming for MetaAgent...
+2025-08-31 15:56:01,750 - J.A.R.V.I.S. - WARNING - Stopping early! Group confidence 0.6443 fell below threshold 10.0
+2025-08-31 15:56:01,781 - J.A.R.V.I.S. - INFO - Model inference complete.
+2025-08-31 15:56:01,886 - J.A.R.V.I.S. - INFO - Orchestrator processed request and received response.
+2025-08-31 16:00:52,352 - J.A.R.V.I.S. - INFO - J.A.R.V.I.S. application closed.
