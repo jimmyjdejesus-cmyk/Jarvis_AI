@@ -5,13 +5,14 @@ import settings
 from logger_config import log
 
 class SettingsPanel(ttk.Frame):
-    def __init__(self, master, autotune_callback, log_viewer_callback, save_model_callback):
+    def __init__(self, master, autotune_callback, log_viewer_callback, save_model_callback, run_evaluation_callback):
         super().__init__(master, padding=10)
         
         # Store callbacks from the main window
         self.autotune_callback = autotune_callback
         self.log_viewer_callback = log_viewer_callback
         self.save_model_callback = save_model_callback
+        self.run_evaluation_callback = run_evaluation_callback
 
         ttk.Label(self, text="Agent Controls", font=("Helvetica", 12, "bold")).pack(pady=5, anchor="w")
 
@@ -41,12 +42,39 @@ class SettingsPanel(ttk.Frame):
         ttk.Label(self, text="Developer Tools", font=("Helvetica", 12, "bold")).pack(pady=(20,5), anchor="w")
         ttk.Button(self, text="Auto-Tune Confidence", command=self.autotune_callback).pack(fill="x", padx=5, pady=5)
         ttk.Button(self, text="View Dev Log", command=self.log_viewer_callback).pack(fill="x", padx=5, pady=5)
+        ttk.Button(self, text="Run Evaluation", command=self.run_evaluation_callback).pack(fill="x", padx=5, pady=5)
+
+        # --- Model Optimization Settings ---
+        ttk.Label(self, text="Model Optimization", font=("Helvetica", 12, "bold")).pack(pady=(20,5), anchor="w")
+        
+        # N_GPU_LAYERS
+        ttk.Label(self, text="GPU Layers:").pack(anchor="w", padx=5)
+        self.gpu_layers_var = tk.IntVar(value=settings.N_GPU_LAYERS)
+        ttk.Spinbox(self, from_=-1, to=100, textvariable=self.gpu_layers_var, command=self._update_settings).pack(fill="x", padx=5, pady=2)
+        
+        # N_THREADS
+        ttk.Label(self, text="Threads:").pack(anchor="w", padx=5)
+        self.threads_var = tk.IntVar(value=settings.N_THREADS)
+        ttk.Spinbox(self, from_=1, to=16, textvariable=self.threads_var, command=self._update_settings).pack(fill="x", padx=5, pady=2)
+        
+        # N_CTX
+        ttk.Label(self, text="Context Size:").pack(anchor="w", padx=5)
+        self.ctx_var = tk.IntVar(value=settings.N_CTX)
+        ttk.Spinbox(self, from_=512, to=8192, textvariable=self.ctx_var, command=self._update_settings).pack(fill="x", padx=5, pady=2)
+        
+        # VERBOSE
+        self.verbose_var = tk.BooleanVar(value=settings.VERBOSE)
+        ttk.Checkbutton(self, text="Verbose Logging", variable=self.verbose_var, command=self._update_settings).pack(anchor="w", padx=5, pady=10)
 
     def _update_settings(self, *args):
         """Called whenever a UI control is changed to update the live settings."""
         settings.NUM_RESPONSES = self.voting_runs_var.get()
         settings.DEEPCONF_ENABLED = self.deepconf_enabled_var.get()
         settings.CONFIDENCE_THRESHOLD = self.confidence_var.get()
+        settings.N_GPU_LAYERS = self.gpu_layers_var.get()
+        settings.N_THREADS = self.threads_var.get()
+        settings.N_CTX = self.ctx_var.get()
+        settings.VERBOSE = self.verbose_var.get()
         self.confidence_label.config(text=f"{settings.CONFIDENCE_THRESHOLD:.2f}")
         log.info(f"Settings updated via UI.")
 

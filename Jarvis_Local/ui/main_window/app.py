@@ -30,7 +30,8 @@ class MainWindow(tk.Frame):
             paned_window, 
             autotune_callback=self.start_autotune,
             log_viewer_callback=self.open_log_viewer,
-            save_model_callback=self.save_model_choice
+            save_model_callback=self.save_model_choice,
+            run_evaluation_callback=self.run_evaluation
         )
         paned_window.add(self.settings_panel, weight=1)
 
@@ -70,6 +71,20 @@ class MainWindow(tk.Frame):
         with open("active_model.cfg", "w") as f:
             f.write(model_name)
         self.add_message_to_chat(f"Model selection saved to '{model_name}'. Please restart the application to apply.")
+
+    def run_evaluation(self):
+        """Runs the evaluation suite and displays results."""
+        self.add_message_to_chat("J.A.R.V.I.S.: Running evaluation...")
+        thread = Thread(target=self._run_evaluation_thread)
+        thread.start()
+
+    def _run_evaluation_thread(self):
+        from evaluation import run_evaluation
+        results = run_evaluation()
+        message = f"Evaluation Complete: {results['passed']}/{results['total']} passed. Tokens: {results['total_tokens']}"
+        if results['failed']:
+            message += f" Failed: {', '.join(results['failed'])}"
+        self.add_message_to_chat(f"J.A.R.V.I.S.: {message}")
 
     def add_message_to_chat(self, message):
         self.master.after(0, self.chat_panel.add_message, message)
