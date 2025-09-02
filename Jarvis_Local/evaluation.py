@@ -21,7 +21,7 @@ TEST_SUITE = [
 
         Begin your step-by-step thinking now.
         """,
-        "validator": lambda response: "3" in response and "PM" in response or "3:00" in response.lower()
+        "validator": lambda response: "3 pm" in response.lower() or "3:00" in response
     },
     {
         "name": "Basic Code Generation",
