@@ -2,17 +2,34 @@ from agents.meta_agent.agent import MetaAgent
 from agents.specialists.coding_specialist.agent import CodingAgent
 from logger_config import log
 from collections import defaultdict
+import settings
+from llama_cpp import Llama
+
 
 class Orchestrator:
     def __init__(self):
-        log.info("Initializing Orchestrator and its agents...")
-        # Note: This loads the model twice. We will optimize this later.
-        self.meta_agent = MetaAgent()
-        self.coding_agent = CodingAgent(shared_llm_instance=self.meta_agent.llm)
+        log.info("Initializing Orchestrator...")
+        llm_instance = None
+        try:
+           llm_instance = Llama(
+               model_path=settings.get_active_model_path(),
+               n_ctx=settings.N_CTX,
+               n_gpu_layers=settings.N_GPU_LAYERS,
+               logits_all=True,
+               n_threads=settings.N_THREADS,
+               verbose=settings.VERBOSE
+           )
+           log.info(f"Primary Model loaded successfully by Orchestrator.")
+        except Exception:
+           llm_instance = None
+           log.error("Orchestrator failed to load model!", exc_info=True)
+
+        self.meta_agent = MetaAgent(llm_instance=llm_instance)
+        self.coding_agent = CodingAgent(llm_instance=llm_instance)
         self.history = []
         log.info("Orchestrator initialization complete, agents sharing 1 model")
 
-    def handle_request(self, user_input, num_responses=3):  # Add parameter with default
+    def handle_request(self, user_input):  # Add parameter with default
         log.info(f"Orchestrator received request: '{user_input}'")
         active_agent = None
         
@@ -29,8 +46,8 @@ class Orchestrator:
         
         # -- Generate multiple responses -- 
         responses_data = []
-        for i in range(num_responses):
-            log.info(f"Generating candidate {i+1}/{num_responses}...")
+        for i in range(settings.NUM_RESPONSES):
+            log.info(f"Generating candidate {i+1}/{settings.NUM_RESPONSES}...")
             responses_data.append(active_agent.invoke(user_input))
 
         # -- Perform Confidence-Weighted Voting --

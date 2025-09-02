@@ -3,8 +3,8 @@ from logger_config import log
 # This prompt could benefit from abstracting the language to a variable, e.g. `programming_language` 
 
 class CodingAgent(BaseAgent):
-    def __init__(self, shared_llm_instance=None):
-        super().__init__(shared_llm_instance)
+    def __init__(self, llm_instance=None):
+        super().__init__(llm_instance=llm_instance)
         # Override parents init method
         self.system_prompt = (
             "You are an expert Python programmer. Your task is to provide clean, "
@@ -15,4 +15,4 @@ class CodingAgent(BaseAgent):
         else:
             log.error("CodingAgent initialized without a shared LLM instance.")
 
-        super().__init__(system_prompt=self.system_prompt)
+        super().__init__(system_prompt=self.system_prompt, llm_instance=llm_instance)

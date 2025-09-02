@@ -1,21 +1,26 @@
 # settings.py
+import platform
 
 # --- Live, Mutable Settings ---
-
-# Voting Configuration
-NUM_RESPONSES = 1
-
-# Deep Thinking w/ Confidence
+NUM_RESPONSES = 3
 DEEPCONF_ENABLED = True
-CONFIDENCE_THRESHOLD = 1.0
+CONFIDENCE_THRESHOLD = 3.0 # Start with a reasonable default
 
-N_GPU_LAYERS = -1
+# --- Model Configuration ---
+# Define your models here
+AVAILABLE_MODELS = {
+    "gemma3-1b": "Jarvis_Local/models/gemma-3-1b-it-Q4_K_M.gguf",
+    "Jan-v1-4b": "Jarvis_Local/models/Jan-v1-4B-Q6_K.gguf"
+}
+
+ACTIVE_MODEL_NAME = list(AVAILABLE_MODELS.keys())[0]  # Default to the first model
+
+# --- Hardware Configuration ---
+def get_active_model_path():
+    return AVAILABLE_MODELS[ACTIVE_MODEL_NAME]
+
+N_GPU_LAYERS = -1 # Full GPU offload for desktop
 N_THREADS = 8
 
-AVAILABLE_MODELS = [
-    "gemma-3-1b-it-Q4_K_M.gguf",
-
-]
-
-N_CTX = 2048  # Adjust as needed for your model
-ACTIVE_MODEL_PATH = f"Jarvis_Local/models/{AVAILABLE_MODELS[0]}"
+N_CTX = 2048
+VERBOSE = False
