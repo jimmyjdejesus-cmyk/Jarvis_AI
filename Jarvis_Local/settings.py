@@ -2,9 +2,9 @@
 import platform
 
 # --- Live, Mutable Settings ---
-NUM_RESPONSES = 3
+NUM_RESPONSES = 2
 DEEPCONF_ENABLED = True
-CONFIDENCE_THRESHOLD = 3.0 # Start with a reasonable default
+CONFIDENCE_THRESHOLD = 0.21 # Start with a reasonable default
 
 # --- Model Configuration ---
 # Define your models here

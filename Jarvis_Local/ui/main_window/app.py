@@ -8,6 +8,7 @@ from ui.components.chat_panel.app import ChatPanel
 from ui.components.settings_panel.settings_panel import SettingsPanel
 from ui.components.log_viewer.log_viewer import LogViewerWindow
 import settings
+from tools import key_manager
 
 class MainWindow(tk.Frame):
     def __init__(self, master):
@@ -31,7 +32,8 @@ class MainWindow(tk.Frame):
             autotune_callback=self.start_autotune,
             log_viewer_callback=self.open_log_viewer,
             save_model_callback=self.save_model_choice,
-            run_evaluation_callback=self.run_evaluation
+            run_evaluation_callback=self.run_evaluation,
+            save_api_key_callback=self.save_api_key
         )
         paned_window.add(self.settings_panel, weight=1)
 
@@ -40,6 +42,12 @@ class MainWindow(tk.Frame):
         paned_window.add(self.chat_panel, weight=3)
 
         self.chat_panel.add_message(f"J.A.R.V.I.S.: Online. Model: {settings.ACTIVE_MODEL_NAME}")
+
+    def save_api_key(self, api_key):
+        if key_manager.save_api_key(api_key):
+           self.add_message_to_chat("J.A.R.V.I.S.: API key saved successfully.")
+        else:
+           self.add_message_to_chat("J.A.R.V.I.S.: ERROR Failed to save API key.")
 
     def handle_send_message(self, user_input):
         self.chat_panel.add_message(f"You: {user_input}")

@@ -1,65 +1,35 @@
-2025-09-02 09:57:40,549 - J.A.R.V.I.S. - INFO - Starting J.A.R.V.I.S. application...
-2025-09-02 09:57:40,609 - J.A.R.V.I.S. - INFO - Initializing Orchestrator...
-2025-09-02 09:57:41,090 - J.A.R.V.I.S. - INFO - Primary Model loaded successfully by Orchestrator.
-2025-09-02 09:57:41,091 - J.A.R.V.I.S. - INFO - Agent MetaAgent initialized using a shared model instance.
-2025-09-02 09:57:41,091 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
-2025-09-02 09:57:41,091 - J.A.R.V.I.S. - INFO - CodingAgent initialized sharing LLM.
-2025-09-02 09:57:41,091 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
-2025-09-02 09:57:41,091 - J.A.R.V.I.S. - INFO - Orchestrator initialization complete, agents sharing 1 model
-2025-09-02 10:11:07,036 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,444 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,476 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,484 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,504 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,508 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,515 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,540 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,548 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,563 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,603 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,636 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,651 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,868 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,876 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:09,916 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,188 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,227 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,299 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,324 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,339 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,380 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,435 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,460 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,604 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,835 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,844 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,860 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:10,891 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:11,163 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:11,180 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:11,196 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:11,812 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:12,221 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:12,268 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:14,316 - J.A.R.V.I.S. - INFO - Settings updated via UI.
-2025-09-02 10:11:17,098 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'hello'. Generating 2 candidates for voting.
-2025-09-02 10:11:17,098 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
-2025-09-02 10:11:17,098 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
-2025-09-02 10:12:14,871 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 320 | Avg Conf: 0.4257 | Group Low: 0.1994 | Single Low: -0.0000
-2025-09-02 10:12:14,871 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
-2025-09-02 10:13:10,819 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 319 | Avg Conf: 0.3697 | Group Low: 0.2416 | Single Low: -0.0000
-2025-09-02 10:13:10,819 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
-2025-09-02 10:13:10,820 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.2416
-2025-09-02 10:18:23,550 - J.A.R.V.I.S. - INFO - --- STARTING EVALUATION HARNESS ---
-2025-09-02 10:18:23,551 - J.A.R.V.I.S. - INFO - Initializing Orchestrator...
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - Primary Model loaded successfully by Orchestrator.
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - Agent MetaAgent initialized using a shared model instance.
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - CodingAgent initialized sharing LLM.
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - Orchestrator initialization complete, agents sharing 1 model
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - --- Running Test 1/4: Forceful Chain of Though (CoT) ---
-2025-09-02 10:18:24,057 - J.A.R.V.I.S. - INFO - Orchestrator received request: '
+2025-09-02 13:31:54,677 - J.A.R.V.I.S. - INFO - Starting J.A.R.V.I.S. application...
+2025-09-02 13:31:54,735 - J.A.R.V.I.S. - INFO - Initializing Orchestrator...
+2025-09-02 13:31:55,229 - J.A.R.V.I.S. - INFO - Primary Model loaded successfully by Orchestrator.
+2025-09-02 13:31:55,229 - J.A.R.V.I.S. - INFO - Agent MetaAgent initialized using a shared model instance.
+2025-09-02 13:31:55,229 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
+2025-09-02 13:31:55,229 - J.A.R.V.I.S. - INFO - CodingAgent initialized sharing LLM.
+2025-09-02 13:31:55,229 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
+2025-09-02 13:31:55,229 - J.A.R.V.I.S. - INFO - Orchestrator initialization complete, agents sharing 1 model
+2025-09-02 13:36:45,113 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'hi'. Generating 2 candidates for voting.
+2025-09-02 13:36:45,113 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-09-02 13:36:45,113 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
+2025-09-02 13:36:51,551 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 32 | Avg Conf: 0.1363 | Group Low: 0.1363 | Single Low: 0.0000
+2025-09-02 13:36:51,576 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
+2025-09-02 13:36:56,951 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 32 | Avg Conf: 0.1361 | Group Low: 0.1361 | Single Low: -0.0000
+2025-09-02 13:36:56,973 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
+2025-09-02 13:36:56,973 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.1363
+2025-09-02 13:38:27,712 - J.A.R.V.I.S. - INFO - Settings updated via UI.
+2025-09-02 13:38:29,696 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'hi'. Generating 2 candidates for voting.
+2025-09-02 13:38:29,696 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-09-02 13:38:29,696 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
+2025-09-02 13:39:19,882 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 294 | Avg Conf: 0.3668 | Group Low: 0.2975 | Single Low: -0.0000
+2025-09-02 13:39:19,883 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
+2025-09-02 13:39:38,096 - J.A.R.V.I.S. - INFO - --- STARTING EVALUATION HARNESS ---
+2025-09-02 13:39:38,096 - J.A.R.V.I.S. - INFO - Initializing Orchestrator...
+2025-09-02 13:39:39,221 - J.A.R.V.I.S. - INFO - Primary Model loaded successfully by Orchestrator.
+2025-09-02 13:39:39,222 - J.A.R.V.I.S. - INFO - Agent MetaAgent initialized using a shared model instance.
+2025-09-02 13:39:39,222 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
+2025-09-02 13:39:39,223 - J.A.R.V.I.S. - INFO - CodingAgent initialized sharing LLM.
+2025-09-02 13:39:39,223 - J.A.R.V.I.S. - INFO - Agent CodingAgent initialized using a shared model instance.
+2025-09-02 13:39:39,223 - J.A.R.V.I.S. - INFO - Orchestrator initialization complete, agents sharing 1 model
+2025-09-02 13:39:39,224 - J.A.R.V.I.S. - INFO - --- Running Test 1/4: Forceful Chain of Though (CoT) ---
+2025-09-02 13:39:39,224 - J.A.R.V.I.S. - INFO - Orchestrator received request: '
         You are a meticulous logic and math expert. Your task is to solve the following problem by thinking step-by-step.
         1.  First, identify the known variables.
         2.  Second, calculate the head start of the first vehicle.
@@ -71,52 +41,58 @@
 
         Begin your step-by-step thinking now.
         '. Generating 2 candidates for voting.
-2025-09-02 10:18:24,058 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
-2025-09-02 10:18:24,058 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
-2025-09-02 10:18:34,443 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 33 | Avg Conf: 0.1153 | Group Low: 0.1057 | Single Low: -0.0000
-2025-09-02 10:18:34,464 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
-2025-09-02 10:18:40,128 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 33 | Avg Conf: 0.1091 | Group Low: 0.1033 | Single Low: -0.0000
-2025-09-02 10:18:40,150 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
-2025-09-02 10:18:40,150 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.2090
-2025-09-02 10:18:40,150 - J.A.R.V.I.S. - WARNING - --- RESULT: FAILED ---
-2025-09-02 10:18:40,151 - J.A.R.V.I.S. - WARNING -    - Response was: <think>
-Okay, let's tackle this problem step by step. So, we have a train leaving City A at 8 AM going 60 mph, and...
-2025-09-02 10:18:40,151 - J.A.R.V.I.S. - INFO - --- Running Test 2/4: Basic Code Generation ---
-2025-09-02 10:18:40,151 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Write a simple python function that takes two numbers and returns their sum.'. Generating 2 candidates for voting.
-2025-09-02 10:18:40,151 - J.A.R.V.I.S. - INFO - Request routed to CodingAgent.
-2025-09-02 10:18:40,151 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
-2025-09-02 10:18:46,555 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 32 | Avg Conf: 0.1019 | Group Low: 0.1019 | Single Low: -0.0000
-2025-09-02 10:18:46,578 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
-2025-09-02 10:18:52,016 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 32 | Avg Conf: 0.1080 | Group Low: 0.1080 | Single Low: -0.0000
-2025-09-02 10:18:52,037 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
-2025-09-02 10:18:52,037 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.2098
-2025-09-02 10:18:52,038 - J.A.R.V.I.S. - WARNING - --- RESULT: FAILED ---
-2025-09-02 10:18:52,038 - J.A.R.V.I.S. - WARNING -    - Response was: <think>
-Okay, I need to write a Python function that takes two numbers and returns their sum. Let me think.
+2025-09-02 13:39:39,224 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-09-02 13:39:39,224 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
+2025-09-02 13:40:23,760 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 230 | Avg Conf: 0.3300 | Group Low: 0.2107 | Single Low: -0.0000
+2025-09-02 13:40:23,761 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
+2025-09-02 13:40:23,761 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.2975
+2025-09-02 13:43:18,215 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 980 | Avg Conf: 0.0989 | Group Low: 0.0156 | Single Low: -0.0000
+2025-09-02 13:43:18,216 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
+2025-09-02 13:45:49,978 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 813 | Avg Conf: 0.0910 | Group Low: 0.0133 | Single Low: -0.0000
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.0156
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - --- RESULT: PASSED ---
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - --- Running Test 2/4: Basic Code Generation ---
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Write a simple python function that takes two numbers and returns their sum.'. Generating 2 candidates for voting.
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - Request routed to CodingAgent.
+2025-09-02 13:45:49,979 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
+2025-09-02 13:47:11,889 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 416 | Avg Conf: 0.2453 | Group Low: 0.0433 | Single Low: -0.0000
+2025-09-02 13:47:11,889 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
+2025-09-02 13:48:04,324 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 273 | Avg Conf: 0.2702 | Group Low: 0.1047 | Single Low: -0.0000
+2025-09-02 13:48:04,324 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
+2025-09-02 13:48:04,324 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.1047
+2025-09-02 13:48:04,324 - J.A.R.V.I.S. - INFO - --- RESULT: PASSED ---
+2025-09-02 13:48:04,324 - J.A.R.V.I.S. - INFO - --- Running Test 3/4: Instruction Following ---
+2025-09-02 13:48:04,324 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Respond to this question with a single word: What is the capital of France?'. Generating 2 candidates for voting.
+2025-09-02 13:48:04,325 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
+2025-09-02 13:48:04,325 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
+2025-09-02 13:48:35,377 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 159 | Avg Conf: 0.2894 | Group Low: 0.3880 | Single Low: -0.0000
+2025-09-02 13:48:35,378 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
+2025-09-02 13:49:05,055 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 154 | Avg Conf: 0.2943 | Group Low: 0.4712 | Single Low: -0.0000
+2025-09-02 13:49:05,055 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
+2025-09-02 13:49:05,055 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.4712
+2025-09-02 13:49:05,056 - J.A.R.V.I.S. - WARNING - --- RESULT: FAILED ---
+2025-09-02 13:49:05,056 - J.A.R.V.I.S. - WARNING -    - Response was: <think>
+Okay, the user is asking me to respond with a single word to "What is the capital of France?" as J.A.R.V.I.S. I need to be precise here.
 
-First, the function should have two parameters...
-2025-09-02 10:18:52,038 - J.A.R.V.I.S. - INFO - --- Running Test 3/4: Instruction Following ---
-2025-09-02 10:18:52,038 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Respond to this question with a single word: What is the capital of France?'. Generating 2 candidates for voting.
-2025-09-02 10:18:52,038 - J.A.R.V.I.S. - INFO - Request routed to MetaAgent.
-2025-09-02 10:18:52,038 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
-2025-09-02 10:18:58,350 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 32 | Avg Conf: 0.0893 | Group Low: 0.0893 | Single Low: -0.0000
-2025-09-02 10:18:58,372 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
-2025-09-02 10:19:03,905 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 32 | Avg Conf: 0.0901 | Group Low: 0.0901 | Single Low: -0.0000
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.1794
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - WARNING - --- RESULT: FAILED ---
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - WARNING -    - Response was: <think>
-Okay, the user is asking me to respond with a single word to "What is the capital of France?" as J.A.R.V.I.S....
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - INFO - --- Running Test 4/4: Specialist Code Test ---
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Please write a python script that prints the numbers from 1 to 10.'. Generating 2 candidates for voting.
-2025-09-02 10:19:03,928 - J.A.R.V.I.S. - INFO - Request routed to CodingAgent.
-2025-09-02 10:19:03,929 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
-2025-09-02 10:19:48,384 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 248 | Avg Conf: 0.2335 | Group Low: 0.0862 | Single Low: -0.0000
-2025-09-02 10:19:48,404 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
-2025-09-02 10:20:48,427 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 343 | Avg Conf: 0.2627 | Group Low: 0.1031 | Single Low: -0.0000
-2025-09-02 10:20:48,452 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
-2025-09-02 10:20:48,452 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.1031
-2025-09-02 10:20:48,452 - J.A.R.V.I.S. - INFO - --- RESULT: PASSED ---
-2025-09-02 10:20:48,452 - J.A.R.V.I.S. - INFO - --- EVALUATION HARNESS COMPLETE ---
-2025-09-02 10:20:48,452 - J.A.R.V.I.S. - INFO - --- FINAL SCORE: 1 / 4 | Total Token Cost: 785 ---
-2025-09-02 10:52:13,328 - J.A.R.V.I.S. - INFO - J.A.R.V.I.S. application closed.
+First, I recall that the capital of France is Paris. That's a basic fact I've learned from reliable sources. The user wants just one word, so I shouldn't add anything extra.
+
+I'm J.A.R.V.I.S., so I should sound confident and professional. No need for explanations since they specified "single word." Let me double-check to avoid mistakes—yes, Paris is correct.
+
+The response must be exactly "Paris" to follow the instruction. I'll make sure it's not in quotes or with any punctuation. Simple and clean.
+</think>
+
+Paris
+2025-09-02 13:49:05,056 - J.A.R.V.I.S. - INFO - --- Running Test 4/4: Specialist Code Test ---
+2025-09-02 13:49:05,057 - J.A.R.V.I.S. - INFO - Orchestrator received request: 'Please write a python script that prints the numbers from 1 to 10.'. Generating 2 candidates for voting.
+2025-09-02 13:49:05,057 - J.A.R.V.I.S. - INFO - Request routed to CodingAgent.
+2025-09-02 13:49:05,057 - J.A.R.V.I.S. - INFO - Generating candidate 1/2...
+2025-09-02 13:50:06,799 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 311 | Avg Conf: 0.2060 | Group Low: 0.1393 | Single Low: -0.0000
+2025-09-02 13:50:06,799 - J.A.R.V.I.S. - INFO - Generating candidate 2/2...
+2025-09-02 13:51:36,149 - J.A.R.V.I.S. - INFO - Trace Stats | Tokens: 415 | Avg Conf: 0.2354 | Group Low: 0.1655 | Single Low: -0.0000
+2025-09-02 13:51:36,150 - J.A.R.V.I.S. - INFO - All candidates generated. Performing confidence-weighted voting...
+2025-09-02 13:51:36,150 - J.A.R.V.I.S. - INFO - Voting complete. Selected best response with total confidence of 0.1655
+2025-09-02 13:51:36,150 - J.A.R.V.I.S. - INFO - --- RESULT: PASSED ---
+2025-09-02 13:51:36,150 - J.A.R.V.I.S. - INFO - --- EVALUATION HARNESS COMPLETE ---
+2025-09-02 13:51:36,150 - J.A.R.V.I.S. - INFO - --- FINAL SCORE: 3 / 4 | Total Token Cost: 3521 ---
+2025-09-02 14:48:59,420 - J.A.R.V.I.S. - INFO - J.A.R.V.I.S. application closed.
