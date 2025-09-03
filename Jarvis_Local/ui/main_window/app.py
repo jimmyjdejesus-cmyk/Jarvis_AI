@@ -9,6 +9,7 @@ from ui.components.settings_panel.settings_panel import SettingsPanel
 from ui.components.log_viewer.log_viewer import LogViewerWindow
 import settings
 from tools import key_manager
+from tools.demo_runner import run_demo
 
 class MainWindow(tk.Frame):
     def __init__(self, master):
@@ -33,7 +34,8 @@ class MainWindow(tk.Frame):
             log_viewer_callback=self.open_log_viewer,
             save_model_callback=self.save_model_choice,
             run_evaluation_callback=self.run_evaluation,
-            save_api_key_callback=self.save_api_key
+            save_api_key_callback=self.save_api_key,
+            run_demo_callback=self.start_demo,
         )
         paned_window.add(self.settings_panel, weight=1)
 
@@ -42,6 +44,12 @@ class MainWindow(tk.Frame):
         paned_window.add(self.chat_panel, weight=3)
 
         self.chat_panel.add_message(f"J.A.R.V.I.S.: Online. Model: {settings.ACTIVE_MODEL_NAME}")
+
+    def start_demo(self):
+        """Opens the dev log and then starts demo in a background thread"""
+        self.open_log_viewer()
+        demo_thread = Thread(target=run_demo, args=(self.add_message_to_chat,))
+        demo_thread.start()
 
     def save_api_key(self, api_key):
         if key_manager.save_api_key(api_key):
@@ -56,8 +64,8 @@ class MainWindow(tk.Frame):
         thread.start()
 
     def get_agent_response(self, user_input):
-        response_text, tokens_used = self.orchestrator.handle_request(user_input)
-        self.add_message_to_chat(f"J.A.R.V.I.S.: {response_text} (Tokens: {tokens_used})")
+        response_text, tokens_used, confidence = self.orchestrator.handle_request(user_input)
+        self.add_message_to_chat(f"J.A.R.V.I.S.: {response_text} (Tokens: {tokens_used}, Confidence: {confidence:.4f})")
         self.chat_panel.toggle_input(enabled=True)
 
     def start_autotune(self):

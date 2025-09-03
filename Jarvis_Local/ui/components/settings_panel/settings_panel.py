@@ -5,7 +5,7 @@ import settings
 from logger_config import log
 
 class SettingsPanel(ttk.Frame):
-    def __init__(self, master, autotune_callback, log_viewer_callback, save_model_callback, run_evaluation_callback, save_api_key_callback):
+    def __init__(self, master, autotune_callback, log_viewer_callback, save_model_callback, run_evaluation_callback, save_api_key_callback, run_demo_callback):
         super().__init__(master, padding=10)
         
         # Store callbacks from the main window
@@ -14,6 +14,7 @@ class SettingsPanel(ttk.Frame):
         self.save_model_callback = save_model_callback
         self.run_evaluation_callback = run_evaluation_callback
         self.save_api_key_callback = save_api_key_callback
+        self.run_demo_callback = run_demo_callback
 
         ttk.Label(self, text="Agent Controls", font=("Helvetica", 12, "bold")).pack(pady=5, anchor="w")
 
@@ -45,6 +46,9 @@ class SettingsPanel(ttk.Frame):
         ttk.Button(self, text="View Dev Log", command=self.log_viewer_callback).pack(fill="x", padx=5, pady=5)
         ttk.Button(self, text="Run Evaluation", command=self.run_evaluation_callback).pack(fill="x", padx=5, pady=5)
 
+        self.run_demo_button = ttk.Button(self, text="Run Demo", command=self.run_demo_callback)
+        self.run_demo_button.pack(fill="x", padx=5, pady=5)
+
         # --- Model Optimization Settings ---
         ttk.Label(self, text="Model Optimization", font=("Helvetica", 12, "bold")).pack(pady=(20,5), anchor="w")
 
@@ -60,6 +64,16 @@ class SettingsPanel(ttk.Frame):
 
         # --- API Key management Section ---
         ttk.Label(self, text="API Key Management", font=("Helvetica", 12, "bold")).pack(pady=(20,5), anchor="w")
+        ttk.Label(self, text="OpenAI API Key: ").pack(anchor="w", padx=5)
+        self.api_key_var = tk.StringVar()
+
+        # The show = "*" masks the input for security
+        api_key_entry = ttk.Entry(self, textvariable=self.api_key_var, show="*")
+        api_key_entry.pack(fill="x", padx=5, pady=2)
+
+        save_key_button = ttk.Button(self, text="Save API Key", command=self._on_save_key)
+        save_key_button.pack(pady=5)
+
         # N_GPU_LAYERS
         ttk.Label(self, text="GPU Layers:").pack(anchor="w", padx=5)
         self.gpu_layers_var = tk.IntVar(value=settings.N_GPU_LAYERS)

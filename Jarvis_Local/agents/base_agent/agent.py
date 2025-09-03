@@ -35,8 +35,11 @@ class BaseAgent:
             f"<|user|>\n{prompt}<|end|>\n<|im_start|>assistant\n"
         )
 
+        # Use MAX_TOKENS from settings if available, otherwise default to 1024
+        max_tokens = getattr(settings, 'MAX_TOKENS', 1024)
+        
         stream = self.llm.create_completion(
-            full_prompt, max_tokens=1024, stop=["<|end|>", "<|im_end|>"],
+            full_prompt, max_tokens=max_tokens, stop=["<|end|>", "<|im_end|>"],
             temperature=0.1, logprobs=True, stream=True
         )
 
@@ -54,14 +57,16 @@ class BaseAgent:
                 token_conf = -logprobs['token_logprobs'][0]
                 confidences.append(token_conf)
 
-                if settings.DEEPCONF_ENABLED and len(confidences) >= window_size:
+                # Only apply early stopping if we have generated at least 50 tokens
+                # This ensures we don't stop too early with an empty response
+                if settings.DEEPCONF_ENABLED and len(confidences) >= window_size and len(confidences) >= 50:
                     group_conf = np.mean(confidences[-window_size:])
                     if group_conf < settings.CONFIDENCE_THRESHOLD:
                         stopped_early = True
                         break
 
         if stopped_early:
-            final_response_text += "..."
+            final_response_text += "... [Response stopped due to low confidence]"
 
         # --- Correctly calculate stats based ONLY on what was generated ---
         tokens_generated = len(confidences)

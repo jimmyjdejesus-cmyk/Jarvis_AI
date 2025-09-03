@@ -58,7 +58,7 @@ def run_evaluation():
         log.info(f"--- Running Test {i+1}/{total_count}: {test_name} ---")
 
         # Get the response and token cost from orchestrator
-        response, tokens_used = orchestrator.handle_request(prompt)
+        response, tokens_used, confidence = orchestrator.handle_request(prompt)
         total_token_cost += tokens_used
 
         # Validate the response
