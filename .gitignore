@@ -50,6 +50,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.wsl_venv/
 
 # IDE
 .vscode/
