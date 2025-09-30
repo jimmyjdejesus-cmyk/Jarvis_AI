@@ -27,6 +27,8 @@ jobs:
           pip install pytest pytest-asyncio requests httpx websocket-client psutil
 
       - name: Start backend (uvicorn)
+        env:
+          JARVIS_API_KEY: dummy-ci-key
         run: |
           nohup python -m uvicorn legacy.app.main:app --host 127.0.0.1 --port 8000 &
           sleep 5
@@ -35,5 +37,6 @@ jobs:
         env:
           JARVIS_TEST_BASE_URL: http://127.0.0.1:8000
           REQUIRE_NEW_RUNTIME: "true"
+          JARVIS_API_KEY: dummy-ci-key
         run: |
           pytest -q
