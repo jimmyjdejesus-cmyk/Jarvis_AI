@@ -12,7 +12,7 @@ import secrets
 from typing import Dict, Any, List, Optional, Set
 import asyncio
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect, APIRouter
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -72,6 +72,9 @@ app.include_router(galaxy_router)
 # Exposed for tests to patch
 neo4j_graph = Neo4jGraph()
 planner = MissionPlanner(missions_dir=os.path.join("config", "missions"))
+
+# Versioned API router
+api_v1 = APIRouter(prefix="/api/v1", tags=["api-v1"])
 
 # -----------------------
 # Bridge to new runtime (OllamaClient)
@@ -151,6 +154,29 @@ class ChatRequest(BaseModel):
     temperature: float | None = None
     max_tokens: int | None = None
     stream: bool = False
+
+
+# -----------------------
+# v1 Schemas
+# -----------------------
+
+class HealthResponse(BaseModel):
+    status: str
+    ollama: str | None = None
+
+
+class ModelsResponse(BaseModel):
+    models: list[str]
+
+
+class ChatResponse(BaseModel):
+    content: str
+    model: str | None = None
+
+
+class AgentsListResponse(BaseModel):
+    agents: list[str]
+    count: int
 
 
 class Neo4jConfig(BaseModel):
@@ -281,8 +307,8 @@ def create_mission(
     }
 
 
-@app.get("/health")
-def get_health() -> dict:
+@api_v1.get("/health", response_model=HealthResponse)
+def v1_get_health() -> HealthResponse:
     """Health check endpoint."""
     status = {"status": "ok"}
     if _new_runtime_available:
@@ -291,7 +317,7 @@ def get_health() -> dict:
             status["ollama"] = "ok" if healthy else "unavailable"
         except Exception:
             status["ollama"] = "error"
-    return status
+    return HealthResponse(**status)
 
 
 # -----------------------
@@ -418,26 +444,26 @@ async def simulate_workflow(session_id: str) -> Dict[str, Any]:
 # Bridged endpoints to new runtime
 # -----------------------
 
-@app.get("/api/models")
-def list_models() -> Dict[str, Any]:
+@api_v1.get("/models", response_model=ModelsResponse)
+def v1_list_models() -> ModelsResponse:
     """List available models from new runtime if available."""
     if not (_new_runtime_available and new_ollama_client):
         raise HTTPException(status_code=503, detail="New runtime unavailable")
     try:
         models = new_ollama_client.get_available_models()
-        return {"models": models}
+        return ModelsResponse(models=models)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list models: {exc}")
 
 
-@app.get("/api/agents")
-def list_agents() -> Dict[str, Any]:
+@api_v1.get("/agents", response_model=AgentsListResponse)
+def v1_list_agents() -> AgentsListResponse:
     """List available agents from new runtime."""
     if not (_new_runtime_available and new_agent_manager):
         raise HTTPException(status_code=503, detail="New runtime unavailable")
     try:
         agents = list(new_agent_manager.agents.keys())
-        return {"agents": agents, "count": len(agents)}
+        return AgentsListResponse(agents=agents, count=len(agents))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list agents: {exc}")
 
@@ -498,8 +524,8 @@ class CollaborationRequest(BaseModel):
     context: Dict[str, Any] = {}
 
 
-@app.post("/api/agents/execute")
-async def execute_agent_task(request: AgentTaskRequest) -> Dict[str, Any]:
+@api_v1.post("/agents/execute")
+async def v1_execute_agent_task(request: AgentTaskRequest) -> Dict[str, Any]:
     """Execute a task using the new agent system."""
     bridge = get_agent_bridge()
     if not bridge:
@@ -525,8 +551,8 @@ async def execute_agent_task(request: AgentTaskRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to execute agent task: {exc}")
 
 
-@app.post("/api/agents/collaborate")
-async def execute_collaboration(request: CollaborationRequest) -> Dict[str, Any]:
+@api_v1.post("/agents/collaborate")
+async def v1_execute_collaboration(request: CollaborationRequest) -> Dict[str, Any]:
     """Execute a collaboration between multiple agents."""
     bridge = get_agent_bridge()
     if not bridge:
@@ -544,8 +570,8 @@ async def execute_collaboration(request: CollaborationRequest) -> Dict[str, Any]
         raise HTTPException(status_code=500, detail=f"Failed to execute collaboration: {exc}")
 
 
-@app.get("/api/agents/capabilities/{agent_type}")
-async def get_agent_capabilities(agent_type: str) -> Dict[str, Any]:
+@api_v1.get("/agents/capabilities/{agent_type}")
+async def v1_get_agent_capabilities(agent_type: str) -> Dict[str, Any]:
     """Get capabilities of a specific agent type."""
     bridge = get_agent_bridge()
     if not bridge:
@@ -559,8 +585,8 @@ async def get_agent_capabilities(agent_type: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get agent capabilities: {exc}")
 
 
-@app.get("/api/agents/bridge/list")
-async def list_bridge_agents() -> Dict[str, Any]:
+@api_v1.get("/agents/bridge/list")
+async def v1_list_bridge_agents() -> Dict[str, Any]:
     """List all agents available through the bridge."""
     bridge = get_agent_bridge()
     if not bridge:
@@ -575,8 +601,8 @@ async def list_bridge_agents() -> Dict[str, Any]:
 
 
 # Memory bridge endpoints
-@app.post("/api/memory/sync/to-legacy")
-def sync_memory_to_legacy() -> Dict[str, Any]:
+@api_v1.post("/memory/sync/to-legacy")
+def v1_sync_memory_to_legacy() -> Dict[str, Any]:
     """Sync new memory systems to legacy format."""
     bridge = get_memory_bridge()
     if not bridge:
@@ -589,8 +615,8 @@ def sync_memory_to_legacy() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to sync memory to legacy: {exc}")
 
 
-@app.post("/api/memory/sync/from-legacy")
-def sync_memory_from_legacy() -> Dict[str, Any]:
+@api_v1.post("/memory/sync/from-legacy")
+def v1_sync_memory_from_legacy() -> Dict[str, Any]:
     """Load legacy memory data into new system."""
     bridge = get_memory_bridge()
     if not bridge:
@@ -603,8 +629,8 @@ def sync_memory_from_legacy() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to sync memory from legacy: {exc}")
 
 
-@app.get("/api/memory/stats")
-def get_memory_stats() -> Dict[str, Any]:
+@api_v1.get("/memory/stats")
+def v1_get_memory_stats() -> Dict[str, Any]:
     """Get memory system statistics."""
     bridge = get_memory_bridge()
     if not bridge:
@@ -617,8 +643,8 @@ def get_memory_stats() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get memory stats: {exc}")
 
 
-@app.post("/api/memory/migrate")
-def migrate_all_memory() -> Dict[str, Any]:
+@api_v1.post("/memory/migrate")
+def v1_migrate_all_memory() -> Dict[str, Any]:
     """Migrate all memory data between systems."""
     bridge = get_memory_bridge()
     if not bridge:
@@ -640,8 +666,8 @@ class WorkflowTaskRequest(BaseModel):
     timeout: int = 600
 
 
-@app.post("/api/workflows/execute")
-async def execute_workflow_task(request: WorkflowTaskRequest) -> Dict[str, Any]:
+@api_v1.post("/workflows/execute")
+async def v1_execute_workflow_task(request: WorkflowTaskRequest) -> Dict[str, Any]:
     """Execute a workflow task using the new system."""
     bridge = get_workflow_bridge()
     if not bridge:
@@ -666,8 +692,8 @@ async def execute_workflow_task(request: WorkflowTaskRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to execute workflow: {exc}")
 
 
-@app.get("/api/workflows/capabilities")
-async def get_workflow_capabilities() -> Dict[str, Any]:
+@api_v1.get("/workflows/capabilities")
+async def v1_get_workflow_capabilities() -> Dict[str, Any]:
     """Get available workflow capabilities."""
     bridge = get_workflow_bridge()
     if not bridge:
@@ -680,8 +706,8 @@ async def get_workflow_capabilities() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get workflow capabilities: {exc}")
 
 
-@app.get("/api/workflows/active")
-async def list_active_workflows() -> Dict[str, Any]:
+@api_v1.get("/workflows/active")
+async def v1_list_active_workflows() -> Dict[str, Any]:
     """List currently active workflows."""
     bridge = get_workflow_bridge()
     if not bridge:
@@ -702,8 +728,8 @@ class SecurityValidationRequest(BaseModel):
     context: Dict[str, Any] = {}
 
 
-@app.post("/api/security/validate")
-def validate_agent_action(request: SecurityValidationRequest) -> Dict[str, Any]:
+@api_v1.post("/security/validate")
+def v1_validate_agent_action(request: SecurityValidationRequest) -> Dict[str, Any]:
     """Validate an agent action using security systems."""
     bridge = get_security_bridge()
     if not bridge:
@@ -720,8 +746,8 @@ def validate_agent_action(request: SecurityValidationRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to validate action: {exc}")
 
 
-@app.get("/api/security/events")
-def get_security_events(limit: int = 100) -> Dict[str, Any]:
+@api_v1.get("/security/events")
+def v1_get_security_events(limit: int = 100) -> Dict[str, Any]:
     """Get recent security events."""
     bridge = get_security_bridge()
     if not bridge:
@@ -734,8 +760,8 @@ def get_security_events(limit: int = 100) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get security events: {exc}")
 
 
-@app.get("/api/security/stats")
-def get_security_stats() -> Dict[str, Any]:
+@api_v1.get("/security/stats")
+def v1_get_security_stats() -> Dict[str, Any]:
     """Get security statistics."""
     bridge = get_security_bridge()
     if not bridge:
@@ -748,8 +774,8 @@ def get_security_stats() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get security stats: {exc}")
 
 
-@app.post("/api/security/audit")
-def run_security_audit() -> Dict[str, Any]:
+@api_v1.post("/security/audit")
+def v1_run_security_audit() -> Dict[str, Any]:
     """Run a comprehensive security audit."""
     bridge = get_security_bridge()
     if not bridge:
@@ -763,8 +789,8 @@ def run_security_audit() -> Dict[str, Any]:
 
 
 # Monitoring bridge endpoints
-@app.get("/api/monitoring/metrics")
-def get_system_metrics() -> Dict[str, Any]:
+@api_v1.get("/monitoring/metrics")
+def v1_get_system_metrics() -> Dict[str, Any]:
     """Get current system metrics."""
     bridge = get_monitoring_bridge()
     if not bridge:
@@ -777,8 +803,8 @@ def get_system_metrics() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get metrics: {exc}")
 
 
-@app.get("/api/monitoring/summary")
-def get_metrics_summary(time_window_minutes: int = 60) -> Dict[str, Any]:
+@api_v1.get("/monitoring/summary")
+def v1_get_metrics_summary(time_window_minutes: int = 60) -> Dict[str, Any]:
     """Get metrics summary for specified time window."""
     bridge = get_monitoring_bridge()
     if not bridge:
@@ -791,8 +817,8 @@ def get_metrics_summary(time_window_minutes: int = 60) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get metrics summary: {exc}")
 
 
-@app.get("/api/monitoring/health")
-def get_health_status() -> Dict[str, Any]:
+@api_v1.get("/monitoring/health")
+def v1_get_health_status() -> Dict[str, Any]:
     """Get overall system health status."""
     bridge = get_monitoring_bridge()
     if not bridge:
@@ -805,8 +831,8 @@ def get_health_status() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get health status: {exc}")
 
 
-@app.get("/api/monitoring/performance")
-def get_performance_metrics() -> Dict[str, Any]:
+@api_v1.get("/monitoring/performance")
+def v1_get_performance_metrics() -> Dict[str, Any]:
     """Get performance metrics and trends."""
     bridge = get_monitoring_bridge()
     if not bridge:
@@ -819,8 +845,8 @@ def get_performance_metrics() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to get performance metrics: {exc}")
 
 
-@app.get("/api/monitoring/export")
-def export_metrics(format: str = "json") -> Dict[str, Any]:
+@api_v1.get("/monitoring/export")
+def v1_export_metrics(format: str = "json") -> Dict[str, Any]:
     """Export metrics in specified format."""
     bridge = get_monitoring_bridge()
     if not bridge:
@@ -833,8 +859,8 @@ def export_metrics(format: str = "json") -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Failed to export metrics: {exc}")
 
 
-@app.post("/api/chat")
-def chat(req: ChatRequest) -> Dict[str, Any]:
+@api_v1.post("/chat", response_model=ChatResponse)
+def v1_chat(req: ChatRequest) -> ChatResponse:
     """Non-streaming chat via new runtime."""
     if not (_new_runtime_available and new_ollama_client and NewChatMessage):
         raise HTTPException(status_code=503, detail="New runtime unavailable")
@@ -847,13 +873,13 @@ def chat(req: ChatRequest) -> Dict[str, Any]:
             max_tokens=req.max_tokens,
             stream=False,
         )
-        return {"content": getattr(resp, "content", ""), "model": getattr(resp, "model", None)}
+        return ChatResponse(content=getattr(resp, "content", ""), model=getattr(resp, "model", None))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Chat failed: {exc}")
 
 
-@app.post("/api/chat/stream")
-def chat_stream(req: ChatRequest):
+@api_v1.post("/chat/stream")
+def v1_chat_stream(req: ChatRequest):
     """Streaming chat via new runtime."""
     if not (_new_runtime_available and new_ollama_client and NewChatMessage):
         raise HTTPException(status_code=503, detail="New runtime unavailable")
@@ -875,6 +901,10 @@ def chat_stream(req: ChatRequest):
             return
 
     return StreamingResponse(_generator(), media_type="text/plain")
+
+
+# Register v1 router
+app.include_router(api_v1)
 
 
 if __name__ == "__main__":
