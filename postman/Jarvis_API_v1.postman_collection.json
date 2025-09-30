@@ -1,0 +1,68 @@
+{
+  "info": {
+    "name": "Jarvis API v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+        ],
+        "url": { "raw": "{{BASE_URL}}/api/v1/health", "host": ["{{BASE_URL}}"], "path": ["api", "v1", "health"] }
+      }
+    },
+    {
+      "name": "Models",
+      "request": {
+        "method": "GET",
+        "header": [ { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" } ],
+        "url": { "raw": "{{BASE_URL}}/api/v1/models", "host": ["{{BASE_URL}}"], "path": ["api", "v1", "models"] }
+      }
+    },
+    {
+      "name": "Chat",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"Hello\"\n  }]\n}" },
+        "url": { "raw": "{{BASE_URL}}/api/v1/chat", "host": ["{{BASE_URL}}"], "path": ["api", "v1", "chat"] }
+      }
+    },
+    {
+      "name": "Jobs submit + status",
+      "item": [
+        {
+          "name": "Submit job",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"mode\": \"chat\",\n  \"payload\": {\n    \"messages\": [{\"role\": \"user\", \"content\": \"via job\"}]\n  }\n}" },
+            "url": { "raw": "{{BASE_URL}}/api/v1/jobs", "host": ["{{BASE_URL}}"], "path": ["api", "v1", "jobs"] }
+          }
+        },
+        {
+          "name": "Get job status",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" } ],
+            "url": { "raw": "{{BASE_URL}}/api/v1/jobs/{{JOB_ID}}", "host": ["{{BASE_URL}}"], "path": ["api", "v1", "jobs", "{{JOB_ID}}"] }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "BASE_URL", "value": "http://127.0.0.1:8000" },
+    { "key": "JARVIS_API_KEY", "value": "your-key" },
+    { "key": "JOB_ID", "value": "" }
+  ]
+}
