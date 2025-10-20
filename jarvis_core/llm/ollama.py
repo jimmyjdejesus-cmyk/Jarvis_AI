@@ -47,7 +47,7 @@ class OllamaBackend(LLMBackend):
         }
         http_response = requests.post(
             f"{self._host}/api/generate",
-            data=json.dumps(payload),
+            json=payload,
             timeout=self._timeout,
         )
         http_response.raise_for_status()
