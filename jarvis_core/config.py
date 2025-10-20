@@ -114,7 +114,7 @@ class AppConfig(BaseModel):
     def _default_allowed_personas(cls, value: List[str] | None, info: ValidationInfo) -> List[str]:
         if value:
             return value
-        personas = info.data.get("personas", {}) if info and hasattr(info, "data") else {}
+        personas = info.data.get("personas", {})
         if isinstance(personas, dict):
             return list(personas.keys())
         return []
