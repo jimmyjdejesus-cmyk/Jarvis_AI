@@ -119,7 +119,7 @@ class JarvisApplication:
         return [backend.name for backend in self.backends if backend.is_available()]
 
     def traces_latest(self, limit: int = 50):
-        return [trace.__dict__ for trace in self.traces.latest(limit)]
+        return [asdict(trace) for trace in self.traces.latest(limit)]
 
     def metrics_snapshot(self):
         return [asdict(snapshot) for snapshot in self.metrics.history()]
