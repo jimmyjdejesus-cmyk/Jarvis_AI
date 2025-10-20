@@ -122,7 +122,7 @@ class JarvisApplication:
         return [trace.__dict__ for trace in self.traces.latest(limit)]
 
     def metrics_snapshot(self):
-        return [snapshot.__dict__ for snapshot in self.metrics.history()]
+        return [asdict(snapshot) for snapshot in self.metrics.history()]
 
 
 __all__ = ["JarvisApplication"]
