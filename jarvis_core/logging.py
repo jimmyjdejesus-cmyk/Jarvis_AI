@@ -69,12 +69,12 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             data["exc_info"] = self.formatException(record.exc_info)
-        if hasattr(record, "trace_id"):
-            data["trace_id"] = getattr(record, "trace_id")
-        if hasattr(record, "span_id"):
-            data["span_id"] = getattr(record, "span_id")
-        if hasattr(record, "extra") and isinstance(record.extra, dict):
-            data.update(record.extra)
+        # The `extra` dict is merged into the record's __dict__.
+        # This part captures all extra fields by finding keys that are not standard.
+        standard_attrs = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__.keys())
+        for key, value in record.__dict__.items():
+            if key not in standard_attrs and key not in data:
+                data[key] = value
         return json.dumps(data, ensure_ascii=False)
 
 
