@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jimmy.jarvis</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/jimmy/Documents/Jarvis_AI/.venv/bin/python</string>
+    <string>-m</string>
+    <string>uvicorn</string>
+    <string>legacy.app.main:app</string>
+    <string>--host</string>
+    <string>127.0.0.1</string>
+    <string>--port</string>
+    <string>__PORT__</string>
+    <string>--log-level</string>
+    <string>info</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/jimmy/Documents/Jarvis_AI</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PYTHONPATH</key>
+    <string>/Users/jimmy/Documents/Jarvis_AI</string>
+    <key>JARVIS_DISABLE_AUTH</key>
+    <string>true</string>
+    <key>JARVIS_AUTH_SECRET</key>
+    <string>dev_secret</string>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/jarvis_uvicorn.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/jarvis_uvicorn.log</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>

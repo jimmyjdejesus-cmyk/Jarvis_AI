@@ -135,3 +135,21 @@ class ModelRouter:
             return await self.mcp_client.generate_response(local_server, local_model, prompt)
 
         raise MCPError("All available models and servers are unhealthy or have failed.")
+
+    # Backwards compatibility alias
+    async def route_to_best_model(
+        self,
+        prompt: str,
+        force_local: bool = False,
+        task_type: str = "general",
+        quality_vs_cost: float = 0.5,
+    ) -> str:
+        """Alias for legacy callers expecting route_to_best_model.
+
+        Kept for backwards compatibility with older agent code that
+        calls `route_to_best_model`. This simply proxies into
+        `route_request` using the same parameters.
+        """
+        return await self.route_request(
+            prompt, task_type=task_type, quality_vs_cost=quality_vs_cost, force_local=force_local
+        )

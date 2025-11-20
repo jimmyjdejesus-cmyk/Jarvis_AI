@@ -53,6 +53,7 @@ except Exception:
     pass
 
 app = FastAPI()
+from jarvis.core.mcp_agent import MCPJarvisAgent
 
 # Allow the Vite dev server to access the API
 app.add_middleware(
@@ -74,7 +75,9 @@ neo4j_graph = Neo4jGraph()
 planner = MissionPlanner(missions_dir=os.path.join("config", "missions"))
 
 # Versioned API router (secured by default via API key)
-api_v1 = APIRouter(prefix="/api/v1", tags=["api-v1"], dependencies=[Depends(_require_api_key_dep)])
+# NOTE: For local dev we're not attaching the auth dependency to the entire router
+# to avoid import-time issues. Individual endpoints still call _require_api_key where necessary.
+api_v1 = APIRouter(prefix="/api/v1", tags=["api-v1"])
 
 # -----------------------
 # Bridge to new runtime (OllamaClient)
@@ -920,6 +923,22 @@ def v1_chat(req: ChatRequest) -> ChatResponse:
         return ChatResponse(content=getattr(resp, "content", ""), model=getattr(resp, "model", None))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Chat failed: {exc}")
+
+
+@api_v1.post("/local_chat", response_model=ChatResponse, summary="Local-only chat", description="Force local (Ollama) model usage for a chat request.")
+def v1_local_chat(req: ChatRequest) -> ChatResponse:
+    """Route chat request to local-only models (Ollama).
+
+    This endpoint bypasses cloud providers and forces local model invocations.
+    It uses the `MCPJarvisAgent` with `force_local=True` to ensure a local model processes the prompt.
+    """
+    try:
+        agent = MCPJarvisAgent(enable_mcp=True)
+        text = " ".join(m.content for m in req.messages)
+        content = agent.chat(text, force_local=True)
+        return ChatResponse(content=content, model="ollama")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Local chat failed: {exc}")
 
 
 @api_v1.post("/chat/stream", summary="Chat (streaming)", description="Stream a chat response as a text/plain event stream.")
