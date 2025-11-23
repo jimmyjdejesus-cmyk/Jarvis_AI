@@ -30,7 +30,7 @@ jobs:
         env:
           JARVIS_API_KEY: dummy-ci-key
         run: |
-          nohup python -m uvicorn legacy.app.main:app --host 127.0.0.1 --port 8000 &
+          nohup python -m uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000 &
           sleep 5
 
       - name: Run tests
