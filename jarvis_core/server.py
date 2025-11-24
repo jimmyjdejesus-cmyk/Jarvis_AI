@@ -49,6 +49,86 @@ class TracesResponse(BaseModel):
     traces: List[dict]
 
 
+class OpenAIChatRequest(BaseModel):
+    model: str = "jarvis-default"
+    messages: List[Message]
+    temperature: float = 0.7
+    max_tokens: int = Field(512, ge=32, le=4096)
+    stream: bool = False
+
+
+class OpenAIChatResponse(BaseModel):
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[dict]
+    usage: dict
+
+
+class OpenAIModel(BaseModel):
+    id: str
+    object: str = "model"
+    created: int
+    owned_by: str = "jarvis"
+
+
+class OpenAIModelsResponse(BaseModel):
+    object: str = "list"
+    data: List[OpenAIModel]
+
+
+# Management API Models --------------------------------------------------
+
+class ComponentHealth(BaseModel):
+    name: str
+    status: str  # "healthy", "degraded", "unhealthy"
+    details: Optional[dict] = None
+
+
+class SystemStatusResponse(BaseModel):
+    status: str  # "healthy", "degraded", "unhealthy"
+    uptime_seconds: float
+    version: str
+    active_backends: List[str]
+    active_personas: List[str]
+    config_hash: str  # For detecting config changes
+
+
+class RoutingConfigResponse(BaseModel):
+    allowed_personas: List[str]
+    enable_adaptive_routing: bool = True
+
+
+class BackendStatus(BaseModel):
+    name: str
+    type: str  # "ollama", "windowsml", "fallback"
+    is_available: bool
+    last_checked: Optional[float] = None  # timestamp
+    config: dict  # Backend-specific config
+
+
+class BackendListResponse(BaseModel):
+    backends: List[BackendStatus]
+
+
+class ContextConfigResponse(BaseModel):
+    extra_documents_dir: Optional[str]
+    enable_semantic_chunking: bool
+    max_combined_context_tokens: int
+
+
+class APIKeyInfo(BaseModel):
+    hash: str  # SHA256 hash
+    created_at: Optional[float] = None  # timestamp
+    last_used: Optional[float] = None  # timestamp
+
+
+class SecurityStatusResponse(BaseModel):
+    api_keys_count: int
+    audit_log_enabled: bool
+
+
 def build_app(config: Optional[AppConfig] = None) -> FastAPI:
     jarvis_app = JarvisApplication(config=config)
 
@@ -90,27 +170,122 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
     @fastapi_app.get("/api/v1/personas", response_model=List[dict])
     def personas(app: JarvisApplication = Depends(_app_dependency)) -> List[dict]:
-        return app.personas()
+        try:
+            return app.personas()
+        except Exception as e:
+            logger.error("Failed to retrieve personas", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve personas")
 
     @fastapi_app.post("/api/v1/chat", response_model=ChatResponse)
     def chat(request: ChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> ChatResponse:
-        payload = app.chat(
-            persona=request.persona,
-            messages=[message.model_dump() for message in request.messages],
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            metadata=request.metadata,
-            external_context=request.external_context,
-        )
-        return ChatResponse(**payload)
+        # Validate persona exists
+        available_personas = [p["name"] for p in app.personas()]
+        if request.persona not in available_personas:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Persona '{request.persona}' not found. Available: {available_personas}")
+
+        try:
+            payload = app.chat(
+                persona=request.persona,
+                messages=[message.model_dump() for message in request.messages],
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                metadata=request.metadata,
+                external_context=request.external_context,
+            )
+            return ChatResponse(**payload)
+        except Exception as e:
+            logger.error("Chat request failed", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Chat request failed")
 
     @fastapi_app.get("/api/v1/monitoring/metrics", response_model=MetricsResponse)
     def metrics(app: JarvisApplication = Depends(_app_dependency)) -> MetricsResponse:
-        return MetricsResponse(history=app.metrics_snapshot())
+        try:
+            return MetricsResponse(history=app.metrics_snapshot())
+        except Exception as e:
+            logger.error("Failed to retrieve metrics", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve metrics")
 
     @fastapi_app.get("/api/v1/monitoring/traces", response_model=TracesResponse)
     def traces(app: JarvisApplication = Depends(_app_dependency)) -> TracesResponse:
         return TracesResponse(traces=app.traces_latest())
+
+    # Management API endpoints -------------------------------------------
+
+    @fastapi_app.get("/api/v1/management/system/status", response_model=SystemStatusResponse)
+    def get_system_status(app: JarvisApplication = Depends(_app_dependency)) -> SystemStatusResponse:
+        return SystemStatusResponse(**app.system_status())
+
+    @fastapi_app.get("/api/v1/management/routing/config", response_model=RoutingConfigResponse)
+    def get_routing_config(app: JarvisApplication = Depends(_app_dependency)) -> RoutingConfigResponse:
+        return RoutingConfigResponse(**app.get_routing_config())
+
+    @fastapi_app.get("/api/v1/management/backends", response_model=BackendListResponse)
+    def list_backends(app: JarvisApplication = Depends(_app_dependency)) -> BackendListResponse:
+        return BackendListResponse(backends=app.list_backends())
+
+    @fastapi_app.get("/api/v1/management/context/config", response_model=ContextConfigResponse)
+    def get_context_config(app: JarvisApplication = Depends(_app_dependency)) -> ContextConfigResponse:
+        return ContextConfigResponse(**app.get_context_config())
+
+    @fastapi_app.get("/api/v1/management/security/status", response_model=SecurityStatusResponse)
+    def get_security_status(app: JarvisApplication = Depends(_app_dependency)) -> SecurityStatusResponse:
+        return SecurityStatusResponse(**app.get_security_status())
+
+    # OpenAI-compatible endpoints
+    @fastapi_app.post("/v1/chat/completions")
+    def openai_chat_completions(request: OpenAIChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> OpenAIChatResponse:
+        import time
+        # Convert OpenAI format to Jarvis format
+        persona = "generalist"  # Default persona
+        messages = request.messages
+        temperature = request.temperature
+        max_tokens = request.max_tokens
+
+        # Call Jarvis chat
+        payload = app.chat(
+            persona=persona,
+            messages=[message.model_dump() for message in messages],
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        # Convert Jarvis response to OpenAI format
+        created = int(time.time())
+        choice = {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": payload["content"]
+            },
+            "finish_reason": "stop"
+        }
+
+        return OpenAIChatResponse(
+            id=f"chatcmpl-{created}",
+            created=created,
+            model=payload["model"],
+            choices=[choice],
+            usage={
+                "prompt_tokens": payload.get("context_tokens", 0),
+                "completion_tokens": payload["tokens"],
+                "total_tokens": payload.get("context_tokens", 0) + payload["tokens"]
+            }
+        )
+
+    @fastapi_app.get("/v1/models")
+    def openai_models():
+        import time
+        # For now, return hardcoded models
+        data = [{
+            "id": "llama3.2:latest",
+            "object": "model",
+            "created": int(time.time()),
+            "owned_by": "jarvis"
+        }]
+        return {
+            "object": "list",
+            "data": data
+        }
 
     return fastapi_app
 
