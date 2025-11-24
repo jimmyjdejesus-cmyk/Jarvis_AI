@@ -209,6 +209,8 @@ class JarvisApplication:
         persona = self.config.personas[name]
         for key, value in updates.items():
             if value is not None:
+                if not hasattr(persona, key):
+                    raise ValueError(f"Persona config has no attribute '{key}'")
                 setattr(persona, key, value)
 
         return self._persona_to_dict(name, persona)
