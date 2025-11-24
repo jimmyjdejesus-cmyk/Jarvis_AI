@@ -228,9 +228,8 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
     @fastapi_app.post("/api/v1/chat", response_model=ChatResponse)
     def chat(request: ChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> ChatResponse:
         # Validate persona exists
-        available_personas = [p["name"] for p in app.personas()]
-        if request.persona not in available_personas:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Persona '{request.persona}' not found. Available: {available_personas}")
+        if request.persona not in app.config.personas:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Persona '{request.persona}' not found. Available: {list(app.config.personas.keys())}")
 
         try:
             payload = app.chat(
