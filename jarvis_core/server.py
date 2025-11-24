@@ -129,6 +129,55 @@ class SecurityStatusResponse(BaseModel):
     audit_log_enabled: bool
 
 
+# Phase 2: Mutation API Models ------------------------------------------
+
+class PersonaCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')
+    description: str = Field(..., min_length=1, max_length=200)
+    system_prompt: str = Field(..., min_length=1)
+    max_context_window: int = Field(4096, ge=512, le=32768)
+    routing_hint: str = Field("general", min_length=1, max_length=50)
+
+
+class PersonaUpdateRequest(BaseModel):
+    description: Optional[str] = Field(None, min_length=1, max_length=200)
+    system_prompt: Optional[str] = Field(None, min_length=1)
+    max_context_window: Optional[int] = Field(None, ge=512, le=32768)
+    routing_hint: Optional[str] = Field(None, min_length=1, max_length=50)
+
+
+class PersonaResponse(BaseModel):
+    name: str
+    description: str
+    system_prompt: str
+    max_context_window: int
+    routing_hint: str
+    is_active: bool
+
+
+class RoutingConfigUpdateRequest(BaseModel):
+    allowed_personas: Optional[List[str]] = None
+    enable_adaptive_routing: Optional[bool] = None
+
+
+class ContextConfigUpdateRequest(BaseModel):
+    extra_documents_dir: Optional[str] = None
+    enable_semantic_chunking: Optional[bool] = None
+    max_combined_context_tokens: Optional[int] = Field(None, ge=1024, le=65536)
+
+
+class BackendTestResponse(BaseModel):
+    success: bool
+    latency_ms: Optional[float] = None
+    error: Optional[str] = None
+
+
+class ConfigSaveResponse(BaseModel):
+    success: bool
+    config_hash: str
+    message: str
+
+
 def build_app(config: Optional[AppConfig] = None) -> FastAPI:
     jarvis_app = JarvisApplication(config=config)
 
@@ -230,6 +279,83 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
     @fastapi_app.get("/api/v1/management/security/status", response_model=SecurityStatusResponse)
     def get_security_status(app: JarvisApplication = Depends(_app_dependency)) -> SecurityStatusResponse:
         return SecurityStatusResponse(**app.get_security_status())
+
+    # Phase 2: Mutation endpoints -------------------------------------------
+
+    @fastapi_app.post("/api/v1/management/personas", response_model=PersonaResponse)
+    def create_persona(request: PersonaCreateRequest, app: JarvisApplication = Depends(_app_dependency)) -> PersonaResponse:
+        try:
+            result = app.create_persona(request.model_dump())
+            return PersonaResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error("Failed to create persona", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create persona")
+
+    @fastapi_app.put("/api/v1/management/personas/{name}", response_model=PersonaResponse)
+    def update_persona(name: str, request: PersonaUpdateRequest, app: JarvisApplication = Depends(_app_dependency)) -> PersonaResponse:
+        try:
+            result = app.update_persona(name, request.model_dump(exclude_unset=True))
+            return PersonaResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if "not found" in str(e) else status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to update persona '{name}'", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update persona '{name}'")
+
+    @fastapi_app.delete("/api/v1/management/personas/{name}")
+    def delete_persona(name: str, app: JarvisApplication = Depends(_app_dependency)):
+        try:
+            app.delete_persona(name)
+            return {"message": f"Persona '{name}' deleted successfully"}
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if "not found" in str(e) else status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to delete persona '{name}'", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete persona '{name}'")
+
+    @fastapi_app.put("/api/v1/management/config/routing", response_model=RoutingConfigResponse)
+    def update_routing_config(request: RoutingConfigUpdateRequest, app: JarvisApplication = Depends(_app_dependency)) -> RoutingConfigResponse:
+        try:
+            result = app.update_routing_config(request.model_dump(exclude_unset=True))
+            return RoutingConfigResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error("Failed to update routing config", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update routing config")
+
+    @fastapi_app.put("/api/v1/management/config/context", response_model=ContextConfigResponse)
+    def update_context_config(request: ContextConfigUpdateRequest, app: JarvisApplication = Depends(_app_dependency)) -> ContextConfigResponse:
+        try:
+            result = app.update_context_config(request.model_dump(exclude_unset=True))
+            return ContextConfigResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error("Failed to update context config", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update context config")
+
+    @fastapi_app.post("/api/v1/management/backends/{name}/test", response_model=BackendTestResponse)
+    def test_backend(name: str, app: JarvisApplication = Depends(_app_dependency)) -> BackendTestResponse:
+        try:
+            result = app.test_backend(name)
+            return BackendTestResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to test backend '{name}'", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to test backend '{name}'")
+
+    @fastapi_app.post("/api/v1/management/config/save", response_model=ConfigSaveResponse)
+    def save_config(app: JarvisApplication = Depends(_app_dependency)) -> ConfigSaveResponse:
+        try:
+            result = app.save_config()
+            return ConfigSaveResponse(**result)
+        except Exception as e:
+            logger.error("Failed to save config", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save configuration")
 
     # OpenAI-compatible endpoints
     @fastapi_app.post("/v1/chat/completions")
