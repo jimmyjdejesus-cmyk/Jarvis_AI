@@ -22,6 +22,8 @@ class JarvisApplication:
     """Coordinator that wires configuration, routing, and monitoring."""
 
     def __init__(self, config: Optional[AppConfig] = None):
+        import time
+        self._start_time = time.time()
         self.config = config or load_config()
         self.metrics = MetricsRegistry()
         self.traces = TraceCollector()
@@ -157,6 +159,203 @@ class JarvisApplication:
 
     def metrics_snapshot(self):
         return [asdict(snapshot) for snapshot in self.metrics.history()]
+
+    # Management API methods ---------------------------------------------
+
+    def system_status(self) -> dict:
+        """Get overall system status."""
+        import time
+        import hashlib
+
+        # Calculate config hash for change detection
+        config_str = self.config.model_dump_json()
+        config_hash = hashlib.sha256(config_str.encode()).hexdigest()[:16]
+
+        return {
+            "status": "healthy",  # TODO: implement proper health check
+            "uptime_seconds": time.time() - self._start_time,
+            "version": "1.0.0",
+            "active_backends": [b.name for b in self.backends if b.is_available()],
+            "active_personas": list(self.config.allowed_personas),
+            "config_hash": config_hash,
+        }
+
+    def get_routing_config(self) -> dict:
+        """Get current routing configuration."""
+        return {
+            "allowed_personas": list(self.config.allowed_personas),
+            "enable_adaptive_routing": True,  # TODO: make configurable
+        }
+
+    def list_backends(self) -> List[dict]:
+        """List all backends with their status."""
+        import time
+        backends = [
+            {
+                "name": backend.name,
+                "type": backend.__class__.__name__.lower().replace('backend', ''),
+                "is_available": backend.is_available(),
+                "last_checked": time.time(),  # TODO: track actual last check time
+                "config": {},  # TODO: expose relevant config without secrets
+            }
+            for backend in self.backends
+        ]
+        return backends
+
+    def get_context_config(self) -> dict:
+        """Get current context pipeline configuration."""
+        return {
+            "extra_documents_dir": str(self.config.context_pipeline.extra_documents_dir) if self.config.context_pipeline.extra_documents_dir else None,
+            "enable_semantic_chunking": self.config.context_pipeline.enable_semantic_chunking,
+            "max_combined_context_tokens": self.config.context_pipeline.max_combined_context_tokens,
+        }
+
+    def get_security_status(self) -> dict:
+        """Get security configuration status."""
+        return {
+            "api_keys_count": len(self.config.security.api_keys),
+            "audit_log_enabled": self.config.security.audit_log_path is not None,
+        }
+
+    # Phase 2: Mutation methods ---------------------------------------------
+
+    def create_persona(self, persona_data: dict) -> dict:
+        """Create a new persona."""
+        name = persona_data["name"]
+        if name in self.config.personas:
+            raise ValueError(f"Persona '{name}' already exists")
+
+        from .config import PersonaConfig
+        persona_config = PersonaConfig(**persona_data)
+        self.config.personas[name] = persona_config
+
+        # Add to allowed personas if not already there
+        if name not in self.config.allowed_personas:
+            self.config.allowed_personas.append(name)
+
+        return self._persona_to_dict(name, persona_config)
+
+    def update_persona(self, name: str, updates: dict) -> dict:
+        """Update an existing persona."""
+        if name not in self.config.personas:
+            raise ValueError(f"Persona '{name}' not found")
+
+        persona = self.config.personas[name]
+        for key, value in updates.items():
+            if value is not None:
+                if not hasattr(persona, key):
+                    raise ValueError(f"Persona config has no attribute '{key}'")
+                setattr(persona, key, value)
+
+        return self._persona_to_dict(name, persona)
+
+    def delete_persona(self, name: str) -> bool:
+        """Delete a persona."""
+        if name not in self.config.personas:
+            raise ValueError(f"Persona '{name}' not found")
+
+        # Prevent deletion of personas that might be in use
+        # For now, allow deletion but log warning
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Deleting persona '{name}'")
+
+        del self.config.personas[name]
+
+        # Remove from allowed personas
+        if name in self.config.allowed_personas:
+            self.config.allowed_personas.remove(name)
+
+        return True
+
+    def update_routing_config(self, updates: dict) -> dict:
+        """Update routing configuration."""
+        if "allowed_personas" in updates and updates["allowed_personas"] is not None:
+            # Validate that all personas exist
+            for persona_name in updates["allowed_personas"]:
+                if persona_name not in self.config.personas:
+                    raise ValueError(f"Persona '{persona_name}' does not exist")
+            self.config.allowed_personas = updates["allowed_personas"]
+
+        if "enable_adaptive_routing" in updates and updates["enable_adaptive_routing"] is not None:
+            # For now, this is a placeholder - adaptive routing is always enabled
+            pass
+
+        return self.get_routing_config()
+
+    def update_context_config(self, updates: dict) -> dict:
+        """Update context pipeline configuration."""
+        context_config = self.config.context_pipeline
+
+        if "extra_documents_dir" in updates and updates["extra_documents_dir"] is not None:
+            from pathlib import Path
+            context_config.extra_documents_dir = Path(updates["extra_documents_dir"])
+
+        if "enable_semantic_chunking" in updates and updates["enable_semantic_chunking"] is not None:
+            context_config.enable_semantic_chunking = updates["enable_semantic_chunking"]
+
+        if "max_combined_context_tokens" in updates and updates["max_combined_context_tokens"] is not None:
+            context_config.max_combined_context_tokens = updates["max_combined_context_tokens"]
+
+        return self.get_context_config()
+
+    def test_backend(self, name: str) -> dict:
+        """Test backend connectivity."""
+        import time
+        backend = next((b for b in self.backends if b.name == name), None)
+
+        if not backend:
+            raise ValueError(f"Backend '{name}' not found")
+
+        start_time = time.time()
+        try:
+            # Simple test - check if backend is available
+            is_available = backend.is_available()
+            latency = (time.time() - start_time) * 1000
+            return {
+                "success": is_available,
+                "latency_ms": latency,
+                "error": None
+            }
+        except Exception as e:
+            latency = (time.time() - start_time) * 1000
+            return {
+                "success": False,
+                "latency_ms": latency,
+                "error": str(e)
+            }
+
+    def save_config(self) -> dict:
+        """Save current configuration to disk."""
+        try:
+            # For now, this is a placeholder - config persistence would require
+            # writing to the config file, which is complex in a running system
+            import hashlib
+            config_str = str(self.config.model_dump())
+            config_hash = hashlib.sha256(config_str.encode()).hexdigest()[:16]
+
+            return {
+                "success": True,
+                "config_hash": config_hash,
+                "message": "Configuration saved successfully (in-memory only for now)"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "config_hash": "",
+                "message": f"Failed to save configuration: {str(e)}"
+            }
+
+    def _persona_to_dict(self, name: str, persona) -> dict:
+        """Convert persona config to dict response."""
+        return {
+            "name": name,
+            "description": persona.description,
+            "system_prompt": persona.system_prompt,
+            "max_context_window": persona.max_context_window,
+            "routing_hint": persona.routing_hint,
+            "is_active": name in self.config.allowed_personas
+        }
 
 
 __all__ = ["JarvisApplication"]

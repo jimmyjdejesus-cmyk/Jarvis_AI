@@ -50,6 +50,135 @@ class TracesResponse(BaseModel):
     traces: List[dict]
 
 
+class OpenAIChatRequest(BaseModel):
+    model: str = "jarvis-default"
+    messages: List[Message]
+    temperature: float = 0.7
+    max_tokens: int = Field(512, ge=32, le=4096)
+    stream: bool = False
+
+
+class OpenAIChatResponse(BaseModel):
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[dict]
+    usage: dict
+
+
+class OpenAIModel(BaseModel):
+    id: str
+    object: str = "model"
+    created: int
+    owned_by: str = "jarvis"
+
+
+class OpenAIModelsResponse(BaseModel):
+    object: str = "list"
+    data: List[OpenAIModel]
+
+
+# Management API Models --------------------------------------------------
+
+class ComponentHealth(BaseModel):
+    name: str
+    status: str  # "healthy", "degraded", "unhealthy"
+    details: Optional[dict] = None
+
+
+class SystemStatusResponse(BaseModel):
+    status: str  # "healthy", "degraded", "unhealthy"
+    uptime_seconds: float
+    version: str
+    active_backends: List[str]
+    active_personas: List[str]
+    config_hash: str  # For detecting config changes
+
+
+class RoutingConfigResponse(BaseModel):
+    allowed_personas: List[str]
+    enable_adaptive_routing: bool = True
+
+
+class BackendStatus(BaseModel):
+    name: str
+    type: str  # "ollama", "windowsml", "fallback"
+    is_available: bool
+    last_checked: Optional[float] = None  # timestamp
+    config: dict  # Backend-specific config
+
+
+class BackendListResponse(BaseModel):
+    backends: List[BackendStatus]
+
+
+class ContextConfigResponse(BaseModel):
+    extra_documents_dir: Optional[str]
+    enable_semantic_chunking: bool
+    max_combined_context_tokens: int
+
+
+class APIKeyInfo(BaseModel):
+    hash: str  # SHA256 hash
+    created_at: Optional[float] = None  # timestamp
+    last_used: Optional[float] = None  # timestamp
+
+
+class SecurityStatusResponse(BaseModel):
+    api_keys_count: int
+    audit_log_enabled: bool
+
+
+# Phase 2: Mutation API Models ------------------------------------------
+
+class PersonaCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')
+    description: str = Field(..., min_length=1, max_length=200)
+    system_prompt: str = Field(..., min_length=1)
+    max_context_window: int = Field(4096, ge=512, le=32768)
+    routing_hint: str = Field("general", min_length=1, max_length=50)
+
+
+class PersonaUpdateRequest(BaseModel):
+    description: Optional[str] = Field(None, min_length=1, max_length=200)
+    system_prompt: Optional[str] = Field(None, min_length=1)
+    max_context_window: Optional[int] = Field(None, ge=512, le=32768)
+    routing_hint: Optional[str] = Field(None, min_length=1, max_length=50)
+
+
+class PersonaResponse(BaseModel):
+    name: str
+    description: str
+    system_prompt: str
+    max_context_window: int
+    routing_hint: str
+    is_active: bool
+
+
+class RoutingConfigUpdateRequest(BaseModel):
+    allowed_personas: Optional[List[str]] = None
+    enable_adaptive_routing: Optional[bool] = None
+
+
+class ContextConfigUpdateRequest(BaseModel):
+    extra_documents_dir: Optional[str] = None
+    enable_semantic_chunking: Optional[bool] = None
+    max_combined_context_tokens: Optional[int] = Field(None, ge=1024, le=65536)
+
+
+class BackendTestResponse(BaseModel):
+    success: bool
+    latency_ms: Optional[float] = None
+    error: Optional[str] = None
+
+
+class ConfigSaveResponse(BaseModel):
+    success: bool
+    config_hash: str
+    message: str
+
+
 def build_app(config: Optional[AppConfig] = None) -> FastAPI:
     jarvis_app = JarvisApplication(config=config)
 
@@ -91,19 +220,31 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
     @fastapi_app.get("/api/v1/personas", response_model=List[dict])
     def personas(app: JarvisApplication = Depends(_app_dependency)) -> List[dict]:
-        return app.personas()
+        try:
+            return app.personas()
+        except Exception as e:
+            logger.error("Failed to retrieve personas", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve personas")
 
     @fastapi_app.post("/api/v1/chat", response_model=ChatResponse)
     def chat(request: ChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> ChatResponse:
-        payload = app.chat(
-            persona=request.persona,
-            messages=[message.model_dump() for message in request.messages],
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            metadata=request.metadata,
-            external_context=request.external_context,
-        )
-        return ChatResponse(**payload)
+        # Validate persona exists
+        if request.persona not in app.config.personas:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Persona '{request.persona}' not found. Available: {list(app.config.personas.keys())}")
+
+        try:
+            payload = app.chat(
+                persona=request.persona,
+                messages=[message.model_dump() for message in request.messages],
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                metadata=request.metadata,
+                external_context=request.external_context,
+            )
+            return ChatResponse(**payload)
+        except Exception as e:
+            logger.error("Chat request failed", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Chat request failed")
 
     @fastapi_app.post("/v1/chat/completions")
     async def openai_chat_completions(request: Request, app: JarvisApplication = Depends(_app_dependency)):
@@ -200,11 +341,174 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
     @fastapi_app.get("/api/v1/monitoring/metrics", response_model=MetricsResponse)
     def metrics(app: JarvisApplication = Depends(_app_dependency)) -> MetricsResponse:
-        return MetricsResponse(history=app.metrics_snapshot())
+        try:
+            return MetricsResponse(history=app.metrics_snapshot())
+        except Exception as e:
+            logger.error("Failed to retrieve metrics", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve metrics")
 
     @fastapi_app.get("/api/v1/monitoring/traces", response_model=TracesResponse)
     def traces(app: JarvisApplication = Depends(_app_dependency)) -> TracesResponse:
-        return TracesResponse(traces=app.traces_latest())
+        try:
+            return TracesResponse(traces=app.traces_latest())
+        except Exception as e:
+            logger.error("Failed to retrieve traces", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve traces")
+
+    # Management API endpoints -------------------------------------------
+
+    @fastapi_app.get("/api/v1/management/system/status", response_model=SystemStatusResponse)
+    def get_system_status(app: JarvisApplication = Depends(_app_dependency)) -> SystemStatusResponse:
+        return SystemStatusResponse(**app.system_status())
+
+    @fastapi_app.get("/api/v1/management/routing/config", response_model=RoutingConfigResponse)
+    def get_routing_config(app: JarvisApplication = Depends(_app_dependency)) -> RoutingConfigResponse:
+        return RoutingConfigResponse(**app.get_routing_config())
+
+    @fastapi_app.get("/api/v1/management/backends", response_model=BackendListResponse)
+    def list_backends(app: JarvisApplication = Depends(_app_dependency)) -> BackendListResponse:
+        return BackendListResponse(backends=app.list_backends())
+
+    @fastapi_app.get("/api/v1/management/context/config", response_model=ContextConfigResponse)
+    def get_context_config(app: JarvisApplication = Depends(_app_dependency)) -> ContextConfigResponse:
+        return ContextConfigResponse(**app.get_context_config())
+
+    @fastapi_app.get("/api/v1/management/security/status", response_model=SecurityStatusResponse)
+    def get_security_status(app: JarvisApplication = Depends(_app_dependency)) -> SecurityStatusResponse:
+        return SecurityStatusResponse(**app.get_security_status())
+
+    # Phase 2: Mutation endpoints -------------------------------------------
+
+    @fastapi_app.post("/api/v1/management/personas", response_model=PersonaResponse)
+    def create_persona(request: PersonaCreateRequest, app: JarvisApplication = Depends(_app_dependency)) -> PersonaResponse:
+        try:
+            result = app.create_persona(request.model_dump())
+            return PersonaResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error("Failed to create persona", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create persona")
+
+    @fastapi_app.put("/api/v1/management/personas/{name}", response_model=PersonaResponse)
+    def update_persona(name: str, request: PersonaUpdateRequest, app: JarvisApplication = Depends(_app_dependency)) -> PersonaResponse:
+        try:
+            result = app.update_persona(name, request.model_dump(exclude_unset=True))
+            return PersonaResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if "not found" in str(e) else status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to update persona '{name}'", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update persona '{name}'")
+
+    @fastapi_app.delete("/api/v1/management/personas/{name}")
+    def delete_persona(name: str, app: JarvisApplication = Depends(_app_dependency)):
+        try:
+            app.delete_persona(name)
+            return {"message": f"Persona '{name}' deleted successfully"}
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if "not found" in str(e) else status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to delete persona '{name}'", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete persona '{name}'")
+
+    @fastapi_app.put("/api/v1/management/config/routing", response_model=RoutingConfigResponse)
+    def update_routing_config(request: RoutingConfigUpdateRequest, app: JarvisApplication = Depends(_app_dependency)) -> RoutingConfigResponse:
+        try:
+            result = app.update_routing_config(request.model_dump(exclude_unset=True))
+            return RoutingConfigResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error("Failed to update routing config", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update routing config")
+
+    @fastapi_app.put("/api/v1/management/config/context", response_model=ContextConfigResponse)
+    def update_context_config(request: ContextConfigUpdateRequest, app: JarvisApplication = Depends(_app_dependency)) -> ContextConfigResponse:
+        try:
+            result = app.update_context_config(request.model_dump(exclude_unset=True))
+            return ContextConfigResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except Exception as e:
+            logger.error("Failed to update context config", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update context config")
+
+    @fastapi_app.post("/api/v1/management/backends/{name}/test", response_model=BackendTestResponse)
+    def test_backend(name: str, app: JarvisApplication = Depends(_app_dependency)) -> BackendTestResponse:
+        try:
+            result = app.test_backend(name)
+            return BackendTestResponse(**result)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except Exception as e:
+            logger.error(f"Failed to test backend '{name}'", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to test backend '{name}'")
+
+    @fastapi_app.post("/api/v1/management/config/save", response_model=ConfigSaveResponse)
+    def save_config(app: JarvisApplication = Depends(_app_dependency)) -> ConfigSaveResponse:
+        try:
+            result = app.save_config()
+            return ConfigSaveResponse(**result)
+        except Exception as e:
+            logger.error("Failed to save config", exc_info=e)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save configuration")
+
+    # OpenAI-compatible endpoints
+    @fastapi_app.post("/v1/chat/completions")
+    def openai_chat_completions(request: OpenAIChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> OpenAIChatResponse:
+        import time
+        # Convert OpenAI format to Jarvis format
+        persona = request.model if request.model in app.config.personas else "generalist"
+        messages = request.messages
+        temperature = request.temperature
+        max_tokens = request.max_tokens
+
+        # Call Jarvis chat
+        payload = app.chat(
+            persona=persona,
+            messages=[message.model_dump() for message in messages],
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+        # Convert Jarvis response to OpenAI format
+        created = int(time.time())
+        choice = {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": payload["content"]
+            },
+            "finish_reason": "stop"
+        }
+
+        return OpenAIChatResponse(
+            id=f"chatcmpl-{created}",
+            created=created,
+            model=payload["model"],
+            choices=[choice],
+            usage={
+                "prompt_tokens": payload.get("context_tokens", 0),
+                "completion_tokens": payload["tokens"],
+                "total_tokens": payload.get("context_tokens", 0) + payload["tokens"]
+            }
+        )
+
+    @fastapi_app.get("/v1/models")
+    def openai_models():
+        import time
+        # For now, return hardcoded models
+        data = [{
+            "id": "llama3.2:latest",
+            "object": "model",
+            "created": int(time.time()),
+            "owned_by": "jarvis"
+        }]
+        return {
+            "object": "list",
+            "data": data
+        }
 
     return fastapi_app
 
