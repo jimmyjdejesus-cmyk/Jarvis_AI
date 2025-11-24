@@ -269,11 +269,7 @@ class JarvisApplication:
     def test_backend(self, name: str) -> dict:
         """Test backend connectivity."""
         import time
-        backend = None
-        for b in self.backends:
-            if b.name == name:
-                backend = b
-                break
+        backend = next((b for b in self.backends if b.name == name), None)
 
         if not backend:
             raise ValueError(f"Backend '{name}' not found")
