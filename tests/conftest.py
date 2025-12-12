@@ -164,8 +164,16 @@ sys.modules.setdefault("networkx", nx_module)
 
 # Additional stubs
 requests_module = types.ModuleType("requests")
-requests_module.get = lambda *a, **k: Mock()
-requests_module.post = lambda *a, **k: Mock()
+
+def mock_response():
+    resp = Mock()
+    resp.status_code = 200
+    resp.json.return_value = {}
+    resp.text = ""
+    return resp
+
+requests_module.get = lambda *a, **k: mock_response()
+requests_module.post = lambda *a, **k: mock_response()
 sys.modules.setdefault("requests", requests_module)
 critics_pkg = types.ModuleType("jarvis.agents.critics")
 const_module = types.ModuleType("jarvis.agents.critics.constitutional_critic")
@@ -174,6 +182,9 @@ const_module = types.ModuleType("jarvis.agents.critics.constitutional_critic")
 class ConstitutionalCritic:
     def __init__(self, *a, **k):
         pass
+
+    def review(self, *args, **kwargs):
+        return {"approved": True, "feedback": ""}
 
 
 const_module.ConstitutionalCritic = ConstitutionalCritic
@@ -386,6 +397,6 @@ def client():
     mock_client = Mock()
     mock_response = Mock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"content": "test response"}
+    mock_response.json.return_value = {"content": "test response", "id": "test-id"}
     mock_client.post.return_value = mock_response
     return mock_client
