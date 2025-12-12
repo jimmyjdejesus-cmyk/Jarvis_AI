@@ -169,6 +169,7 @@ def get_specialist_registry():  # pragma: no cover - simple stub
 specialist_registry_module.get_specialist_registry = get_specialist_registry
 sys.modules.setdefault(
     "jarvis.agents.specialist_registry", specialist_registry_module
+# Close the setdefault call above.
 
 # Minimal factory shim for tests: provide create_specialist so imports
 # that expect it (e.g., orchestrator) do not fail during collection.
@@ -177,7 +178,6 @@ def create_specialist(name, *args, **kwargs):  # pragma: no cover - test shim
 
 specialist_registry_module.create_specialist = create_specialist
 
-)
 
 # Internal package stubs
 homeostasis_module = types.ModuleType("jarvis.homeostasis")
