@@ -168,7 +168,12 @@ requests_module = types.ModuleType("requests")
 def mock_response():
     resp = Mock()
     resp.status_code = 200
-    resp.json.return_value = {}
+    resp.json.return_value = {
+        "total_events": 0,
+        "ingested": True,
+        "job_id": "test-job",
+        "status": "completed"
+    }
     resp.text = ""
     return resp
 
@@ -183,7 +188,7 @@ class ConstitutionalCritic:
     def __init__(self, *a, **k):
         pass
 
-    def review(self, *args, **kwargs):
+    async def review(self, *args, **kwargs):
         return {"approved": True, "feedback": ""}
 
 
@@ -397,6 +402,6 @@ def client():
     mock_client = Mock()
     mock_response = Mock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"content": "test response", "id": "test-id"}
+    mock_response.json.return_value = {"content": "test response", "id": "test-id", "object": "chat.completion"}
     mock_client.post.return_value = mock_response
     return mock_client
