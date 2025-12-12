@@ -399,9 +399,10 @@ sys.modules.setdefault("jarvis.workflows.engine", engine_module)
 @pytest.fixture
 def client():
     """Mock HTTP client for API tests"""
+    import time
     mock_client = Mock()
     mock_response = Mock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"content": "test response", "id": "test-id", "object": "chat.completion"}
+    mock_response.json.return_value = {"content": "test response", "id": "test-id", "object": "chat.completion", "created": int(time.time())}
     mock_client.post.return_value = mock_response
     return mock_client
