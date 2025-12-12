@@ -169,6 +169,7 @@ def get_specialist_registry():  # pragma: no cover - simple stub
 specialist_registry_module.get_specialist_registry = get_specialist_registry
 sys.modules.setdefault(
     "jarvis.agents.specialist_registry", specialist_registry_module
+)
 # Close the setdefault call above.
 
 # Minimal factory shim for tests: provide create_specialist so imports
