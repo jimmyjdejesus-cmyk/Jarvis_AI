@@ -23,3 +23,9 @@ crewai==0.11.0
 
 # Local model support
 ollama==0.2.1
+
+# Backports / compatibility
+typing-extensions>=4.7.1
+
+# Websocket client (module name: websocket)
+websocket-client>=1.6.0
