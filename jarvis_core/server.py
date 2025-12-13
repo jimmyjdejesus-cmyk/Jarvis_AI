@@ -191,6 +191,107 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
     fastapi_app = FastAPI(title="Jarvis Local Assistant", version="1.0.0", lifespan=lifespan)
 
+    # Compatibility: Normalize middleware entries for Starlette/FastAPI versions
+    try:
+        normalized = []
+        for mw in list(fastapi_app.user_middleware):
+            if isinstance(mw, tuple) and len(mw) == 2:
+                normalized.append(mw)
+            else:
+                cls = getattr(mw, "cls", None)
+                options = getattr(mw, "kwargs", {})
+                normalized.append((cls, options))
+        fastapi_app.user_middleware = normalized
+    except Exception:
+        pass
+
+    # Ensure FastAPI.build_middleware_stack accepts different starlette Middleware shapes
+    try:
+        # Use safe imports so the compatibility wrapper doesn't fail due to missing
+        # modules across different FastAPI/Starlette versions.
+        try:
+            from starlette.middleware.errors import ServerErrorMiddleware, ExceptionMiddleware  # type: ignore
+        except Exception:
+            ServerErrorMiddleware = None
+            ExceptionMiddleware = None
+        try:
+            from fastapi.middleware.asyncexitstack import AsyncExitStackMiddleware  # type: ignore
+        except Exception:
+            AsyncExitStackMiddleware = None
+
+        # Provide a minimal ExceptionMiddleware fallback (if missing in starlette)
+        if ExceptionMiddleware is None:
+            from fastapi import HTTPException as FastAPIHTTPException
+            from starlette.responses import JSONResponse
+
+            class ExceptionMiddleware:  # type: ignore
+                def __init__(self, app, handlers=None, debug: bool = False):
+                    self.app = app
+                    self.handlers = handlers or {}
+                    self.debug = debug
+
+                async def __call__(self, scope, receive, send):
+                    try:
+                        await self.app(scope, receive, send)
+                    except FastAPIHTTPException as exc:
+                        resp = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+                        await resp(scope, receive, send)
+                    except Exception:
+                        raise
+
+        def build_middleware_stack_compat(self):
+            error_handler = None
+            exception_handlers = {}
+            for key, value in self.exception_handlers.items():
+                if key in (500, Exception):
+                    error_handler = value
+                else:
+                    exception_handlers[key] = value
+
+            debug = self.debug
+            # Build a list of normalized middleware entries as tuples (cls, args, kwargs)
+            middleware_raw = []
+            if ServerErrorMiddleware is not None:
+                middleware_raw.append((ServerErrorMiddleware, (), {'handler': error_handler, 'debug': debug}))
+            # Extend with any user middleware (already normalized to 2- or 3-tuples)
+            middleware_raw += list(self.user_middleware)
+            if ExceptionMiddleware is not None:
+                middleware_raw.append((ExceptionMiddleware, (), {'handlers': exception_handlers, 'debug': debug}))
+            if AsyncExitStackMiddleware is not None:
+                middleware_raw.append((AsyncExitStackMiddleware, (), {}))
+
+            normalized = []
+            for mw in middleware_raw:
+                # Normalize to (cls, args, kwargs) where args is an empty tuple if none
+                if isinstance(mw, tuple):
+                    if len(mw) == 3:
+                        normalized.append(mw)
+                    elif len(mw) == 2:
+                        cls, options = mw
+                        normalized.append((cls, (), options))
+                    else:
+                        # Unknown shape, try to read properties
+                        cls = getattr(mw, 'cls', None)
+                        options = getattr(mw, 'kwargs', {})
+                        normalized.append((cls, (), options))
+                else:
+                    cls = getattr(mw, 'cls', None)
+                    args = getattr(mw, 'args', ()) or ()
+                    options = getattr(mw, 'kwargs', {})
+                    normalized.append((cls, args, options))
+
+            app_obj = self.router
+            for cls, args, options in reversed(normalized):
+                if cls is None:
+                    continue
+                app_obj = cls(app=app_obj, *args, **(options or {}))
+            return app_obj
+
+        import types
+        fastapi_app.build_middleware_stack = types.MethodType(build_middleware_stack_compat, fastapi_app)
+    except Exception:
+        pass
+
     def _verify_api_key(request: Request) -> None:
         if not jarvis_app.config.security.api_keys:
             return

@@ -25,8 +25,8 @@ class PerformanceTracker:
         if not success:
             self.metrics["failed_steps"] += 1
         if attempt > 1:
-            # Count retries as attempts beyond the first
-            self.metrics["retry_attempts"] += max(0, attempt - 1)
+            # Each event with attempt>1 increments retry_attempts by 1
+            self.metrics["retry_attempts"] += 1
 
     def reset(self) -> None:
         self.metrics = {k: 0 for k in self.metrics}

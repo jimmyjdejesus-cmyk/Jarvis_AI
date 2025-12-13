@@ -5,7 +5,11 @@ import types
 from pathlib import Path
 from enum import Enum
 from unittest.mock import MagicMock, Mock
+import os
 import pytest
+import subprocess
+import time
+import sys
 
 # Stub external dependencies
 neo4j_module = types.ModuleType("neo4j")
@@ -426,3 +430,25 @@ def client():
     }
     mock_client.post.return_value = mock_response
     return mock_client
+
+# Start a lightweight server for websocket tests when running locally
+@pytest.fixture(scope="session", autouse=True)
+def _start_local_test_server():
+    base = os.getenv("JARVIS_TEST_BASE_URL", "http://127.0.0.1:8000")
+    # If a custom base URL is provided, assume an external server will be used
+    if "127.0.0.1:8000" not in base:
+        yield
+        return
+
+    server_script = Path(__file__).parent / "_test_server.py"
+    proc = subprocess.Popen([sys.executable, str(server_script)])
+    # Wait briefly for the server to start
+    time.sleep(0.8)
+    try:
+        yield
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=3)
+        except Exception:
+            proc.kill()
