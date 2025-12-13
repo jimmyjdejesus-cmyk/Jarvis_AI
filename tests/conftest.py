@@ -2,6 +2,7 @@
 
 import sys
 import types
+import os
 from pathlib import Path
 from enum import Enum
 from unittest.mock import MagicMock, Mock
@@ -39,6 +40,10 @@ exceptions_submodule.TransientError = TransientError
 neo4j_module.exceptions = exceptions_submodule
 sys.modules.setdefault("neo4j", neo4j_module)
 sys.modules.setdefault("neo4j.exceptions", exceptions_submodule)
+
+# Ensure test mode is enabled for local test runs so test-only fallbacks are
+# active (e.g., relaxed CORS or the fallback ExceptionMiddleware).
+os.environ.setdefault("JARVIS_TEST_MODE", "true")
 
 langgraph_module = types.ModuleType("langgraph")
 graph_submodule = types.ModuleType("langgraph.graph")
@@ -183,7 +188,18 @@ def mock_response():
 
 requests_module.get = lambda *a, **k: mock_response()
 requests_module.post = lambda *a, **k: mock_response()
+
+# Stub for requests.adapters
+adapters_module = types.ModuleType("adapters")
+
+class HTTPAdapter:
+    pass
+
+adapters_module.HTTPAdapter = HTTPAdapter
+requests_module.adapters = adapters_module
+
 sys.modules.setdefault("requests", requests_module)
+sys.modules.setdefault("requests.adapters", adapters_module)
 critics_pkg = types.ModuleType("jarvis.agents.critics")
 const_module = types.ModuleType("jarvis.agents.critics.constitutional_critic")
 
@@ -440,10 +456,35 @@ def _start_local_test_server():
         yield
         return
 
+    # If the backend is already serving at the expected base URL, do not
+    # try to start a second server (CI starts its own backend). Check with
+    # a quick HTTP GET; if 200 OK, assume the backend is available and skip
+    # starting our lightweight test server.
+    import urllib.request
+
+    def _is_up(url: str) -> bool:
+        try:
+            req = urllib.request.Request(url.rstrip("/") + "/")
+            with urllib.request.urlopen(req, timeout=1) as resp:
+                return resp.status == 200
+        except Exception:
+            return False
+
+    if _is_up(base):
+        # Backend already running (e.g., CI) — nothing to do
+        yield
+        return
+
     server_script = Path(__file__).parent / "_test_server.py"
     proc = subprocess.Popen([sys.executable, str(server_script)])
-    # Wait briefly for the server to start
-    time.sleep(0.8)
+
+    # Wait for the test server to be ready (with a short timeout)
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        if _is_up(base):
+            break
+        time.sleep(0.2)
+
     try:
         yield
     finally:

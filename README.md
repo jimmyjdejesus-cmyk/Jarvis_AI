@@ -31,6 +31,40 @@ uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000
 
 The backend attempts to use a local Ollama instance (`OLLAMA_HOST`) and falls back to the contextual generator when unavailable.
 
+## Running tests locally
+
+- Install dev dependencies (recommended using a virtual environment):
+
+```bash
+# With UV package manager (recommended in this project)
+uv sync --dev --all-extras --python $(which python)
+```
+
+- Run the test suite:
+
+```bash
+pytest -q
+```
+
+Test mode notes (for developers):
+
+- Set `JARVIS_TEST_MODE=true` to enable test-only fallbacks used by the
+	local test harness (e.g., relaxed CORS for websocket-client tests and a
+	small fallback ExceptionMiddleware when Starlette's ExceptionMiddleware
+	is not present). The test suite sets this automatically when running
+	locally via `pytest` (see `tests/conftest.py`), but you can set it
+	explicitly when debugging:
+
+```bash
+export JARVIS_TEST_MODE=true
+pytest -q
+```
+
+Note: These test-only fallbacks are intentionally gated so production
+deployments are not impacted. If you'd prefer not to use the fallbacks,
+ensure a compatible Starlette/FastAPI version is installed (see
+`requirements.txt`).
+
 ## Migration & Compatibility
 
 This branch keeps the `legacy/` directory intact to preserve backwards compatibility and provides a `Jarvis_Local/` runtime that implements the newer architecture (modern agents, improved monitoring, and a simplified onboarding flow). Review the `docs/` folder for migration steps and API differences.

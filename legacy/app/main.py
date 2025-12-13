@@ -56,11 +56,15 @@ app = FastAPI()
 from jarvis.core.mcp_agent import MCPJarvisAgent
 
 # Allow the Vite dev server to access the API
+# CORS configuration — allow a relaxed configuration when running tests
+_TEST_MODE = os.getenv("JARVIS_TEST_MODE", "false").lower() == "true"
 app.add_middleware(
     CORSMiddleware,
-    # During tests we allow all origins to simplify WebSocket/connectivity
-    # checks from non-browser clients (e.g., websocket-client).
-    allow_origins=["*"],
+    allow_origins=["*"] if _TEST_MODE else [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "tauri://localhost",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -95,8 +99,11 @@ try:
     except Exception:
         AsyncExitStackMiddleware = None
 
-    # Provide a minimal ExceptionMiddleware fallback (if missing in starlette)
-    if ExceptionMiddleware is None:
+    # Provide a minimal ExceptionMiddleware fallback (if missing in starlette).
+    # This fallback is intended only for test environments and will be
+    # enabled only when `JARVIS_TEST_MODE=true` to avoid altering production
+    # behavior inadvertently.
+    if ExceptionMiddleware is None and os.getenv("JARVIS_TEST_MODE", "false").lower() == "true":
         from fastapi import HTTPException as FastAPIHTTPException
         from starlette.responses import JSONResponse
 

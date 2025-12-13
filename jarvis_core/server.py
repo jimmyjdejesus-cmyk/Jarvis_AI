@@ -219,8 +219,10 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         except Exception:
             AsyncExitStackMiddleware = None
 
-        # Provide a minimal ExceptionMiddleware fallback (if missing in starlette)
-        if ExceptionMiddleware is None:
+        # Provide a minimal ExceptionMiddleware fallback (if missing in starlette).
+        # This is only enabled during tests when requested via environment
+        # (JARVIS_TEST_MODE=true).
+        if ExceptionMiddleware is None and os.getenv("JARVIS_TEST_MODE", "false").lower() == "true":
             from fastapi import HTTPException as FastAPIHTTPException
             from starlette.responses import JSONResponse
 
