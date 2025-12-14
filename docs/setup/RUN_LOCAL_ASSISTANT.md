@@ -22,8 +22,12 @@ pip install -r requirements-dev.txt
 3) Start the local server
 
 ```bash
-# Run legacy app (runs API with /api/v1/* endpoints)
-uvicorn legacy.app.main:app --reload --port 8000
+# The legacy runtime has been archived to `archive/legacy` as part of repository cleanup.
+# To run the modern Jarvis runtime instead (recommended):
+uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000
+
+# If you explicitly need to run the legacy runtime, restore it first:
+# git mv archive/legacy legacy && uvicorn legacy.app.main:app --reload --port 8000
 ```
 
 4) Test the local-only endpoint

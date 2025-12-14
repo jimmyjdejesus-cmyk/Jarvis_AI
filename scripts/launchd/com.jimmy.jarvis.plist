@@ -9,7 +9,8 @@
     <string>/Users/jimmy/Documents/Jarvis_AI/.venv/bin/python</string>
     <string>-m</string>
     <string>uvicorn</string>
-    <string>legacy.app.main:app</string>
+    <string>jarvis_core.server:build_app</string>
+    <string>--factory</string>
     <string>--host</string>
     <string>127.0.0.1</string>
     <string>--port</string>

@@ -47,7 +47,15 @@ This will:
 #### Memory Data
 ```bash
 # Start the backend
-python -m uvicorn legacy.app.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000
+
+Note: The original `legacy/` runtime has been archived to `archive/legacy`. If you need to run the legacy system for migration testing, restore it first using:
+
+```bash
+# git mv archive/legacy legacy
+# git commit -m "restore legacy for local migration testing"
+# uvicorn legacy.app.main:app --host 127.0.0.1 --port 8000
+```
 
 # In another terminal, migrate memory
 curl -X POST http://127.0.0.1:8000/api/memory/migrate
