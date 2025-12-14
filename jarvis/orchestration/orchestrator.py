@@ -1,12 +1,25 @@
-"""
-This module provides orchestration templates for coordinating AI agents.
+"""Orchestration system for coordinating AI agents and managing complex workflows.
 
-This module provides two lightweight orchestration helpers:
+This module provides a comprehensive orchestration framework for coordinating
+multiple AI specialists to handle complex requests. It implements various
+coordination patterns (single, parallel, sequential) with intelligent routing,
+caching, and result synthesis capabilities.
 
-- ``MultiAgentOrchestrator``: Coordinates a dictionary of specialist agents,
-  records the reasoning path, and manages specialist coordination.
-- ``DynamicOrchestrator``: Builds and runs LangGraph workflows from simple
-  ``AgentSpec`` definitions, primarily for testing arbitrary workflows.
+Key Components:
+- MultiAgentOrchestrator: Main coordinator for specialist agents
+- OrchestratorTemplate: Base interface for orchestrator implementations  
+- StepContext/StepResult: Execution context and result structures
+- DynamicOrchestrator: Placeholder for dynamic workflow testing
+
+Features:
+- Intelligent specialist selection based on request analysis
+- Multiple coordination patterns (single, parallel, sequential)
+- Vickrey auction-based result ranking and selection
+- Semantic caching for performance optimization
+- Hierarchical message bus for event-driven coordination
+- Path memory for avoiding previously failed approaches
+- Performance tracking and health monitoring
+- Constitutional critic integration for quality assurance
 """
 
 from __future__ import annotations
@@ -34,15 +47,26 @@ from .semantic_cache import SemanticCache
 
 @dataclass
 class AgentSpec:
-    """Minimal agent specification for dynamic workflows."""
-
+    """Minimal agent specification for dynamic workflow testing.
+    
+    Defines a simple agent specification used primarily for testing
+    arbitrary workflow patterns with the DynamicOrchestrator.
+    
+    Attributes:
+        name: Unique identifier for the agent
+        orchestrator: Optional orchestrator instance for this agent
+    """
     name: str
     orchestrator: Any | None = None
 
 
 class DynamicOrchestrator:
-    """Placeholder dynamic orchestrator for tests."""
-
+    """Placeholder dynamic orchestrator for workflow testing.
+    
+    Provides a simple placeholder implementation for testing dynamic
+    workflow patterns and agent specifications. Currently serves as
+    a base class for experimental orchestration approaches.
+    """
     pass
 
 
@@ -56,14 +80,31 @@ logger = logging.getLogger(__name__)
 END = object()
 
 # ---------------------------------------------------------------------------
-# Orchestrator template
+# Orchestrator template and context structures
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class StepContext:
-    """Execution context for a single DAG step."""
-
+    """Execution context for a single DAG step in orchestration workflow.
+    
+    Contains all necessary information for executing a single step in
+    a directed acyclic graph (DAG) orchestration workflow, including
+    request details, constraints, and execution parameters.
+    
+    Attributes:
+        request: The user request or task to execute
+        allowed_specialists: Optional list of permitted specialist agents
+        tools: Optional list of available tools for this step
+        budgets: Optional budget constraints and run metadata
+        retry_policy: Configuration for retry behavior
+        prune_policy: Configuration for result pruning
+        auction_policy: Configuration for result auction/ranking
+        recursion_depth: Current recursion depth for nested execution
+        user_context: Additional user-provided context
+        context: Shared execution context between steps
+        timeout: Optional timeout in seconds for step execution
+    """
     request: str
     allowed_specialists: Optional[List[str]] = None
     tools: Optional[List[str]] = None
@@ -79,17 +120,41 @@ class StepContext:
 
 @dataclass
 class StepResult:
-    """Result of executing a step."""
-
+    """Result of executing a single step in the orchestration workflow.
+    
+    Contains the output data, execution metadata, and workflow tracking
+    information for a completed step execution.
+    
+    Attributes:
+        data: Dictionary containing step execution results
+        run_id: Unique identifier for the execution run
+        depth: Depth of this step in the workflow DAG
+    """
     data: Dict[str, Any]
     run_id: str
     depth: int
 
 
 class OrchestratorTemplate:
-    """Base interface for orchestrators used in DAG execution."""
+    """Base interface for orchestrators used in DAG execution.
+    
+    Defines the standard interface that all orchestrator implementations
+    must follow for step-based workflow execution. Enables pluggable
+    orchestration strategies while maintaining consistent execution semantics.
+    """
 
     async def run_step(self, step_ctx: StepContext) -> StepResult:
+        """Execute a single step in the orchestration workflow.
+        
+        Args:
+            step_ctx: Execution context containing request and constraints
+            
+        Returns:
+            StepResult containing execution results and metadata
+            
+        Raises:
+            NotImplementedError: If not implemented by subclass
+        """
         raise NotImplementedError
 
 

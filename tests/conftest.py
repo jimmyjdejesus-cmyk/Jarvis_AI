@@ -189,17 +189,53 @@ def mock_response():
 requests_module.get = lambda *a, **k: mock_response()
 requests_module.post = lambda *a, **k: mock_response()
 
+class PreparedRequest:
+    pass
+
+requests_module.PreparedRequest = PreparedRequest
+
+# Stub for requests.exceptions
+exceptions_module = types.ModuleType("requests.exceptions")
+
+class RequestException(Exception):
+    pass
+
+class ConnectionError(RequestException):
+    pass
+
+class Timeout(RequestException):
+    pass
+
+class HTTPError(RequestException):
+    pass
+
+class RetryError(RequestException):
+    pass
+
+exceptions_module.RequestException = RequestException
+exceptions_module.ConnectionError = ConnectionError
+exceptions_module.Timeout = Timeout
+exceptions_module.HTTPError = HTTPError
+exceptions_module.RetryError = RetryError
+requests_module.exceptions = exceptions_module
+
 # Stub for requests.adapters
 adapters_module = types.ModuleType("adapters")
 
 class HTTPAdapter:
+    def send(self, *args, **kwargs):
+        return mock_response()
+
+class MaxRetryError(Exception):
     pass
 
 adapters_module.HTTPAdapter = HTTPAdapter
+adapters_module.MaxRetryError = MaxRetryError
 requests_module.adapters = adapters_module
 
 sys.modules.setdefault("requests", requests_module)
 sys.modules.setdefault("requests.adapters", adapters_module)
+sys.modules.setdefault("requests.exceptions", exceptions_module)
 critics_pkg = types.ModuleType("jarvis.agents.critics")
 const_module = types.ModuleType("jarvis.agents.critics.constitutional_critic")
 

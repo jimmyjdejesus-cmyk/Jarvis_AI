@@ -40,7 +40,7 @@ class IntegrationContractTester:
         """Validate database state changes after chat operation."""
         print("🗄️ Validating database state after chat operation")
         
- typically connect        # This would to the actual database to check state
+        # This would typically connect to the actual database to check state
         # For now, we'll simulate the validation
         
         validation_results = {
