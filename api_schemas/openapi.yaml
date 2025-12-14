@@ -243,8 +243,9 @@ paths:
 
   /memory/sync/to-legacy:
     post:
-      summary: Sync memory to legacy
-      description: Synchronize current memory to legacy system
+      summary: Sync memory to legacy (DEPRECATED)
+      description: Synchronize current memory to legacy system. NOTE: The legacy runtime has been archived to `archive/legacy`; this endpoint is retained for backward compatibility and may be removed in a future release. Restore legacy to re-enable.
+      deprecated: true
       tags: [Memory]
       responses:
         '200':
@@ -261,8 +262,9 @@ paths:
 
   /memory/sync/from-legacy:
     post:
-      summary: Load memory from legacy
-      description: Load memory data from legacy system
+      summary: Load memory from legacy (DEPRECATED)
+      description: Load memory data from legacy system. NOTE: The legacy runtime has been archived to `archive/legacy`; this endpoint is deprecated and may be removed in a future release. Restore legacy to re-enable.
+      deprecated: true
       tags: [Memory]
       responses:
         '200':
