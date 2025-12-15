@@ -21,7 +21,7 @@ print(client.models())
 
 # Chat
 resp = client.chat(messages=[{"role": "user", "content": "Write a haiku about code"}], temperature=0.7)
-print(resp["content"]) 
+print(resp["content"])
 
 # Streaming chat
 for chunk in client.chat_stream(messages=[{"role": "user", "content": "Stream reply"}]):
@@ -46,4 +46,5 @@ print(status)
 - Workflows: `workflow_execute`, `workflow_capabilities`, `workflows_active`
 - Jobs: `jobs_submit`, `job_status`, `jobs_submit_and_wait`
 - Security: `security_validate`, `security_events`, `security_stats`, `security_audit`
-- Monitoring: `monitoring_metrics`, `monitoring_summary`, `monitoring_health`, `monitoring_performance`, `monitoring_export`
+- Monitoring: `monitoring_metrics`, `monitoring_summary`, `monitoring_health`,
+  `monitoring_performance`, `monitoring_export`

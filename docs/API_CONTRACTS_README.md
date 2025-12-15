@@ -1,6 +1,9 @@
 # API Contracts and Specifications
 
-This directory contains comprehensive API contracts and specifications for the Jarvis AI platform, providing machine-readable definitions that enable automated client generation, schema validation, and professional API documentation.
+This directory contains comprehensive API contracts and specifications for the
+Jarvis AI platform. It provides machine-readable definitions that enable
+automated client generation, schema validation, and professional API
+documentation.
 
 ## 📁 File Structure
 
@@ -20,7 +23,8 @@ This directory contains comprehensive API contracts and specifications for the J
 ## 🚀 Quick Start
 
 ### 1. **View API Documentation**
-- **OpenAPI UI**: Use tools like [Swagger UI](https://swagger.io/tools/swagger-ui/) or [Redoc](https://redocly.com/redoc/) to visualize the API
+- **OpenAPI UI**: Use tools like [Swagger UI](https://swagger.io/tools/swagger-ui/)
+  or [Redoc](https://redocly.com/redoc/) to visualize the API
 - **Local viewing**: Serve the `openapi.yaml` file through any OpenAPI-compatible documentation tool
 
 ### 2. **Generate Client SDKs**
@@ -219,6 +223,6 @@ except ValidationError as e:
 
 ---
 
-**Generated**: 2025-12-12T12:42:43Z  
-**Version**: 1.0.0  
+**Generated**: 2025-12-12T12:42:43Z
+**Version**: 1.0.0
 **Status**: Production Ready ✅

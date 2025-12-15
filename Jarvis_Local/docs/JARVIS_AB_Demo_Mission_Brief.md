@@ -1,7 +1,12 @@
 # J.A.R.V.I.S. A/B Demo Mission Brief
 
 ## Purpose
-This demo showcases a direct comparison between a **Baseline Agent** (minimal prompting, no reasoning) and the **J.A.R.V.I.S. Framework** (multi-agent, advanced reasoning, remediation). The goal is to highlight the impact of agent architecture and prompting strategies on answer quality, reasoning, and efficiency.
+This demo showcases a direct comparison between a **Baseline Agent**
+(minimal prompting, no reasoning) and the **J.A.R.V.I.S. Framework**
+(multi-agent, advanced reasoning, remediation).
+
+The goal is to highlight the impact of agent architecture and prompting
+strategies on answer quality, reasoning, and efficiency.
 
 ## Scenario
 **Prompt:**
