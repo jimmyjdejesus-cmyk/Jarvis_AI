@@ -186,7 +186,8 @@ COST_LIMITS = {
 COMPLEXITY_MODELS = {
     "high": "anthropic/claude-3-opus-20240229",  # Always use best for high complexity
     "medium": "openai/gpt-4o",                   # GPT-4o for medium tasks
-    "low": "meta-llama/llama-3.1-8b-instruct:free"  # Free for simple tasks
+   "low": "meta-llama/llama-3.1-8b-instruct:free"
+# Free for simple tasks
 }
 ```
 

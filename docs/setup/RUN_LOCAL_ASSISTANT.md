@@ -1,8 +1,10 @@
 Run Local Assistant (Quickstart)
 
-Follow these steps to get a local assistant up and running ASAP using the modern Jarvis runtime (recommended) with Ollama as a local model provider.
+Follow these steps to get a local assistant up and running quickly using the modern Jarvis runtime
+(recommended). This guide assumes you have Ollama installed as the local model provider.
 
-Note: The legacy runtime has been archived to `archive/legacy`. If you specifically need the legacy runtime for migration or testing, see the restore instructions below.
+Note: The legacy runtime has been archived to `archive/legacy`. If you need the legacy runtime
+for migration or testing, follow the restoration instructions below.
 
 1) Install Ollama and fetch a local model
 
@@ -24,8 +26,8 @@ pip install -r requirements-dev.txt
 3) Start the local server
 
 ```bash
-# The legacy runtime has been archived to `archive/legacy` as part of repository cleanup.
-# To run the modern Jarvis runtime instead (recommended):
+# The legacy runtime has been archived to `archive/legacy` as part of the repository cleanup.
+# To run the modern Jarvis runtime instead (recommended), start:
 uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000
 
 # If you explicitly need to run the legacy runtime, restore it first:
