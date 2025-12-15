@@ -33,4 +33,4 @@ websocket-client>=1.6.0
 responses==0.25.8
 
 # Install the agent_scaling_laws package from its public GitHub repository
-git+https://github.com/jimmyjdejesus-cmyk/agent_scaling_laws.git@main#egg=agent_scaling_laws
+git+https://github.com/jimmyjdejesus-cmyk/agent-scaling-laws.git@main#egg=agent_scaling_laws
