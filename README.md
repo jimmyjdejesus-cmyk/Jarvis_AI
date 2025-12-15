@@ -1,8 +1,11 @@
 # J.A.R.V.I.S. — Local-first AI Runtime
 
-Jarvis_AI is a local-first multi-persona assistant that prioritizes verifiable truth, observability, and secure extensibility. It integrates a modern runtime (`Jarvis_Local`) with a legacy compatibility layer so teams can migrate iteratively.
+Jarvis_AI is a local-first multi-persona assistant that prioritizes verifiable truth, observability, and
+secure extensibility. It integrates a modern runtime (`Jarvis_Local`) with a legacy compatibility layer
+so teams can migrate iteratively.
 
-The architecture supports a central Meta-Agent that orchestrates multiple specialist LLMs, an adaptive routing pipeline, and a comprehensive monitoring stack to support research workflows while protecting privacy.
+The architecture supports a central Meta-Agent that orchestrates specialist LLMs, an adaptive routing
+pipeline, and a monitoring stack to support research workflows while protecting privacy.
 
 ## Key Features
 
