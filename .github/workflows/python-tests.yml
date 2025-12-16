@@ -18,28 +18,20 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Cache pip
+      - name: Set up UV (package manager)
+        uses: astral-sh/setup-uv@v3
+
+      - name: Cache UV
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.lock','requirements.txt','pyproject.toml') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock','pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-uv-
 
-        - name: Set up UV (package manager)
-          uses: astral-sh/setup-uv@v3
-
-        - name: Cache UV
-          uses: actions/cache@v4
-          with:
-            path: ~/.cache/uv
-            key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock','pyproject.toml') }}
-            restore-keys: |
-              ${{ runner.os }}-uv-
-
-        - name: Install dependencies using uv (prefer uv.lock)
-          run: |
-            uv sync --all-extras --dev --python $(which python) --no-progress
+      - name: Install dependencies using uv (prefer uv.lock)
+        run: |
+          uv sync --all-extras --dev --python $(which python) --no-progress
 
       # Dependency validation (including VCS installs) runs in the
       # `dependency-check` job earlier in this workflow.

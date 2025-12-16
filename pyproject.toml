@@ -28,5 +28,4 @@ dev = [
     "responses>=0.25.8",
     "websocket-client>=1.7",
     "websockets>=15.0.1",
-    "pip-tools>=6.14",
 ]
