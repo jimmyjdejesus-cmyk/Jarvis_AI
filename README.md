@@ -24,9 +24,10 @@ pipeline, and a monitoring stack to support research workflows while protecting 
 ### Installation
 
 ```bash
+# With UV package manager (recommended in this project)
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+uv sync --dev --all-extras --python $(which python)
 ```
 
 ### Running the API & UI
@@ -45,6 +46,9 @@ contextual generator when unavailable.
 ```bash
 # With UV package manager (recommended in this project)
 uv sync --dev --all-extras --python $(which python)
+
+# To update the lockfile (run from repo root):
+./scripts/generate_uv_lock.sh
 ```
 
 - Run the test suite:

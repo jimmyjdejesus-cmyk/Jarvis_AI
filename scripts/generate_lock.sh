@@ -13,3 +13,11 @@ fi
 echo "Generating requirements.lock from requirements.txt"
 pip-compile --output-file=requirements.lock requirements.txt
 echo "requirements.lock generated"
+
+if command -v uv >/dev/null 2>&1; then
+  echo "Updating uv.lock via uv lock"
+  uv lock --no-progress
+  echo "uv.lock updated"
+else
+  echo "uv not found; skipping uv.lock generation (run 'uv lock' locally or in CI)"
+fi
