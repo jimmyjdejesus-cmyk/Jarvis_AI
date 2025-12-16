@@ -25,6 +25,28 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev --python $(which python)
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt','pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install pip requirements (verify VCS deps)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Smoke test agent-scaling-laws
+        run: |
+          python - <<'PY'
+          import importlib
+          m = importlib.import_module('agent_scaling_laws')
+          print('agent_scaling_laws imported OK', getattr(m,'__version__','no __version__'))
+          assert getattr(m,'__version__','') == '0.1.0', 'agent-scaling-laws version mismatch'
+          PY
+
       - name: Start backend (uvicorn)
         env:
           JARVIS_API_KEY: dummy-ci-key
