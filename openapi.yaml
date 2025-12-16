@@ -1,0 +1,86 @@
+openapi: 3.0.3
+info:
+  title: Jarvis AI API v1
+  description: |
+    Local-first AI orchestration platform providing chat, persona management, monitoring, and system configuration capabilities.
+    
+    ## Authentication
+    All endpoints require authentication via the `X-API-Key` header. Set `JARVIS_DISABLE_AUTH=true` to bypass authentication locally.
+    
+    ## Endpoint Categories
+    - **Core API** (`/api/v1/*`): Main Jarvis functionality
+    - **Management API** (`/api/v1/management/*`): System configuration and persona management
+    - **OpenAI-Compatible** (`/v1/*`): Drop-in replacement for OpenAI API clients
+  version: "1.0.0"
+  contact:
+    name: Jarvis AI Support
+    email: support@jarvis.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local development server
+  - url: https://api.jarvis.ai
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check the health status of the API and available models
+      tags: [Health]
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                available_models:
+                  - "ollama"
+                  - "openrouter"
+
+  /api/v1/models:
+    get:
+      summary: List available models
+      description: Get a list of all available AI model backends
+      tags: [Models]
+      responses:
+        '200':
+          description: List of available model backend names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              example:
+                - "ollama"
+                - "openrouter"
+                - "windowsml"
+                - "contextual-fallback"
+
+  /api/v1/personas:
+    get:
+      summary: List personas
+      description: Retrieve configured personas
+      tags: [Personas]
+      responses:
+        '200':
+          description: List of personas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Persona'
+
+# NOTE: This file is a convenience copy of `api_schemas/openapi.yaml` to
+# support local validation scripts that expect a root `openapi.yaml` file.
