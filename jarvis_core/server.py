@@ -24,7 +24,8 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[Message]
     persona: str = Field("generalist", description="Persona to route the request")
-    temperature: float = 0.7
+    # Constrain temperature to sensible range for the model
+    temperature: float = Field(0.7, ge=0.0, le=2.0)
     max_tokens: int = Field(512, ge=32, le=4096)
     metadata: Optional[dict] = None
     external_context: Optional[List[str]] = None
