@@ -46,9 +46,6 @@ contextual generator when unavailable.
 ```bash
 # With UV package manager (recommended in this project)
 uv sync --dev --all-extras --python $(which python)
-
-# To update the lockfile (run from repo root):
-./scripts/generate_uv_lock.sh
 ```
 
 - Run the test suite:
