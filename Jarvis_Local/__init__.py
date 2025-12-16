@@ -1,24 +1,26 @@
-"""Compatibility shim for `Jarvis_Local`.
+"""Compatibility shim for the moved `Jarvis_Local` package.
 
-This module exists temporarily to provide backwards compatibility for imports
-that reference `Jarvis_Local`. Prefer importing `apps.Jarvis_Local` instead.
-The shim emits a DeprecationWarning and re-exports the moved package.
+This module re-exports the real package under `apps.Jarvis_Local`
+and emits a DeprecationWarning so older code still importing
+`Jarvis_Local` continues to work.
 """
 from __future__ import annotations
+
+import importlib
 import warnings
+from types import ModuleType
 
-warnings.warn(
-    "`Jarvis_Local` moved to `apps.Jarvis_Local`. Import `apps.Jarvis_Local` instead. "
-    "This shim will be removed in a future release.",
-    DeprecationWarning,
-    stacklevel=2,
-)
+warnings.warn("`Jarvis_Local` moved to `apps.Jarvis_Local` - import that package instead",
+              DeprecationWarning, stacklevel=2)
 
-# Re-export moved package for convenience; keep minimal to avoid heavy imports.
-try:
-    from apps import Jarvis_Local as _moved
-    # Expose everything from the moved package
-    import sys
-    sys.modules["Jarvis_Local"] = _moved
-except ImportError:
-    pass
+_mod = importlib.import_module("apps.Jarvis_Local")
+
+# Re-export attributes from the real module so `import Jarvis_Local` behaves like before
+for _name, _val in vars(_mod).items():
+    if _name.startswith("__"):
+        continue
+    globals()[_name] = _val
+
+# Make this module a package proxy for pkgutil-style imports
+__path__ = getattr(_mod, "__path__", [])
+__all__ = getattr(_mod, "__all__", [])
