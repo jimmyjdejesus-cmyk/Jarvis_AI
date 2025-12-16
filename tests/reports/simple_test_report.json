@@ -1,0 +1,135 @@
+{
+  "summary": {
+    "total_tests": 15,
+    "successful_tests": 0,
+    "failed_tests": 15,
+    "success_rate": 0.0,
+    "avg_response_time_ms": 0,
+    "min_response_time_ms": 0,
+    "max_response_time_ms": 0
+  },
+  "test_results": [
+    {
+      "test": "Health Check",
+      "endpoint": "/health",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "List Models",
+      "endpoint": "/api/v1/models",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "List Personas",
+      "endpoint": "/api/v1/personas",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Chat Completion",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Get Metrics",
+      "endpoint": "/api/v1/monitoring/metrics",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Get Traces",
+      "endpoint": "/api/v1/monitoring/traces",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "System Status",
+      "endpoint": "/api/v1/management/system/status",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Routing Config",
+      "endpoint": "/api/v1/management/routing/config",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "List Backends",
+      "endpoint": "/api/v1/management/backends",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Context Config",
+      "endpoint": "/api/v1/management/context/config",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Security Status",
+      "endpoint": "/api/v1/management/security/status",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "OpenAI Chat",
+      "endpoint": "/v1/chat/completions",
+      "method": "POST",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "OpenAI Models",
+      "endpoint": "/v1/models",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "404 Not Found",
+      "endpoint": "/nonexistent",
+      "method": "GET",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    },
+    {
+      "test": "Invalid JSON",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": null,
+      "success": false,
+      "error": "unsupported operand type(s) for *: 'Mock' and 'int'"
+    }
+  ],
+  "timestamp": "2025-12-16 04:55:02",
+  "server_url": "http://127.0.0.1:8000"
+}

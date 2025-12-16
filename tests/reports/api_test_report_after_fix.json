@@ -1,0 +1,414 @@
+{
+  "test_summary": {
+    "total_tests": 35,
+    "successful_tests": 35,
+    "failed_tests": 0,
+    "success_rate": 1.0,
+    "total_response_time_ms": 171.6705322265625,
+    "avg_response_time_ms": 4.904872349330357
+  },
+  "test_results": [
+    {
+      "test_name": "GET /health",
+      "endpoint": "/health",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 10.81085205078125,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/models",
+      "endpoint": "/api/v1/models",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.6401538848876953,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/personas",
+      "endpoint": "/api/v1/personas",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.49567222595214844,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 1.1749267578125,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 400,
+      "success": true,
+      "response_time_ms": 0.6210803985595703,
+      "error_message": null,
+      "expected_status": 400,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/monitoring/metrics",
+      "endpoint": "/api/v1/monitoring/metrics",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.8320808410644531,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/monitoring/traces",
+      "endpoint": "/api/v1/monitoring/traces",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.8041858673095703,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/management/system/status",
+      "endpoint": "/api/v1/management/system/status",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.6740093231201172,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/management/routing/config",
+      "endpoint": "/api/v1/management/routing/config",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.4990100860595703,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "PUT /api/v1/management/config/routing",
+      "endpoint": "/api/v1/management/config/routing",
+      "method": "PUT",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 1.129150390625,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/management/backends",
+      "endpoint": "/api/v1/management/backends",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.972747802734375,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/management/backends/ollama/test",
+      "endpoint": "/api/v1/management/backends/ollama/test",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 1.0561943054199219,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/management/context/config",
+      "endpoint": "/api/v1/management/context/config",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.7429122924804688,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "PUT /api/v1/management/config/context",
+      "endpoint": "/api/v1/management/config/context",
+      "method": "PUT",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 1.3167858123779297,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /api/v1/management/security/status",
+      "endpoint": "/api/v1/management/security/status",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.7762908935546875,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/management/personas",
+      "endpoint": "/api/v1/management/personas",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.6978511810302734,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "PUT /api/v1/management/personas/test-persona",
+      "endpoint": "/api/v1/management/personas/test-persona",
+      "method": "PUT",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.6451606750488281,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "DELETE /api/v1/management/personas/test-persona",
+      "endpoint": "/api/v1/management/personas/test-persona",
+      "method": "DELETE",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.5669593811035156,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/management/config/save",
+      "endpoint": "/api/v1/management/config/save",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.5848407745361328,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /v1/chat/completions",
+      "endpoint": "/v1/chat/completions",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.720977783203125,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /v1/models",
+      "endpoint": "/v1/models",
+      "method": "GET",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 0.537872314453125,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 422,
+      "success": true,
+      "response_time_ms": 0.5381107330322266,
+      "error_message": null,
+      "expected_status": 422,
+      "schema_valid": null
+    },
+    {
+      "test_name": "GET /nonexistent/endpoint",
+      "endpoint": "/nonexistent/endpoint",
+      "method": "GET",
+      "status_code": 404,
+      "success": true,
+      "response_time_ms": 0.2951622009277344,
+      "error_message": null,
+      "expected_status": 404,
+      "schema_valid": null
+    },
+    {
+      "test_name": "PATCH /api/v1/personas",
+      "endpoint": "/api/v1/personas",
+      "method": "PATCH",
+      "status_code": 405,
+      "success": true,
+      "response_time_ms": 0.2818107604980469,
+      "error_message": null,
+      "expected_status": 405,
+      "schema_valid": null
+    },
+    {
+      "test_name": "Error: Malformed JSON",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 422,
+      "success": true,
+      "response_time_ms": 100,
+      "error_message": null,
+      "expected_status": 400,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 1.7399787902832031,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 4.986047744750977,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 4.394054412841797,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 5.424022674560547,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 5.314111709594727,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 4.791975021362305,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 4.612922668457031,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 4.324913024902344,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 3.9718151092529297,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    },
+    {
+      "test_name": "POST /api/v1/chat",
+      "endpoint": "/api/v1/chat",
+      "method": "POST",
+      "status_code": 200,
+      "success": true,
+      "response_time_ms": 4.695892333984375,
+      "error_message": null,
+      "expected_status": 200,
+      "schema_valid": null
+    }
+  ],
+  "performance_metrics": [
+    {
+      "test_name": "Concurrent Chat Requests",
+      "min_response_time": 1.7399787902832031,
+      "max_response_time": 5.424022674560547,
+      "avg_response_time": 4.425573348999023,
+      "median_response_time": 4.654407501220703,
+      "success_rate": 1.0,
+      "total_requests": 10,
+      "successful_requests": 10
+    }
+  ],
+  "server_info": {
+    "base_url": "http://127.0.0.1:8000",
+    "api_key_configured": false,
+    "test_timestamp": "2025-12-16 01:29:53"
+  }
+}

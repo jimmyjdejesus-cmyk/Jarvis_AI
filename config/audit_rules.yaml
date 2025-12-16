@@ -1,0 +1,259 @@
+# Jarvis AI Audit Rules Configuration
+# This file defines thresholds, patterns, and rules for the audit system
+
+# Security scanning rules
+security:
+  # Bandit configuration
+  bandit:
+    confidence_level: "LOW"  # HIGH, MEDIUM, LOW
+    severity_level: "LOW"    # HIGH, MEDIUM, LOW
+    exclude_dirs:
+      - "tests"
+      - "test"
+      - "__pycache__"
+      - ".git"
+      - "venv"
+      - ".venv"
+      - "node_modules"
+    
+  # Custom security patterns
+  patterns:
+    hardcoded_secrets:
+      enabled: true
+      severity: "HIGH"
+      patterns:
+        - "(?i)(password|secret|key|token)\s*=\s*['\"][^'\"]{10,}['\"]"
+        - "(?i)api[_-]?key\s*=\s*['\"][^'\"]{10,}['\"]"
+        - "(?i)private[_-]?key\s*=\s*['\"][^'\"]{10,}['\"]"
+    
+    sql_injection:
+      enabled: true
+      severity: "HIGH"
+      patterns:
+        - "(?i)(execute|query)\s*\(\s*['\"].*%.*['\"]"
+        - "(?i)cursor\.execute\s*\(\s*['\"].*\+"
+        - "(?i)\.execute\s*\(\s*f['\"]"
+    
+    command_injection:
+      enabled: true
+      severity: "HIGH"
+      patterns:
+        - "subprocess\.(call|run|Popen)\s*\([^)]*shell\s*=\s*True"
+        - "os\.system\s*\("
+        - "os\.popen\s*\("
+        - "eval\s*\("
+    
+    insecure_random:
+      enabled: true
+      severity: "MEDIUM"
+      patterns:
+        - "random\.random\s*\("
+        - "random\.choice\s*\("
+        - "random\.randint\s*\("
+    
+    insecure_file_operations:
+      enabled: true
+      severity: "MEDIUM"
+      patterns:
+        - "pickle\.loads?\s*\("
+        - "yaml\.load\s*\("
+        - "eval\s*\("
+
+# Code quality rules
+code_quality:
+  # Line length thresholds
+  line_length:
+    max_length: 120
+    severity: "LOW"
+  
+  # Cyclomatic complexity thresholds
+  complexity:
+    max_complexity: 10
+    medium_threshold: 15
+    severity_low: "LOW"
+    severity_medium: "MEDIUM"
+    severity_high: "HIGH"
+  
+  # Function length thresholds
+  function_length:
+    max_lines: 50
+    severity: "MEDIUM"
+  
+  # Class length thresholds
+  class_length:
+    max_lines: 200
+    severity: "MEDIUM"
+  
+  # Magic numbers detection
+  magic_numbers:
+    enabled: true
+    allowed_numbers: [0, 1, -1, 2]
+    min_magic_number: 10
+    severity: "LOW"
+  
+  # Technical debt markers
+  technical_debt:
+    enabled: true
+    patterns:
+      - "TODO"
+      - "FIXME"
+      - "XXX"
+      - "HACK"
+      - "BUG"
+    severity: "INFO"
+
+# Performance scanning rules
+performance:
+  # Database query patterns
+  database:
+    n_plus_one:
+      enabled: true
+      severity: "HIGH"
+    
+    missing_indexes:
+      enabled: true
+      severity: "MEDIUM"
+  
+  # Memory usage patterns
+  memory:
+    large_objects:
+      enabled: true
+      threshold_mb: 100
+      severity: "MEDIUM"
+    
+    memory_leaks:
+      enabled: true
+      severity: "HIGH"
+  
+  # CPU usage patterns
+  cpu:
+    infinite_loops:
+      enabled: true
+      severity: "HIGH"
+    
+    inefficient_algorithms:
+      enabled: true
+      severity: "MEDIUM"
+
+# Dependency scanning rules
+dependencies:
+  # Vulnerability database checks
+  vulnerability_check:
+    enabled: true
+    severity_mapping:
+      critical: "CRITICAL"
+      high: "HIGH"
+      medium: "MEDIUM"
+      low: "LOW"
+  
+  # Outdated packages
+  outdated_packages:
+    enabled: true
+    severity: "LOW"
+  
+  # Unpinned versions
+  unpinned_versions:
+    enabled: true
+    severity: "LOW"
+
+# Compliance standards
+compliance:
+  owasp:
+    top_10_2021:
+      enabled: true
+      categories:
+        - "A01: Broken Access Control"
+        - "A02: Cryptographic Failures"
+        - "A03: Injection"
+        - "A04: Insecure Design"
+        - "A05: Security Misconfiguration"
+        - "A06: Vulnerable Components"
+        - "A07: Identification Failures"
+        - "A08: Software Integrity Failures"
+        - "A09: Logging Failures"
+        - "A10: Server-Side Request Forgery"
+  
+  nist:
+    framework:
+      enabled: true
+      categories:
+        - "Identify"
+        - "Protect"
+        - "Detect"
+        - "Respond"
+        - "Recover"
+
+# Severity mappings
+severity_mappings:
+  # CVSS to internal severity
+  cvss_to_severity:
+    "9.0-10.0": "CRITICAL"
+    "7.0-8.9": "HIGH"
+    "4.0-6.9": "MEDIUM"
+    "0.1-3.9": "LOW"
+    "0.0": "INFO"
+  
+  # CWE to severity
+  cwe_severity:
+    "CWE-79": "HIGH"     # XSS
+    "CWE-89": "HIGH"     # SQL Injection
+    "CWE-78": "HIGH"     # OS Command Injection
+    "CWE-94": "HIGH"     # Code Injection
+    "CWE-798": "HIGH"    # Hardcoded Credentials
+    "CWE-352": "MEDIUM"  # CSRF
+    "CWE-22": "MEDIUM"   # Path Traversal
+    "CWE-200": "LOW"     # Information Exposure
+
+# Reporting configuration
+reporting:
+  # Risk score calculation
+  risk_calculation:
+    weights:
+      critical: 10.0
+      high: 7.5
+      medium: 5.0
+      low: 2.5
+      info: 1.0
+    
+    thresholds:
+      high_risk: 7.0
+      moderate_risk: 4.0
+  
+  # Compliance thresholds
+  compliance_thresholds:
+    code_quality_max_issues: 10
+    performance_max_issues: 5
+    security_max_critical: 0
+    security_max_high: 3
+
+# File exclusions
+exclusions:
+  # File patterns to exclude
+  patterns:
+    - "*.pyc"
+    - "*.pyo"
+    - "__pycache__/*"
+    - ".git/*"
+    - ".svn/*"
+    - ".hg/*"
+    - "node_modules/*"
+    - "venv/*"
+    - ".venv/*"
+    - "env/*"
+    - "ENV/*"
+    - "build/*"
+    - "dist/*"
+    - "*.egg-info/*"
+    - ".tox/*"
+    - ".pytest_cache/*"
+    - "coverage/*"
+  
+  # Directory patterns to exclude
+  directories:
+    - "tests"
+    - "test"
+    - "spec"
+    - "docs"
+    - "examples"
+    - "scripts"
+    - "tools"

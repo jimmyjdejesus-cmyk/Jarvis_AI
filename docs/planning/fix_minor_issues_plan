@@ -1,0 +1,15 @@
+# Fix Minor Issues Plan
+
+## Issues Identified:
+1. [x] Fix pytest dependency conflicts (web3/eth_typing version mismatch)
+2. [x] Improve configuration loading (config_loader.py too minimal)
+3. [x] Check for any missing imports or dependencies
+4. [x] Verify all test files are properly structured
+5. [x] Test the fixes work properly
+
+## Steps:
+1. [x] Fix requirements.txt to avoid web3 conflicts
+2. [x] Create proper configuration loading system
+3. [x] Add missing dependency management
+4. [x] Run tests to verify fixes
+5. [x] Update documentation if needed

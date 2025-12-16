@@ -1,0 +1,188 @@
+{
+  "standards": {
+    "owasp": {
+      "name": "OWASP Top 10",
+      "version": "2021",
+      "description": "OWASP Top 10 Most Critical Web Application Security Risks",
+      "categories": {
+        "A01": {
+          "name": "Broken Access Control",
+          "description": "Failures to restrict access to authorized users and functions",
+          "cwe_ids": ["CWE-284", "CWE-285", "CWE-862", "CWE-863"],
+          "severity": "HIGH",
+          "remediation": "Implement proper access controls and authorization checks"
+        },
+        "A02": {
+          "name": "Cryptographic Failures",
+          "description": "Failures related to cryptography which can lead to sensitive data exposure",
+          "cwe_ids": ["CWE-311", "CWE-312", "CWE-320", "CWE-321", "CWE-322", "CWE-323", "CWE-324", "CWE-325", "CWE-326", "CWE-327", "CWE-328", "CWE-330", "CWE-337"],
+          "severity": "HIGH",
+          "remediation": "Use strong cryptography and proper key management"
+        },
+        "A03": {
+          "name": "Injection",
+          "description": "Injection flaws occur when untrusted data is sent to an interpreter",
+          "cwe_ids": ["CWE-20", "CWE-74", "CWE-75", "CWE-77", "CWE-78", "CWE-79", "CWE-80", "CWE-81", "CWE-82", "CWE-83", "CWE-84", "CWE-86", "CWE-88", "CWE-89", "CWE-90", "CWE-91", "CWE-93", "CWE-94", "CWE-95", "CWE-96", "CWE-97", "CWE-98", "CWE-99"],
+          "severity": "HIGH",
+          "remediation": "Use parameterized queries and input validation"
+        },
+        "A04": {
+          "name": "Insecure Design",
+          "description": "Risks related to design and architectural flaws",
+          "cwe_ids": ["CWE-117", "CWE-349", "CWE-352", "CWE-434", "CWE-441", "CWE-444", "CWE-476", "CWE-521", "CWE-552", "CWE-619", "CWE-798", "CWE-807", "CWE-840", "CWE-841"],
+          "severity": "MEDIUM",
+          "remediation": "Implement secure design patterns and threat modeling"
+        },
+        "A05": {
+          "name": "Security Misconfiguration",
+          "description": "Improper configuration of security settings",
+          "cwe_ids": ["CWE-2", "CWE-11", "CWE-14", "CWE-15", "CWE-16", "CWE-200", "CWE-209", "CWE-211", "CWE-215", "CWE-244", "CWE-260", "CWE-265", "CWE-272", "CWE-273", "CWE-284", "CWE-285", "CWE-352", "CWE-376", "CWE-377", "CWE-424", "CWE-425", "CWE-426", "CWE-427", "CWE-430", "CWE-431", "CWE-433", "CWE-439", "CWE-464", "CWE-495", "CWE-496", "CWE-497", "CWE-502", "CWE-503", "CWE-536", "CWE-537", "CWE-541", "CWE-548", "CWE-552", "CWE-563", "CWE-564", "CWE-565", "CWE-568", "CWE-585", "CWE-590", "CWE-605", "CWE-618", "CWE-632", "CWE-646", "CWE-656", "CWE-657", "CWE-670", "CWE-676", "CWE-681", "CWE-685", "CWE-694", "CWE-695", "CWE-696", "CWE-697", "CWE-698", "CWE-703", "CWE-706", "CWE-707", "CWE-710", "CWE-712", "CWE-721", "CWE-722", "CWE-723", "CWE-724", "CWE-725", "CWE-726", "CWE-727", "CWE-728", "CWE-729", "CWE-730", "CWE-731", "CWE-732", "CWE-733", "CWE-734", "CWE-735", "CWE-736", "CWE-737", "CWE-738", "CWE-739", "CWE-740", "CWE-741", "CWE-742", "CWE-743", "CWE-744", "CWE-745", "CWE-746", "CWE-747", "CWE-748", "CWE-749", "CWE-750", "CWE-751", "CWE-752", "CWE-753", "CWE-754", "CWE-755", "CWE-756", "CWE-757", "CWE-758", "CWE-759", "CWE-760", "CWE-761", "CWE-762", "CWE-763", "CWE-764", "CWE-765", "CWE-766", "CWE-767", "CWE-768", "CWE-769", "CWE-770", "CWE-771", "CWE-772", "CWE-773", "CWE-774", "CWE-775", "CWE-776", "CWE-777", "CWE-778", "CWE-779", "CWE-780", "CWE-781", "CWE-782", "CWE-783", "CWE-784", "CWE-785", "CWE-786", "CWE-787", "CWE-788", "CWE-789", "CWE-790", "CWE-791", "CWE-792", "CWE-793", "CWE-794", "CWE-795", "CWE-796", "CWE-797", "CWE-798", "CWE-799", "CWE-800", "CWE-801", "CWE-802", "CWE-803", "CWE-804", "CWE-805", "CWE-806", "CWE-807", "CWE-808", "CWE-809", "CWE-810", "CWE-811", "CWE-812", "CWE-813", "CWE-814", "CWE-815", "CWE-816", "CWE-817", "CWE-818", "CWE-819", "CWE-820", "CWE-821", "CWE-822", "CWE-823", "CWE-824", "CWE-825", "CWE-826", "CWE-827", "CWE-828", "CWE-829", "CWE-830", "CWE-831", "CWE-832", "CWE-833", "CWE-834", "CWE-835", "CWE-836", "CWE-837", "CWE-838", "CWE-839", "CWE-840", "CWE-841", "CWE-842", "CWE-843", "CWE-844", "CWE-845"],
+          "severity": "MEDIUM",
+          "remediation": "Implement secure configuration and hardening"
+        },
+        "A06": {
+          "name": "Vulnerable and Outdated Components",
+          "description": "Components running with known vulnerabilities",
+          "cwe_ids": ["CWE-1104", "CWE-937"],
+          "severity": "HIGH",
+          "remediation": "Keep components up to date and monitor for vulnerabilities"
+        },
+        "A07": {
+          "name": "Identification and Authentication Failures",
+          "description": "Failures related to identification and authentication",
+          "cwe_ids": ["CWE-287", "CWE-521", "CWE-262", "CWE-263", "CWE-321", "CWE-798"],
+          "severity": "HIGH",
+          "remediation": "Implement strong authentication and session management"
+        },
+        "A08": {
+          "name": "Software and Data Integrity Failures",
+          "description": "Failures related to software and data integrity",
+          "cwe_ids": ["CWE-345", "CWE-347", "CWE-352", "CWE-434", "CWE-494", "CWE-829"],
+          "severity": "HIGH",
+          "remediation": "Verify integrity of software and data"
+        },
+        "A09": {
+          "name": "Security Logging and Monitoring Failures",
+          "description": "Insufficient logging and monitoring for security events",
+          "cwe_ids": ["CWE-778", "CWE-223", "CWE-532"],
+          "severity": "MEDIUM",
+          "remediation": "Implement comprehensive logging and monitoring"
+        },
+        "A10": {
+          "name": "Server-Side Request Forgery",
+          "description": "SSRF flaws occur when a web application fetches a remote resource",
+          "cwe_ids": ["CWE-918"],
+          "severity": "HIGH",
+          "remediation": "Validate and sanitize server-side requests"
+        }
+      }
+    },
+    "nist": {
+      "name": "NIST Cybersecurity Framework",
+      "version": "2.0",
+      "description": "Framework for Improving Critical Infrastructure Cybersecurity",
+      "functions": {
+        "Identify": {
+          "description": "Develop understanding of organizational assets and risks",
+          "categories": ["Asset Management", "Business Environment", "Governance", "Risk Assessment", "Risk Management Strategy"],
+          "severity": "MEDIUM"
+        },
+        "Protect": {
+          "description": "Implement safeguards to ensure delivery of critical services",
+          "categories": ["Access Control", "Awareness and Training", "Data Security", "Information Protection", "Maintenance", "Protective Technology"],
+          "severity": "HIGH"
+        },
+        "Detect": {
+          "description": "Develop and implement activities to detect cybersecurity events",
+          "categories": ["Anomalies and Events", "Security Continuous Monitoring", "Detection Processes"],
+          "severity": "HIGH"
+        },
+        "Respond": {
+          "description": "Develop and implement activities to respond to cybersecurity events",
+          "categories": ["Response Planning", "Communications", "Analysis", "Mitigation", "Improvements"],
+          "severity": "MEDIUM"
+        },
+        "Recover": {
+          "description": "Develop and implement plans for resilience and restoration",
+          "categories": ["Recovery Planning", "Improvements", "Communications"],
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "pci_dss": {
+      "name": "PCI DSS",
+      "version": "4.0",
+      "description": "Payment Card Industry Data Security Standard",
+      "requirements": {
+        "1": "Install and maintain network security controls",
+        "2": "Apply secure configurations to all system components",
+        "3": "Protect stored account data",
+        "4": "Protect cardholder data with strong cryptography",
+        "5": "Protect systems and networks from malicious software",
+        "6": "Develop and maintain secure systems and software",
+        "7": "Restrict access to system components and cardholder data",
+        "8": "Identify users and authenticate access",
+        "9": "Restrict physical access to systems and data",
+        "10": "Log and monitor access to system components and cardholder data",
+        "11": "Test system security regularly",
+        "12": "Support information security with policies and procedures"
+      },
+      "severity": "CRITICAL"
+    },
+    "iso_27001": {
+      "name": "ISO 27001",
+      "version": "2022",
+      "description": "Information Security Management System Standard",
+      "controls": {
+        "A.5": "Information security policies",
+        "A.6": "Organization of information security",
+        "A.7": "Human resource security",
+        "A.8": "Asset management",
+        "A.9": "Access control",
+        "A.10": "Cryptography",
+        "A.11": "Physical and environmental security",
+        "A.12": "Operations security",
+        "A.13": "Communications security",
+        "A.14": "System acquisition, development and maintenance",
+        "A.15": "Supplier relationships",
+        "A.16": "Information security incident management",
+        "A.17": "Information security aspects of business continuity management",
+        "A.18": "Compliance"
+      },
+      "severity": "MEDIUM"
+    },
+    "soc2": {
+      "name": "SOC 2",
+      "version": "2017",
+      "description": "Service Organization Control 2",
+      "criteria": {
+        "Security": "Protection against unauthorized access",
+        "Availability": "System availability and performance",
+        "Processing Integrity": "System processing completeness and accuracy",
+        "Confidentiality": "Information designated as confidential",
+        "Privacy": "Personal information collection, use, retention and disposal"
+      },
+      "severity": "HIGH"
+    }
+  },
+  "compliance_mapping": {
+    "security_controls": {
+      "encryption": ["A02", "A03", "A06"],
+      "access_control": ["A01", "A07"],
+      "input_validation": ["A03", "A05"],
+      "session_management": ["A07"],
+      "logging_monitoring": ["A09"],
+      "vulnerability_management": ["A06", "A08"]
+    },
+    "risk_levels": {
+      "critical": ["A02", "A03", "A06", "A07", "A08"],
+      "high": ["A01", "A10"],
+      "medium": ["A04", "A05", "A09"]
+    }
+  },
+  "remediation_priority": {
+    "immediate": ["A02", "A03", "A06"],
+    "high": ["A01", "A07", "A08", "A10"],
+    "medium": ["A04", "A05", "A09"]
+  }
+}
