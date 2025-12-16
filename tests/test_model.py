@@ -2,8 +2,8 @@
 import sys
 import os
 import time
-from Jarvis_Local.settings import ACTIVE_MODEL_NAME, get_active_model_path
-from Jarvis_Local.logger_config import log
+from apps.Jarvis_Local.settings import ACTIVE_MODEL_NAME, get_active_model_path
+from apps.Jarvis_Local.logger_config import log
 
 print(f"Testing model loading for: {ACTIVE_MODEL_NAME}")
 print(f"Model path: {get_active_model_path()}")
@@ -11,10 +11,17 @@ print(f"Current working directory: {os.getcwd()}")
 
 # Resolve absolute path to model
 model_path = get_active_model_path()
-if model_path.startswith("Jarvis_Local/"):
+# Resolve absolute path safely: the `get_active_model_path` may return an absolute path,
+# a path relative to the package, or a model name. Try a few fallbacks.
+if os.path.isabs(model_path) or os.path.exists(model_path):
     abs_path = os.path.abspath(model_path)
 else:
-    abs_path = os.path.abspath(f"Jarvis_Local/{model_path}")
+    candidate = os.path.abspath(os.path.join("apps", "Jarvis_Local", model_path))
+    if os.path.exists(candidate):
+        abs_path = candidate
+    else:
+        # Fallback to interpreting the value as-is (may be a model id, not a file path)
+        abs_path = os.path.abspath(model_path)
 print(f"Absolute model path: {abs_path}")
 print(f"File exists: {os.path.exists(abs_path)}")
 

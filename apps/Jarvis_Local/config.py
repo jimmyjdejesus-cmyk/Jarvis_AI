@@ -1,7 +1,9 @@
 # config.py
+from pathlib import Path
 
 # CRITICAL: Make sure this filename is EXACTLY correct.
-MODEL_PATH = "Jarvis_Local/models/gemma-3-1b-it-Q4_K_M.gguf"
+# Use a path relative to this file so the model path remains correct after moving.
+MODEL_PATH = str(Path(__file__).resolve().parent / "models" / "gemma-3-1b-it-Q4_K_M.gguf")
 
 # This MUST be 0 for CPU only setup, -1 to offload to GPU(if available)
 N_GPU_LAYERS = -1

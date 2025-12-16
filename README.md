@@ -1,8 +1,12 @@
 # J.A.R.V.I.S. — Local-first AI Runtime
 
 Jarvis_AI is a local-first multi-persona assistant that prioritizes verifiable truth, observability, and
-secure extensibility. It integrates a modern runtime (`Jarvis_Local`) with a legacy compatibility layer
+secure extensibility. It integrates a modern runtime (`apps/Jarvis_Local`) with a legacy compatibility layer
 so teams can migrate iteratively.
+
+Note: The example runtime formerly at `Jarvis_Local/` was moved to `apps/Jarvis_Local`.
+A compatibility shim remains at `Jarvis_Local/__init__.py` that emits a DeprecationWarning;
+please import `apps.Jarvis_Local` directly.
 
 The architecture supports a central Meta-Agent that orchestrates specialist LLMs, an adaptive routing
 pipeline, and a monitoring stack to support research workflows while protecting privacy.

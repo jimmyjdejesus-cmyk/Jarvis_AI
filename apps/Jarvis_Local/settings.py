@@ -1,5 +1,6 @@
 # settings.py
 import os
+from pathlib import Path
 
 # --- Live, Mutable Settings ---
 NUM_RESPONSES = 2
@@ -18,12 +19,12 @@ ACTIVE_MODEL_NAME = VERIFIER_MODEL
 def get_active_model_path() -> str:
 	"""Return a model path that tests can resolve.
 
-	Prefer the explicit `Jarvis_Local/active_model.cfg` if present, otherwise
-	return the declared `ACTIVE_MODEL_NAME` (caller may convert to a path).
+	Prefer the explicit `apps/Jarvis_Local/active_model.cfg` (located next to
+	this file) if present, otherwise return the declared `ACTIVE_MODEL_NAME`.
 	"""
-	cfg_path = os.path.join("Jarvis_Local", "active_model.cfg")
-	if os.path.exists(cfg_path):
-		return cfg_path
+	cfg_path = Path(__file__).resolve().parent / "active_model.cfg"
+	if cfg_path.exists():
+		return str(cfg_path)
 	return ACTIVE_MODEL_NAME
 
 

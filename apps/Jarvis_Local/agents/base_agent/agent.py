@@ -2,8 +2,8 @@
 """Base agent class for all agents in the system."""
 
 import ollama
-from Jarvis_Local import settings
-from Jarvis_Local.logger_config import log
+from ... import settings
+from ...logger_config import log
 
 class BaseAgent:
     def __init__(self, system_prompt=""):

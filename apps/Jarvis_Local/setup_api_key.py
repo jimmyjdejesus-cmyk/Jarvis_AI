@@ -2,7 +2,7 @@
 """
 Utility script to set the OpenAI API key for Jarvis AI
 """
-from Jarvis_Local.tools.key_manager import save_api_key
+from .tools.key_manager import save_api_key
 
 def main():
     print("Jarvis AI - OpenAI API Key Setup")

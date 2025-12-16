@@ -1,7 +1,7 @@
 # tools/mcp_client.py
-from Jarvis_Local.tools.key_manager import load_api_key
+from .key_manager import load_api_key
 from openai import OpenAI
-from logger_config import log
+from ..logger_config import log
 
 class MCPClient:
     def __init__(self):
