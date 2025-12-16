@@ -35,14 +35,8 @@ jobs:
             python -m pip install -r requirements.txt
           fi
 
-      - name: Smoke test agent-scaling-laws
-        run: |
-          python - <<'PY'
-          import importlib
-          m = importlib.import_module('agent_scaling_laws')
-          print('agent_scaling_laws imported OK', getattr(m,'__version__','no __version__'))
-          assert getattr(m,'__version__','') == '0.1.0', 'agent-scaling-laws version mismatch'
-          PY
+      # Dependency validation (including VCS installs) runs in the
+      # `dependency-check` job earlier in this workflow.
 
   tests:
     runs-on: ubuntu-latest
