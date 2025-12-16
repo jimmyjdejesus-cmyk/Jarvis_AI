@@ -7,6 +7,43 @@ on:
     branches: [ main, develop ]
 
 jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.lock','requirements.txt','pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install pip requirements (from lockfile if present)
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.lock ]; then
+            python -m pip install -r requirements.lock
+          else
+            python -m pip install -r requirements.txt
+          fi
+
+      - name: Smoke test agent-scaling-laws
+        run: |
+          python - <<'PY'
+          import importlib
+          m = importlib.import_module('agent_scaling_laws')
+          print('agent_scaling_laws imported OK', getattr(m,'__version__','no __version__'))
+          assert getattr(m,'__version__','') == '0.1.0', 'agent-scaling-laws version mismatch'
+          PY
+
   tests:
     runs-on: ubuntu-latest
 
@@ -33,16 +70,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install pip requirements (prefer lockfile when available)
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.lock ]; then
-            echo "Installing from requirements.lock"
-            python -m pip install -r requirements.lock
-          else
-            echo "Installing from requirements.txt"
-            python -m pip install -r requirements.txt
-          fi
+      # Dependency installs are validated in a separate job to avoid
+      # interference with the 'uv' sync step and platform-specific runtime
+      # artifacts. See the `dependency-check` job for reproducible installs.
 
       - name: Smoke test agent-scaling-laws
         run: |
