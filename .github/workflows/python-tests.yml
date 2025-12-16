@@ -9,6 +9,9 @@ on:
 jobs:
   dependency-check:
     runs-on: ubuntu-latest
+    env:
+      PYTHONNOUSERSITE: '1'
+      PYTHONPATH: ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,6 +41,9 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
+    env:
+      PYTHONNOUSERSITE: '1'
+      PYTHONPATH: ''
 
     steps:
       - name: Checkout repository
@@ -51,15 +57,21 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Install dependencies
-        run: uv sync --all-extras --dev --python $(which python)
-
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt','pyproject.toml') }}
+          key: ${{ runner.os }}-pip-3.11-${{ hashFiles('requirements.txt','pyproject.toml') }}
           restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Ensure pip dev dependencies installed (fallback)
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install 'jsonschema>=4.25.1'
+          python -m pip install -e '.[dev]' || python -m pip install -r requirements.txt
+
+      # Dependency installs are validated in a separate job to avoid
             ${{ runner.os }}-pip-
 
       # Dependency installs are validated in a separate job to avoid
@@ -79,15 +91,15 @@ jobs:
         env:
           JARVIS_API_KEY: dummy-ci-key
         run: |
-          # Force uv to use the system Python interpreter to avoid
-          # downloading an OS/arch-specific runtime (fixes Exec format errors
-          # on linux runners when uv.lock contains a macOS artifact).
-          nohup uv run --python $(which python) uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000 &
-          sleep 5
-
       - name: Run tests
         env:
           JARVIS_TEST_BASE_URL: http://127.0.0.1:8000
+          REQUIRE_NEW_RUNTIME: "true"
+          JARVIS_API_KEY: dummy-ci-key
+        run: |
+          # Run pytest via uv using the system python to avoid mismatched
+          # runtime downloads on the runner.
+          PYTHONNOUSERSITE=1 PYTHONPATH= uv run --python $(which python) pytest -q00
           REQUIRE_NEW_RUNTIME: "true"
           JARVIS_API_KEY: dummy-ci-key
         run: |
