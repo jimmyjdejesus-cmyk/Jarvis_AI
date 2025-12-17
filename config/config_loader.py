@@ -1,3 +1,13 @@
+# AdaptiveMind Framework
+# Copyright (c) 2025 Jimmy De Jesus
+# Licensed under CC-BY 4.0
+#
+# AdaptiveMind - Intelligent AI Routing & Context Engine
+# More info: https://github.com/[username]/adaptivemind
+# License: https://creativecommons.org/licenses/by/4.0/
+
+
+
 """Enhanced config loader that provides robust configuration management.
 
 This module serves as the main configuration loading interface for the Jarvis

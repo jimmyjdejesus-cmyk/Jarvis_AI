@@ -1,3 +1,13 @@
+# AdaptiveMind Framework
+# Copyright (c) 2025 Jimmy De Jesus
+# Licensed under CC-BY 4.0
+#
+# AdaptiveMind - Intelligent AI Routing & Context Engine
+# More info: https://github.com/[username]/adaptivemind
+# License: https://creativecommons.org/licenses/by/4.0/
+
+
+
 """Vickrey auction implementation for multi-agent coordination and result ranking.
 
 This module implements a simplified Vickrey auction mechanism used for ranking

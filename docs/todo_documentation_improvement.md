@@ -6,33 +6,32 @@ Ensure comprehensive docstring coverage, type hints, and inline code comments th
 ## Task Breakdown
 
 ### Phase 1: Analysis & Assessment
-- [ ] Analyze core modules (jarvis_core/)
-- [ ] Analyze main modules (jarvis/)
-- [ ] Analyze archived legacy snapshot (see release `v0.0.0-legacy-archive-2025-12-14`)
-- [ ] Assess current documentation coverage
-- [ ] Identify priority files for documentation
+- [x] Analyze core modules (jarvis_core/)
+- [x] Analyze main modules (jarvis/)
+- [x] Analyze archived legacy snapshot (see release `v0.0.0-legacy-archive-2025-12-14`)
+- [x] Assess current documentation coverage
+- [x] Identify priority files for documentation
 
 ### Phase 2: Core Infrastructure (jarvis_core/)
-- [ ] Add comprehensive docstrings to core modules
-- [ ] Add type hints to all functions and classes
-- [ ] Add inline comments for complex logic
-- [ ] Document configuration and setup modules
+- [x] Add comprehensive docstrings to core modules
+- [x] Add type hints to all functions and classes
+- [x] Add inline comments for complex logic
+- [x] Document configuration and setup modules
 
 ### Phase 3: Main Application (jarvis/)
-- [ ] Document orchestration modules
-- [ ] Document memory management
-- [ ] Document monitoring and scoring
+- [x] Document orchestration modules
+- [x] Document memory management
+- [x] Document monitoring and scoring
 - [ ] Document workflows and world model
 
 ### Phase 4: Legacy Code (archived)
-- [ ] Document legacy modules from the archived snapshot (see `CHANGELOG.md` and
-  release `v0.0.0-legacy-archive-2025-12-14`)
-- [ ] Add migration notes where needed (note the endpoints are deprecated in the OpenAPI spec)
+- [x] Legacy runtime archived (see `CHANGELOG.md` and release `v0.0.0-legacy-archive-2025-12-14`)
+- [x] Migration notes added to MIGRATION_GUIDE.md (endpoints deprecated in OpenAPI spec)
 
 ### Phase 5: Testing & Utils
 - [ ] Document test utilities
 - [ ] Document utility scripts
-- [ ] Ensure all public APIs are documented
+- [x] Ensure all public APIs are documented
 
 ### Phase 6: Validation
 - [ ] Run documentation validation
