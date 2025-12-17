@@ -194,6 +194,7 @@ def mock_response():
         "status": "completed"
     }
     resp.text = ""
+    resp.elapsed.total_seconds.return_value = 0.01
     return resp
 
 requests_module.get = lambda *a, **k: mock_response()
