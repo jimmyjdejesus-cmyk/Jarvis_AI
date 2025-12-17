@@ -16,7 +16,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 #!/usr/bin/env python3
 """
-Standalone Test Server for Jarvis AI API Testing
+Standalone Test Server for AdaptiveMind AI API Testing
 
 This server provides all the endpoints needed for comprehensive API testing
 without the dependency issues of the full Jarvis implementation.
@@ -444,7 +444,7 @@ class TestAPIHandler(BaseHTTPRequestHandler):
                     "id": "test-model",
                     "object": "model",
                     "created": int(time.time()),
-                    "owned_by": "jarvis"
+                    "owned_by": "adaptivemind"
                 }
             ]
         })

@@ -93,7 +93,7 @@ def test_openrouter_client():
 
 def main():
     """Run the simple test"""
-    print("🚀 Jarvis AI OpenRouter Simple Test")
+    print("🚀 AdaptiveMind AI OpenRouter Simple Test")
     print("=" * 40)
 
     success = test_openrouter_client()

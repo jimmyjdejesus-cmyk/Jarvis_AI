@@ -12,7 +12,7 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.getenv("JARVIS_TEST_BASE_URL", "http://127.0.0.1:8000")
+BASE_URL = os.getenv("ADAPTIVEMIND_TEST_BASE_URL", "http://127.0.0.1:8000")
 REQUIRE_NEW_RUNTIME = os.getenv("REQUIRE_NEW_RUNTIME", "false").lower() in {"1", "true", "yes", "on"}
 
 

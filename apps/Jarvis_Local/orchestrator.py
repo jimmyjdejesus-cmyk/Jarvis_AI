@@ -15,7 +15,7 @@ from agents.specialists.research_specialist.agent import ResearchAgent
 
 
 class Orchestrator:
-    """A lightweight orchestrator for the Jarvis Local runtime.
+    """A lightweight orchestrator for the AdaptiveMind Local runtime.
 
     This initializes the main agent instances and exposes a few
     convenience entry points used by the UI and test harness.

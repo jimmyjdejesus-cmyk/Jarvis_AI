@@ -9,7 +9,7 @@
 
 
 """
-OpenAI Compatibility Tests for Jarvis AI
+OpenAI Compatibility Tests for AdaptiveMind AI
 
 Tests the OpenAI-compatible endpoints (/v1/chat/completions and /v1/models)
 to ensure they work correctly with OpenAI SDK and other OpenAI-compatible clients.
@@ -52,8 +52,8 @@ class TestOpenAICompatibility:
 
     @pytest.fixture
     def mock_jarvis_app(self, mock_config):
-        """Mock JarvisApplication"""
-        with patch('jarvis_core.server.JarvisApplication') as mock_app_class:
+        """Mock AdaptiveMindApplication"""
+        with patch('jarvis_core.server.AdaptiveMindApplication') as mock_app_class:
             mock_app = Mock()
             mock_app.config = mock_config
             mock_app.models.return_value = ["llama3.2:latest", "codellama:7b"]

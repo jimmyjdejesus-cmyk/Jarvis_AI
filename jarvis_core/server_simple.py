@@ -24,7 +24,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from .app import JarvisApplication
+from .app import AdaptiveMindApplication
 from .config import AppConfig
 from .logger import get_logger
 
@@ -58,7 +58,7 @@ class HealthResponse(BaseModel):
 
 
 class OpenAIChatRequest(BaseModel):
-    model: str = "jarvis-default"
+    model: str = "adaptivemind-default"
     messages: List[Message]
     temperature: float = 0.7
     max_tokens: int = Field(512, ge=32, le=4096)
@@ -75,7 +75,7 @@ class OpenAIChatResponse(BaseModel):
 
 
 def build_app(config: Optional[AppConfig] = None) -> FastAPI:
-    jarvis_app = JarvisApplication(config=config)
+    jarvis_app = AdaptiveMindApplication(config=config)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -84,7 +84,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         finally:
             jarvis_app.shutdown()
 
-    fastapi_app = FastAPI(title="Jarvis Local Assistant", version="1.0.0", lifespan=lifespan)
+    fastapi_app = FastAPI(title="AdaptiveMind Local Assistant", version="1.0.0", lifespan=lifespan)
 
     def _verify_api_key(request: Request) -> None:
         if not jarvis_app.config.security.api_keys:
@@ -95,12 +95,12 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         if not provided or provided not in jarvis_app.config.security.api_keys:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
-    def _app_dependency(request: Request) -> JarvisApplication:
+    def _app_dependency(request: Request) -> AdaptiveMindApplication:
         _verify_api_key(request)
         return jarvis_app
 
     @fastapi_app.get("/health", response_model=HealthResponse)
-    def health(app: JarvisApplication = Depends(_app_dependency)) -> HealthResponse:
+    def health(app: AdaptiveMindApplication = Depends(_app_dependency)) -> HealthResponse:
         models = app.models()
         status_value = "ok" if models else "degraded"
         return HealthResponse(status=status_value, available_models=models)
@@ -110,11 +110,11 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         return _INDEX_HTML
 
     @fastapi_app.get("/api/v1/models", response_model=List[str])
-    def models(app: JarvisApplication = Depends(_app_dependency)) -> List[str]:
+    def models(app: AdaptiveMindApplication = Depends(_app_dependency)) -> List[str]:
         return app.models()
 
     @fastapi_app.post("/api/v1/chat", response_model=ChatResponse)
-    def chat(request: ChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> ChatResponse:
+    def chat(request: ChatRequest, app: AdaptiveMindApplication = Depends(_app_dependency)) -> ChatResponse:
         if request.persona not in app.config.personas:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Persona '{request.persona}' not found")
 
@@ -133,7 +133,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Chat request failed")
 
     @fastapi_app.post("/v1/chat/completions")
-    def openai_chat_completions(request: OpenAIChatRequest, app: JarvisApplication = Depends(_app_dependency)) -> OpenAIChatResponse:
+    def openai_chat_completions(request: OpenAIChatRequest, app: AdaptiveMindApplication = Depends(_app_dependency)) -> OpenAIChatResponse:
         import time
 
         persona = request.model if request.model in app.config.personas else "generalist"
@@ -172,15 +172,15 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Chat request failed")
 
     @fastapi_app.get("/v1/models")
-    def openai_models(app: JarvisApplication = Depends(_app_dependency)):
+    def openai_models(app: AdaptiveMindApplication = Depends(_app_dependency)):
         import time
         return {
             "object": "list",
             "data": [{
-                "id": "jarvis-local",
+                "id": "adaptivemind-local",
                 "object": "model",
                 "created": int(time.time()),
-                "owned_by": "jarvis"
+                "owned_by": "adaptivemind"
             }]
         }
 
@@ -192,7 +192,7 @@ _INDEX_HTML = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Jarvis Local Assistant</title>
+    <title>AdaptiveMind Local Assistant</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #f5f5f5; }
         h1 { color: #00e0ff; }
@@ -208,9 +208,9 @@ _INDEX_HTML = """
 </head>
 <body>
     <div class="container">
-        <h1>🤖 Jarvis Local Assistant</h1>
+        <h1>🤖 AdaptiveMind Local Assistant</h1>
         <div id="status" class="status">Loading...</div>
-        <label for="prompt">Ask Jarvis anything:</label>
+        <label for="prompt">Ask AdaptiveMind anything:</label>
         <textarea id="prompt" placeholder="Type your question here..."></textarea>
         <button onclick="sendChat()">Send</button>
         <pre id="output">Response will appear here.</pre>

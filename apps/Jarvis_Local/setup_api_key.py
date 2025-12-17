@@ -11,12 +11,12 @@
 
 
 """
-Utility script to set the OpenAI API key for Jarvis AI
+Utility script to set the OpenAI API key for AdaptiveMind AI
 """
 from .tools.key_manager import save_api_key
 
 def main():
-    print("Jarvis AI - OpenAI API Key Setup")
+    print("AdaptiveMind AI - OpenAI API Key Setup")
     print("=================================")
     print()
     print("This will securely store your OpenAI API key in your system's keyring.")
@@ -39,7 +39,7 @@ def main():
     success = save_api_key(api_key)
     if success:
         print("✅ OpenAI API key has been securely saved!")
-        print("You can now use cloud-based AI features in Jarvis AI.")
+        print("You can now use cloud-based AI features in AdaptiveMind AI.")
     else:
         print("❌ Failed to save API key. Please try again.")
 

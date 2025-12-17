@@ -30,9 +30,9 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
   <dict>
     <key>PYTHONPATH</key>
     <string>/Users/jimmy/Documents/Jarvis_AI</string>
-    <key>JARVIS_DISABLE_AUTH</key>
+    <key>ADAPTIVEMIND_DISABLE_AUTH</key>
     <string>true</string>
-    <key>JARVIS_AUTH_SECRET</key>
+    <key>ADAPTIVEMIND_AUTH_SECRET</key>
     <string>dev_secret</string>
   </dict>
   <key>StandardOutPath</key>

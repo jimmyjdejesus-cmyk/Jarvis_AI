@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 
-class MCPJarvisAgent:
+class MCPAdaptiveMindAgent:
     def __init__(self, enable_mcp: bool = False, *args, **kwargs):
         # Minimal compatibility shim used by legacy endpoints in tests
         self.enable_mcp = enable_mcp

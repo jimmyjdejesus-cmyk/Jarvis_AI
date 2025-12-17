@@ -16,7 +16,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 #!/usr/bin/env python3
 """
-Simple test for the Jarvis AI audit system core components.
+Simple test for the AdaptiveMind AI audit system core components.
 """
 
 import sys
@@ -163,7 +163,7 @@ def test_engine():
 
 
 if __name__ == "__main__":
-    print("🚀 Starting Simple Jarvis AI Audit System Tests")
+    print("🚀 Starting Simple AdaptiveMind AI Audit System Tests")
     print("="*80)
     
     # Run all tests

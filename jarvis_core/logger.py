@@ -10,7 +10,7 @@
 
 """Structured logging configuration and utilities for Jarvis Core.
 
-This module provides centralized logging configuration for the Jarvis application
+This module provides centralized logging configuration for the AdaptiveMind application
 with structured JSON output, automatic configuration, and trace-friendly formatting.
 It supports both console and file logging with proper handling of extra fields
 and exception information.
@@ -37,10 +37,10 @@ _LOGGER_CONFIGURED = False
 
 
 def configure_logging(log_level: str | int = "INFO", log_path: Optional[str] = None) -> None:
-    """Configure central structured logging for the Jarvis runtime.
+    """Configure central structured logging for the AdaptiveMind runtime.
     
     Sets up JSON-formatted logging with both console and optional file handlers.
-    Uses environment variables JARVIS_LOG_LEVEL and JARVIS_LOG_PATH for configuration.
+    Uses environment variables ADAPTIVEMIND_LOG_LEVEL and ADAPTIVEMIND_LOG_PATH for configuration.
     Implements singleton pattern to prevent multiple configurations.
     
     Args:
@@ -145,7 +145,7 @@ class JsonFormatter(logging.Formatter):
 
 
 def get_logger(name: str = "jarvis") -> logging.Logger:
-    """Get a module-level logger configured for the Jarvis runtime.
+    """Get a module-level logger configured for the AdaptiveMind runtime.
     
     Automatically configures logging if not already done, using environment
     variables for configuration. Returns a logger instance configured with
@@ -158,11 +158,11 @@ def get_logger(name: str = "jarvis") -> logging.Logger:
         Configured logger instance with JSON formatting
         
     Environment Variables:
-        JARVIS_LOG_LEVEL: Logging level (default: "INFO")
-        JARVIS_LOG_PATH: Optional path to log file
+        ADAPTIVEMIND_LOG_LEVEL: Logging level (default: "INFO")
+        ADAPTIVEMIND_LOG_PATH: Optional path to log file
     """
     if not _LOGGER_CONFIGURED:
-        configure_logging(os.getenv("JARVIS_LOG_LEVEL", "INFO"), os.getenv("JARVIS_LOG_PATH"))
+        configure_logging(os.getenv("ADAPTIVEMIND_LOG_LEVEL", "INFO"), os.getenv("ADAPTIVEMIND_LOG_PATH"))
     return logging.getLogger(name)
 
 

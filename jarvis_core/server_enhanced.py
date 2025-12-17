@@ -28,7 +28,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError
 
-from .app import JarvisApplication
+from .app import AdaptiveMindApplication
 from .config import AppConfig
 from .logger import get_logger
 
@@ -65,7 +65,7 @@ def create_error_response(error: str, message: str, status_code: int, details: O
 
 
 def build_app(config: Optional[AppConfig] = None) -> FastAPI:
-    jarvis_app = JarvisApplication(config=config)
+    jarvis_app = AdaptiveMindApplication(config=config)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -74,7 +74,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         finally:
             jarvis_app.shutdown()
 
-    fastapi_app = FastAPI(title="Jarvis Local Assistant", version="1.0.0", lifespan=lifespan)
+    fastapi_app = FastAPI(title="AdaptiveMind Local Assistant", version="1.0.0", lifespan=lifespan)
 
     # Add custom exception handlers for proper status code handling
     @fastapi_app.exception_handler(RequestValidationError)
@@ -154,8 +154,8 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
         # Provide a minimal ExceptionMiddleware fallback (if missing in starlette).
         # This is only enabled during tests when requested via environment
-        # (JARVIS_TEST_MODE=true).
-        if ExceptionMiddleware is None and os.getenv("JARVIS_TEST_MODE", "false").lower() == "true":
+        # (ADAPTIVEMIND_TEST_MODE=true).
+        if ExceptionMiddleware is None and os.getenv("ADAPTIVEMIND_TEST_MODE", "false").lower() == "true":
             from fastapi import HTTPException as FastAPIHTTPException
             from starlette.responses import JSONResponse
 
@@ -236,12 +236,12 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         if not provided or provided not in jarvis_app.config.security.api_keys:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
-    def _app_dependency(request: Request) -> JarvisApplication:
+    def _app_dependency(request: Request) -> AdaptiveMindApplication:
         _verify_api_key(request)
         return jarvis_app
 
     @fastapi_app.get("/health", response_model=dict)
-    def health(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def health(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         models = app.models()
         status_value = "ok" if models else "degraded"
         return {
@@ -255,11 +255,11 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
         return _OLLAMA_UI_HTML
 
     @fastapi_app.get("/api/v1/models", response_model=List[str])
-    def models(app: JarvisApplication = Depends(_app_dependency)) -> List[str]:
+    def models(app: AdaptiveMindApplication = Depends(_app_dependency)) -> List[str]:
         return app.models()
 
     @fastapi_app.get("/api/v1/personas")
-    def personas(app: JarvisApplication = Depends(_app_dependency)) -> List[dict]:
+    def personas(app: AdaptiveMindApplication = Depends(_app_dependency)) -> List[dict]:
         try:
             return app.personas()
         except Exception as e:
@@ -267,7 +267,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve personas")
 
     @fastapi_app.post("/api/v1/chat")
-    def chat(request: dict, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def chat(request: dict, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         """Enhanced chat endpoint with better error handling."""
         # Extract and validate request data manually for better control
         try:
@@ -331,7 +331,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Chat request failed")
 
     @fastapi_app.get("/api/v1/monitoring/metrics")
-    def metrics(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def metrics(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             return {"history": app.metrics_snapshot()}
         except Exception as e:
@@ -339,7 +339,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve metrics")
 
     @fastapi_app.get("/api/v1/monitoring/traces")
-    def traces(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def traces(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             return {"traces": app.traces_latest()}
         except Exception as e:
@@ -348,28 +348,28 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
     # Management API endpoints
     @fastapi_app.get("/api/v1/management/system/status")
-    def get_system_status(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def get_system_status(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         return app.system_status()
 
     @fastapi_app.get("/api/v1/management/routing/config")
-    def get_routing_config(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def get_routing_config(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         return app.get_routing_config()
 
     @fastapi_app.get("/api/v1/management/backends")
-    def list_backends(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def list_backends(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         return {"backends": app.list_backends()}
 
     @fastapi_app.get("/api/v1/management/context/config")
-    def get_context_config(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def get_context_config(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         return app.get_context_config()
 
     @fastapi_app.get("/api/v1/management/security/status")
-    def get_security_status(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def get_security_status(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         return app.get_security_status()
 
     # Phase 2: Mutation endpoints
     @fastapi_app.post("/api/v1/management/personas")
-    def create_persona(request: dict, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def create_persona(request: dict, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             result = app.create_persona(request)
             return result
@@ -380,7 +380,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create persona")
 
     @fastapi_app.put("/api/v1/management/personas/{name}")
-    def update_persona(name: str, request: dict, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def update_persona(name: str, request: dict, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             result = app.update_persona(name, request)
             return result
@@ -394,7 +394,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update persona '{name}'")
 
     @fastapi_app.delete("/api/v1/management/personas/{name}")
-    def delete_persona(name: str, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def delete_persona(name: str, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             app.delete_persona(name)
             return {"message": f"Persona '{name}' deleted successfully"}
@@ -408,7 +408,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete persona '{name}'")
 
     @fastapi_app.put("/api/v1/management/config/routing")
-    def update_routing_config(request: dict, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def update_routing_config(request: dict, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             result = app.update_routing_config(request)
             return result
@@ -419,7 +419,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update routing config")
 
     @fastapi_app.put("/api/v1/management/config/context")
-    def update_context_config(request: dict, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def update_context_config(request: dict, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             result = app.update_context_config(request)
             return result
@@ -430,7 +430,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update context config")
 
     @fastapi_app.post("/api/v1/management/backends/{name}/test")
-    def test_backend(name: str, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def test_backend(name: str, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             result = app.test_backend(name)
             return result
@@ -441,7 +441,7 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to test backend '{name}'")
 
     @fastapi_app.post("/api/v1/management/config/save")
-    def save_config(app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def save_config(app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         try:
             result = app.save_config()
             return result
@@ -451,11 +451,11 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
 
     # OpenAI-compatible endpoints
     @fastapi_app.post("/v1/chat/completions")
-    def openai_chat_completions(request: dict, app: JarvisApplication = Depends(_app_dependency)) -> dict:
+    def openai_chat_completions(request: dict, app: AdaptiveMindApplication = Depends(_app_dependency)) -> dict:
         import time
 
         # Extract OpenAI request data
-        model = request.get("model", "jarvis-default")
+        model = request.get("model", "adaptivemind-default")
         messages = request.get("messages", [])
         temperature = request.get("temperature", 0.7)
         max_tokens = request.get("max_tokens", 512)
@@ -508,14 +508,14 @@ def build_app(config: Optional[AppConfig] = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Chat completion failed")
 
     @fastapi_app.get("/v1/models")
-    def openai_models(app: JarvisApplication = Depends(_app_dependency)):
+    def openai_models(app: AdaptiveMindApplication = Depends(_app_dependency)):
         import time
         # Return hardcoded models
         data = [{
             "id": "llama3.2:latest",
             "object": "model",
             "created": int(time.time()),
-            "owned_by": "jarvis"
+            "owned_by": "adaptivemind"
         }]
         return {
             "object": "list",
@@ -530,7 +530,7 @@ _OLLAMA_UI_HTML = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Jarvis Ollama Console</title>
+    <title>AdaptiveMind Ollama Console</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 2rem; background: #111; color: #f5f5f5; }
         h1 { color: #00e0ff; }
@@ -543,12 +543,12 @@ _OLLAMA_UI_HTML = """
 </head>
 <body>
     <div class="container">
-        <h1>Jarvis Ollama Console</h1>
+        <h1>AdaptiveMind Ollama Console</h1>
         <p>Local-first assistant with deep research, persona routing, and secure API key gating.</p>
         <label for="persona">Persona</label>
         <select id="persona"></select>
         <label for="prompt">Prompt</label>
-        <textarea id="prompt" placeholder="Ask Jarvis anything..."></textarea>
+        <textarea id="prompt" placeholder="Ask AdaptiveMind anything..."></textarea>
         <button onclick="sendChat()">Send</button>
         <pre id="output">Response will appear here.</pre>
     </div>
@@ -608,8 +608,8 @@ if __name__ == "__main__":
     import uvicorn
     import os
     
-    port = int(os.getenv("JARVIS_PORT", 8000))
-    host = os.getenv("JARVIS_HOST", "0.0.0.0")
+    port = int(os.getenv("ADAPTIVEMIND_PORT", 8000))
+    host = os.getenv("ADAPTIVEMIND_HOST", "0.0.0.0")
     
     # Initialize config
     from .config import load_config

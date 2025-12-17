@@ -16,7 +16,7 @@ def setup_logger():
     logger.setLevel(logging.INFO)
     if not logger.handlers:
         # File Handler
-        fh = logging.FileHandler('jarvis_local.log', mode='w')
+        fh = logging.FileHandler('adaptivemind_local.log', mode='w')
         fh.setLevel(logging.INFO)
         # Console Handler
         ch = logging.StreamHandler(sys.stdout)

@@ -4,7 +4,7 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis AI Cloud-First Setup Guide
+# AdaptiveMind AI Cloud-First Setup Guide
 
 ## 🚀 Quick Start (3 Steps)
 
@@ -199,7 +199,7 @@ COMPLEXITY_MODELS = {
 
 ---
 
-**🎉 You're now running Jarvis AI with cloud-first intelligence!**
+**🎉 You're now running AdaptiveMind AI with cloud-first intelligence!**
 
 The system will automatically choose the best model for each task while keeping costs under control.
 It also maintains reliability through local fallbacks.

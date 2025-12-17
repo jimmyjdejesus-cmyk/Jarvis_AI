@@ -25,7 +25,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
-from jarvis_core.app import JarvisApplication
+from jarvis_core.app import AdaptiveMindApplication
 from jarvis_core.config import load_config
 
 # Request/Response Models
@@ -44,10 +44,10 @@ class ChatResponse(BaseModel):
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     config = load_config()
-    jarvis_app = JarvisApplication(config=config)
+    jarvis_app = AdaptiveMindApplication(config=config)
     
     app = FastAPI(
-        title="Jarvis Local Assistant",
+        title="AdaptiveMind Local Assistant",
         version="1.0.0",
         description="Local-first AI assistant with persona routing"
     )
@@ -98,7 +98,7 @@ _INDEX_HTML = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>🤖 Jarvis Local Assistant</title>
+    <title>🤖 AdaptiveMind Local Assistant</title>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
@@ -179,10 +179,10 @@ _INDEX_HTML = """
 </head>
 <body>
     <div class="container">
-        <h1>🤖 Jarvis Local Assistant</h1>
+        <h1>🤖 AdaptiveMind Local Assistant</h1>
         <div id="status" class="status">Checking system status...</div>
         
-        <label for="prompt">Ask Jarvis anything:</label>
+        <label for="prompt">Ask AdaptiveMind anything:</label>
         <textarea id="prompt" placeholder="Type your question here..."></textarea>
         
         <button onclick="sendChat()">🚀 Send Message</button>
@@ -217,7 +217,7 @@ _INDEX_HTML = """
             const button = document.querySelector('button');
             
             // UI updates
-            output.textContent = '🤔 Jarvis is thinking...';
+            output.textContent = '🤔 AdaptiveMind is thinking...';
             button.textContent = '⏳ Processing...';
             button.disabled = true;
             

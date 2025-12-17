@@ -10,7 +10,7 @@
 
 """Lightweight test server used by websocket tests.
 
-Starts a Uvicorn server hosting the default Jarvis app so websocket
+Starts a Uvicorn server hosting the default AdaptiveMind app so websocket
 integration tests can connect to ws://127.0.0.1:8000/ws/pytest_client.
 """
 import os

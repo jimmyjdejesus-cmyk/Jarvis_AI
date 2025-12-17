@@ -16,7 +16,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 #!/usr/bin/env python3
 """
-Test script for the Jarvis AI audit system.
+Test script for the AdaptiveMind AI audit system.
 
 This script tests the basic functionality of the audit system.
 """
@@ -33,7 +33,7 @@ from audit.models import ScanConfiguration, ScanDepth
 
 def test_audit_system():
     """Test the basic audit system functionality."""
-    print("🧪 Testing Jarvis AI Audit System...")
+    print("🧪 Testing AdaptiveMind AI Audit System...")
     
     # Create a minimal scan configuration
     config = ScanConfiguration(
@@ -150,7 +150,7 @@ def test_scanner_individual():
 
 
 if __name__ == "__main__":
-    print("🚀 Starting Jarvis AI Audit System Tests")
+    print("🚀 Starting AdaptiveMind AI Audit System Tests")
     print("="*80)
     
     # Test the complete audit system

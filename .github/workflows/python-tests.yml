@@ -99,19 +99,19 @@ jobs:
 
       - name: Start backend (uvicorn)
         env:
-          JARVIS_API_KEY: dummy-ci-key
+          ADAPTIVEMIND_API_KEY: dummy-ci-key
         run: |
       - name: Run tests
         env:
-          JARVIS_TEST_BASE_URL: http://127.0.0.1:8000
+          ADAPTIVEMIND_TEST_BASE_URL: http://127.0.0.1:8000
           REQUIRE_NEW_RUNTIME: "true"
-          JARVIS_API_KEY: dummy-ci-key
+          ADAPTIVEMIND_API_KEY: dummy-ci-key
         run: |
           # Run pytest via uv using the system python to avoid mismatched
           # runtime downloads on the runner.
           PYTHONNOUSERSITE=1 PYTHONPATH= uv run --python $(which python) pytest -q00
           REQUIRE_NEW_RUNTIME: "true"
-          JARVIS_API_KEY: dummy-ci-key
+          ADAPTIVEMIND_API_KEY: dummy-ci-key
         run: |
           # Run pytest via uv using the system python to avoid mismatched
           # runtime downloads on the runner.

@@ -86,12 +86,12 @@ def _discover_config_paths() -> list[Path]:
         List of discovered configuration file paths
     """
     candidates = [
-        os.getenv("JARVIS_CONFIG"),
-        os.getenv("JARVIS_HOME"),
+        os.getenv("ADAPTIVEMIND_CONFIG"),
+        os.getenv("ADAPTIVEMIND_HOME"),
         os.path.join(os.path.expanduser("~"), ".jarvis", "config.json"),
         os.path.join(os.path.expanduser("~"), ".config", "jarvis", "config.json"),
         "config.json",
-        "jarvis_config.json"
+        "adaptivemind_config.json"
     ]
     
     paths = []
@@ -127,7 +127,7 @@ def _create_default_config() -> Dict[str, Any]:
             "api_key": "",
             "model": "openai/gpt-3.5-turbo",
             "site_url": "",
-            "app_name": "Jarvis Local"
+            "app_name": "AdaptiveMind Local"
         },
         "windowsml": {
             "enabled": False,
@@ -142,7 +142,7 @@ def _create_default_config() -> Dict[str, Any]:
             "generalist": {
                 "name": "generalist",
                 "description": "Balanced assistant persona",
-                "system_prompt": "You are Jarvis, a local-first research assistant. Provide concise, factual answers and highlight sources.",
+                "system_prompt": "You are AdaptiveMind, a local-first research assistant. Provide concise, factual answers and highlight sources.",
                 "max_context_window": 4096,
                 "routing_hint": "general"
             }
@@ -181,12 +181,12 @@ def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
         config.setdefault("openrouter", {})["api_key"] = api_key
         
     # Security overrides
-    if api_keys := os.getenv("JARVIS_API_KEYS"):
+    if api_keys := os.getenv("ADAPTIVEMIND_API_KEYS"):
         keys = [k.strip() for k in api_keys.split(",") if k.strip()]
         config.setdefault("security", {})["api_keys"] = keys
         
     # Default persona override
-    if default_persona := os.getenv("JARVIS_DEFAULT_PERSONA"):
+    if default_persona := os.getenv("ADAPTIVEMIND_DEFAULT_PERSONA"):
         config["allowed_personas"] = [default_persona]
         
     return config

@@ -4,18 +4,18 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis AI - Unified Architecture
+# AdaptiveMind AI - Unified Architecture
 
 ## Overview
 
-Jarvis AI is a unified multi-agent intelligence system that combines the advanced capabilities of the
+AdaptiveMind AI is a unified multi-agent intelligence system that combines the advanced capabilities of the
 new agent framework with the legacy orchestration system. This document describes the unified
 architecture and how the components work together.
 
 ## Architecture Components
 
 ### 1. Configuration System
-- **Unified Config**: Both GUI and backend use `~/.jarvis/config.json`
+- **Unified Config**: Both GUI and backend use `~/.adaptivemind/config.json`
 - **Environment Variables**: `.env` file support with automatic loading
 - **Migration Tool**: `legacy/scripts/migrate_config.py` for seamless migration.
   (Archived — restore from `archive/legacy` to use.)
@@ -279,7 +279,7 @@ ENABLE_AGENT_LOGGING=true
 - Security events are logged and auditable
 
 ### API Security
-- API key authentication available (set JARVIS_API_KEY)
+- API key authentication available (set ADAPTIVEMIND_API_KEY)
 - CORS configuration for web access
 - Input validation on all endpoints
 
@@ -313,4 +313,4 @@ For issues and questions:
 
 ## License
 
-This project maintains the same license as the original Jarvis AI system.
+This project maintains the same license as the original AdaptiveMind AI system.

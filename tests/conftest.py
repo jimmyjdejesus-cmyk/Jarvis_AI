@@ -53,7 +53,7 @@ sys.modules.setdefault("neo4j.exceptions", exceptions_submodule)
 
 # Ensure test mode is enabled for local test runs so test-only fallbacks are
 # active (e.g., relaxed CORS or the fallback ExceptionMiddleware).
-os.environ.setdefault("JARVIS_TEST_MODE", "true")
+os.environ.setdefault("ADAPTIVEMIND_TEST_MODE", "true")
 
 langgraph_module = types.ModuleType("langgraph")
 graph_submodule = types.ModuleType("langgraph.graph")
@@ -496,7 +496,7 @@ def client():
 # Start a lightweight server for websocket tests when running locally
 @pytest.fixture(scope="session", autouse=True)
 def _start_local_test_server():
-    base = os.getenv("JARVIS_TEST_BASE_URL", "http://127.0.0.1:8000")
+    base = os.getenv("ADAPTIVEMIND_TEST_BASE_URL", "http://127.0.0.1:8000")
     # If a custom base URL is provided, assume an external server will be used
     if "127.0.0.1:8000" not in base:
         yield

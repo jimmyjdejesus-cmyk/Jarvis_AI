@@ -68,7 +68,7 @@ class OpenRouterConfig(BaseModel):
     api_key: str = Field("", description="OpenRouter API Key")
     model: str = Field("openai/gpt-3.5-turbo", description="Default OpenRouter model")
     site_url: str = Field("", description="Site URL for OpenRouter rankings")
-    app_name: str = Field("Jarvis Local", description="App name for OpenRouter rankings")
+    app_name: str = Field("AdaptiveMind Local", description="App name for OpenRouter rankings")
 
 
 class WindowsMLConfig(BaseModel):
@@ -218,7 +218,7 @@ def _default_personas() -> Dict[str, PersonaConfig]:
         name="generalist",
         description="Balanced assistant persona",
         system_prompt=(
-            "You are Jarvis, a local-first research assistant. Provide concise, factual answers and highlight sources."
+            "You are AdaptiveMind, a local-first research assistant. Provide concise, factual answers and highlight sources."
         ),
         max_context_window=4096,
     )
@@ -229,7 +229,7 @@ class AppConfig(BaseModel):
     """Main application configuration container.
     
     Aggregates all configuration sections and provides validation
-    for the complete Jarvis application setup.
+    for the complete AdaptiveMind application setup.
     
     Attributes:
         ollama: Ollama backend configuration
@@ -279,16 +279,16 @@ def _config_env_paths() -> List[Path]:
     """Discover configuration file paths from environment and standard locations.
     
     Searches for configuration files in the following order:
-    1. JARVIS_CONFIG environment variable (file path)
-    2. JARVIS_HOME environment variable (directory with config.json)
-    3. ~/.jarvis directory (config.json)
+    1. ADAPTIVEMIND_CONFIG environment variable (file path)
+    2. ADAPTIVEMIND_HOME environment variable (directory with config.json)
+    3. ~/.adaptivemind directory (config.json)
     
     Returns:
         List of discovered configuration file paths
     """
     candidates: List[str] = [
-        os.getenv("JARVIS_CONFIG"),
-        os.getenv("JARVIS_HOME"),
+        os.getenv("ADAPTIVEMIND_CONFIG"),
+        os.getenv("ADAPTIVEMIND_HOME"),
         os.path.join(os.path.expanduser("~"), ".jarvis"),
     ]
     paths: List[Path] = []
@@ -349,7 +349,7 @@ def load_config(explicit_path: Optional[str] = None) -> AppConfig:
     
     Configuration loading priority (highest to lowest):
     1. Explicit file path (if provided)
-    2. Environment variable files (JARVIS_CONFIG, JARVIS_HOME, ~/.jarvis)
+    2. Environment variable files (ADAPTIVEMIND_CONFIG, ADAPTIVEMIND_HOME, ~/.adaptivemind)
     3. Environment variable overrides
     4. Default values from AppConfig model
     
@@ -357,8 +357,8 @@ def load_config(explicit_path: Optional[str] = None) -> AppConfig:
     - OLLAMA_HOST: Override Ollama service URL
     - OLLAMA_MODEL: Override default Ollama model
     - OPENROUTER_API_KEY: Override OpenRouter API key
-    - JARVIS_API_KEYS: Override security API keys (comma-separated)
-    - JARVIS_DEFAULT_PERSONA: Set default allowed persona
+    - ADAPTIVEMIND_API_KEYS: Override security API keys (comma-separated)
+    - ADAPTIVEMIND_DEFAULT_PERSONA: Set default allowed persona
     
     Args:
         explicit_path: Optional explicit path to configuration file
@@ -390,9 +390,9 @@ def load_config(explicit_path: Optional[str] = None) -> AppConfig:
         env_overrides.setdefault("ollama", {})["model"] = model
     if or_key := os.getenv("OPENROUTER_API_KEY"):
         env_overrides.setdefault("openrouter", {})["api_key"] = or_key
-    if keys := os.getenv("JARVIS_API_KEYS"):
+    if keys := os.getenv("ADAPTIVEMIND_API_KEYS"):
         env_overrides.setdefault("security", {})["api_keys"] = [k.strip() for k in keys.split(",") if k.strip()]
-    if persona := os.getenv("JARVIS_DEFAULT_PERSONA"):
+    if persona := os.getenv("ADAPTIVEMIND_DEFAULT_PERSONA"):
         env_overrides["allowed_personas"] = [persona]
 
     if env_overrides:

@@ -15,7 +15,7 @@ Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 """
-Audit Engine - Core orchestration for the Jarvis AI audit system.
+Audit Engine - Core orchestration for the AdaptiveMind AI audit system.
 
 This module provides the main AuditEngine class that coordinates all scanning
 operations and generates comprehensive audit reports.

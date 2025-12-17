@@ -13,8 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Disable API auth for tests if not configured
-os.environ.setdefault("JARVIS_DISABLE_AUTH", "true")
-os.environ.setdefault("JARVIS_AUTH_SECRET", "test-secret")
+os.environ.setdefault("ADAPTIVEMIND_DISABLE_AUTH", "true")
+os.environ.setdefault("ADAPTIVEMIND_AUTH_SECRET", "test-secret")
 
 # Skip this test if the legacy runtime isn't available (we archived it)
 legacy_app = pytest.importorskip("legacy.app", reason="legacy runtime archived; enable if you need legacy tests")

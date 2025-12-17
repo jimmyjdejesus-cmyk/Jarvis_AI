@@ -6,7 +6,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 # Python SDK Guide
 
-The Python SDK wraps the Jarvis AI v1 API with convenient methods and API key handling.
+The Python SDK wraps the AdaptiveMind AI v1 API with convenient methods and API key handling.
 
 ## Install
 ```bash
@@ -15,7 +15,7 @@ pip install -e ./sdk/python
 
 ## Configure
 - API base URL (default: `http://127.0.0.1:8000`)
-- API Key via `JARVIS_API_KEY` env var or `api_key` argument
+- API Key via `ADAPTIVEMIND_API_KEY` env var or `api_key` argument
 
 ## Examples
 ```python

@@ -6,7 +6,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 Run Local Assistant (Quickstart)
 
-Follow these steps to get a local assistant up and running quickly using the modern Jarvis runtime
+Follow these steps to get a local assistant up and running quickly using the modern AdaptiveMind runtime
 (recommended). This guide assumes you have Ollama installed as the local model provider.
 
 Note: The legacy runtime has been archived to `archive/legacy`. If you need the legacy runtime
@@ -33,7 +33,7 @@ pip install -r requirements-dev.txt
 
 ```bash
 # The legacy runtime has been archived to `archive/legacy` as part of the repository cleanup.
-# To run the modern Jarvis runtime instead (recommended), start:
+# To run the modern AdaptiveMind runtime instead (recommended), start:
 uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000
 
 # If you explicitly need to run the legacy runtime, restore it first:
@@ -52,5 +52,5 @@ Expected: 200 OK with a JSON response containing the assistant reply.
 If the endpoint returns 503, ensure `ollama` is running and a model is pulled.
 
 Notes
-* Uses `MCPJarvisAgent` with `force_local=True` to prefer local models.
+* Uses `MCPAdaptiveMindAgent` with `force_local=True` to prefer local models.
 * If your `ollama` binary requires a non-default host/port, set `OLLAMA_HOST` in the environment.

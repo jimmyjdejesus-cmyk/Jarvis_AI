@@ -7,7 +7,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 # API Contracts and Specifications
 
 This directory contains comprehensive API contracts and specifications for the
-Jarvis AI platform. It provides machine-readable definitions that enable
+AdaptiveMind AI platform. It provides machine-readable definitions that enable
 automated client generation, schema validation, and professional API
 documentation.
 
@@ -134,7 +134,7 @@ All endpoints require authentication via the `X-API-Key` header:
 curl -H "X-API-Key: your-api-key" http://127.0.0.1:8000/api/v1/health
 ```
 
-For local development, set `JARVIS_DISABLE_AUTH=true` to bypass authentication.
+For local development, set `ADAPTIVEMIND_DISABLE_AUTH=true` to bypass authentication.
 
 ## 🧪 Testing
 

@@ -10,7 +10,7 @@
 
 """Main Jarvis Application module providing the core coordinator for AI operations.
 
-This module contains the JarvisApplication class which serves as the main coordinator
+This module contains the AdaptiveMindApplication class which serves as the main coordinator
 that wires together configuration, routing, monitoring, and all backend services.
 It provides the high-level API for chat operations, persona management, and system
 monitoring.
@@ -36,10 +36,10 @@ from .routing.router import AdaptiveLLMRouter
 logger = get_logger(__name__)
 
 
-class JarvisApplication:
+class AdaptiveMindApplication:
     """Main coordinator that wires configuration, routing, and monitoring.
     
-    The JarvisApplication class serves as the central coordinator for all Jarvis
+    The AdaptiveMindApplication class serves as the central coordinator for all Jarvis
     operations. It initializes and manages:
     - Configuration management via AppConfig
     - Multiple LLM backends (Ollama, OpenRouter, WindowsML, Fallback)
@@ -68,7 +68,7 @@ class JarvisApplication:
     """
 
     def __init__(self, config: Optional[AppConfig] = None):
-        """Initialize the Jarvis application with all components.
+        """Initialize the AdaptiveMind application with all components.
         
         Args:
             config: Optional AppConfig instance. If None, loads default config
@@ -166,7 +166,7 @@ class JarvisApplication:
         self._harvester_thread.start()
 
     def shutdown(self) -> None:
-        """Gracefully shutdown the Jarvis application.
+        """Gracefully shutdown the AdaptiveMind application.
         
         Stops the metrics harvesting loop and waits for the harvester
         thread to finish. Called automatically during application cleanup.
@@ -688,4 +688,4 @@ class JarvisApplication:
         }
 
 
-__all__ = ["JarvisApplication"]
+__all__ = ["AdaptiveMindApplication"]

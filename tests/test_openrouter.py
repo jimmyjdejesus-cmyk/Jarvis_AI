@@ -106,7 +106,7 @@ def test_model_router():
 
 def main():
     """Run all tests"""
-    print("🚀 Jarvis AI OpenRouter Integration Test Suite")
+    print("🚀 AdaptiveMind AI OpenRouter Integration Test Suite")
     print("=" * 50)
 
     # Test 1: OpenRouter Connection
@@ -121,7 +121,7 @@ def main():
     print(f"   Model Router: {'✅ PASS' if router_ok else '❌ FAIL'}")
 
     if openrouter_ok and router_ok:
-        print("\n🎉 All tests passed! Your Jarvis AI cloud-first setup is ready!")
+        print("\n🎉 All tests passed! Your AdaptiveMind AI cloud-first setup is ready!")
         print("\nNext steps:")
         print("1. Start Ollama: ollama serve")
         print("2. Pull models: ollama pull llama3.2:3b && ollama pull llama3:8b")

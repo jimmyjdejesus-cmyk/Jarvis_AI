@@ -4,7 +4,7 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis AI Test Report
+# AdaptiveMind AI Test Report
 
 ## Test Execution Summary
 - **Date**: December 13, 2025
@@ -57,10 +57,10 @@ Advanced API contract validation tests.
 - **Server**: `uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000`
 - **Ollama**: TinyLlama model running locally
 - **Key Env Vars**:
-  - `JARVIS_TEST_BASE_URL=http://127.0.0.1:8000`
+  - `ADAPTIVEMIND_TEST_BASE_URL=http://127.0.0.1:8000`
   - `REQUIRE_NEW_RUNTIME=true`
-  - `JARVIS_API_KEY=your-secret-api-key-here`
-  - `JARVIS_TEST_MODE=true`
+  - `ADAPTIVEMIND_API_KEY=your-secret-api-key-here`
+  - `ADAPTIVEMIND_TEST_MODE=true`
 
 ## CI Configuration
 Existing GitHub Actions workflow (`.github/workflows/python-tests.yml`) successfully runs tests in CI with similar setup.
@@ -69,4 +69,4 @@ Existing GitHub Actions workflow (`.github/workflows/python-tests.yml`) successf
 1. WebSocket test authentication fixed by sending `X-API-Key` header
 2. Contract tests require running server and may need additional env vars
 3. All core functionality validated: API endpoints, LLM integration, orchestration, security, memory workflows
-4. Test coverage: 97% pass rate with comprehensive validation of Jarvis AI features
+4. Test coverage: 97% pass rate with comprehensive validation of AdaptiveMind AI features

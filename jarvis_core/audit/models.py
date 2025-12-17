@@ -15,7 +15,7 @@ Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 """
-Audit data models for Jarvis AI audit system.
+Audit data models for AdaptiveMind AI audit system.
 
 This module defines the core data structures used throughout the audit system
 including findings, reports, and scan configurations.

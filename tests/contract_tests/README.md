@@ -6,7 +6,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 # Contract Testing Suite
 
-This directory contains comprehensive contract-based testing for the Jarvis AI API, including schema validation, performance testing, integration testing, and monitoring capabilities.
+This directory contains comprehensive contract-based testing for the AdaptiveMind AI API, including schema validation, performance testing, integration testing, and monitoring capabilities.
 
 ## Overview
 

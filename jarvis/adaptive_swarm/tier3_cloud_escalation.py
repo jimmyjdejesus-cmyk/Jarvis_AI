@@ -20,7 +20,7 @@ Features:
 - Efficiency-based escalation decisions
 - Cost optimization for local vs cloud execution
 - Performance benchmarking and adaptive thresholds
-- Integration with existing Jarvis_AI systems
+- Integration with existing AdaptiveMind systems
 """
 
 import logging

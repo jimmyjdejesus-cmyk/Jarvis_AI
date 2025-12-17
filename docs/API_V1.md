@@ -4,12 +4,12 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis AI API v1 Reference
+# AdaptiveMind AI API v1 Reference
 
 This document describes the currently implemented API endpoints.
 
 **Base URL:** `http://127.0.0.1:8000`
-**Auth:** `X-API-Key: <JARVIS_API_KEY>` header (set `JARVIS_DISABLE_AUTH=true` to bypass locally)
+**Auth:** `X-API-Key: <ADAPTIVEMIND_API_KEY>` header (set `ADAPTIVEMIND_DISABLE_AUTH=true` to bypass locally)
 
 ---
 
@@ -296,7 +296,7 @@ OpenAI-compatible chat completions.
 **Request:**
 ```json
 {
-  "model": "jarvis-default",
+  "model": "adaptivemind-default",
   "messages": [{"role": "user", "content": "Hello!"}],
   "temperature": 0.7,
   "max_tokens": 512,
@@ -341,7 +341,7 @@ List models in OpenAI-compatible format.
       "id": "llama3.2:latest",
       "object": "model",
       "created": 1702648475,
-      "owned_by": "jarvis"
+      "owned_by": "adaptivemind"
     }
   ]
 }

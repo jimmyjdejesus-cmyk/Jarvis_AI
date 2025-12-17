@@ -11,7 +11,7 @@
 {
   "info": {
     "name": "Jarvis API v1",
-    "description": "Jarvis AI API collection - Local-first AI orchestration platform",
+    "description": "AdaptiveMind AI API collection - Local-first AI orchestration platform",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -20,7 +20,7 @@
       "request": {
         "method": "GET",
         "header": [
-          { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+          { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
         ],
         "url": {
           "raw": "{{BASE_URL}}/health",
@@ -37,7 +37,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/models",
@@ -51,7 +51,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/personas",
@@ -65,7 +65,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -89,7 +89,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/monitoring/metrics",
@@ -103,7 +103,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/monitoring/traces",
@@ -122,7 +122,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/system/status",
@@ -136,7 +136,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/routing/config",
@@ -150,7 +150,7 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -169,7 +169,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/backends",
@@ -183,7 +183,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/backends/ollama/test",
@@ -197,7 +197,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/context/config",
@@ -211,7 +211,7 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -230,7 +230,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/security/status",
@@ -244,7 +244,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -263,7 +263,7 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -282,7 +282,7 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/personas/custom-persona",
@@ -296,7 +296,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/api/v1/management/config/save",
@@ -315,7 +315,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" },
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
@@ -334,7 +334,7 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "X-API-Key", "value": "{{JARVIS_API_KEY}}" }
+              { "key": "X-API-Key", "value": "{{ADAPTIVEMIND_API_KEY}}" }
             ],
             "url": {
               "raw": "{{BASE_URL}}/v1/models",
@@ -348,6 +348,6 @@
   ],
   "variable": [
     { "key": "BASE_URL", "value": "http://127.0.0.1:8000" },
-    { "key": "JARVIS_API_KEY", "value": "your-api-key-here" }
+    { "key": "ADAPTIVEMIND_API_KEY", "value": "your-api-key-here" }
   ]
 }

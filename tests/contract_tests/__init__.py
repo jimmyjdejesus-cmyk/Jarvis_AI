@@ -11,7 +11,7 @@
 """
 Contract Testing Module
 
-This module provides comprehensive contract-based testing for the Jarvis AI API,
+This module provides comprehensive contract-based testing for the AdaptiveMind AI API,
 including schema validation, business rule validation, and property-based testing.
 """
 

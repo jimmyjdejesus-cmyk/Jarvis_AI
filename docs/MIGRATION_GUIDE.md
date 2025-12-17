@@ -4,11 +4,11 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis AI Migration Guide
+# AdaptiveMind AI Migration Guide
 
 ## Overview
 
-This guide helps you migrate from the legacy Jarvis AI system to the new unified architecture. It preserves existing
+This guide helps you migrate from the legacy AdaptiveMind AI system to the new unified architecture. It preserves existing
 functionality while adding advanced multi-agent capabilities.
 
 ## Pre-Migration Checklist
@@ -45,7 +45,7 @@ python legacy/scripts/migrate_config.py
 
 This will:
 - Convert environment variables to unified config format
-- Create `~/.jarvis/config.json`
+- Create `~/.adaptivemind/config.json`
 - Generate `.env.template` for customization
 - Preserve existing settings
 
@@ -75,10 +75,10 @@ If you need to run the legacy system for migration testing, restore it first:
 If you had API key authentication enabled:
 ```bash
 # Set API key
-export JARVIS_API_KEY="your-api-key"
+export ADAPTIVEMIND_API_KEY="your-api-key"
 
 # Or add to .env file
-echo "JARVIS_API_KEY=your-api-key" >> .env
+echo "ADAPTIVEMIND_API_KEY=your-api-key" >> .env
 ```
 
 ## Post-Migration Verification
@@ -140,7 +140,7 @@ ENABLE_AUTH=false
 ```
 
 ### Config File Structure
-The new config file (`~/.jarvis/config.json`) includes:
+The new config file (`~/.adaptivemind/config.json`) includes:
 
 ```json
 {
@@ -200,7 +200,7 @@ python -c "import jarvis; print(jarvis.__file__)"
 python legacy/scripts/migrate_config.py
 
 # Check config file
-cat ~/.jarvis/config.json
+cat ~/.adaptivemind/config.json
 ```
 
 #### 3. Agent Initialization Failures
@@ -209,7 +209,7 @@ cat ~/.jarvis/config.json
 curl http://127.0.0.1:8000/api/agents
 
 # Check logs for errors
-tail -f logs/jarvis.log
+tail -f logs/adaptivemind.log
 ```
 
 #### 4. Memory Sync Issues
@@ -266,7 +266,7 @@ If migration fails:
 ### Documentation
 - **Architecture**: `UNIFIED_ARCHITECTURE.md`
 - **API Reference**: Available through `/docs` endpoint
-- **Configuration**: `~/.jarvis/config.json` comments
+- **Configuration**: `~/.adaptivemind/config.json` comments
 
 ### Community
 - Report issues through the project repository
@@ -310,4 +310,4 @@ After successful migration:
 5. Plan advanced workflows
 6. Consider additional integrations
 
-Congratulations on successfully migrating to the unified Jarvis AI system!
+Congratulations on successfully migrating to the unified AdaptiveMind AI system!

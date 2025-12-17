@@ -16,7 +16,7 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 #!/usr/bin/env python3
 """
-Simple Jarvis AI API Test Script
+Simple AdaptiveMind AI API Test Script
 
 This script runs basic API tests without complex dependencies.
 """
@@ -29,9 +29,9 @@ from typing import Dict, List, Any
 
 
 def test_endpoints(base_url="http://127.0.0.1:8000"):
-    """Test all Jarvis AI API endpoints."""
+    """Test all AdaptiveMind AI API endpoints."""
     
-    print("🚀 Starting Simple Jarvis AI API Testing")
+    print("🚀 Starting Simple AdaptiveMind AI API Testing")
     print("=" * 60)
     
     test_results = []

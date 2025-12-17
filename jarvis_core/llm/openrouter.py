@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 class OpenRouterBackend(LLMBackend):
     """Backend for OpenRouter API (Cloud Agent)."""
 
-    def __init__(self, api_key: str, model: str = "openai/gpt-3.5-turbo", site_url: str = "", app_name: str = "Jarvis Local"):
+    def __init__(self, api_key: str, model: str = "openai/gpt-3.5-turbo", site_url: str = "", app_name: str = "AdaptiveMind Local"):
         self.name = "openrouter"
         self.api_key = api_key
         self.model = model

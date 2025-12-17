@@ -10,12 +10,12 @@
 
 openapi: 3.0.3
 info:
-  title: Jarvis AI API v1
+  title: AdaptiveMind AI API v1
   description: |
     Local-first AI orchestration platform providing chat, persona management, monitoring, and system configuration capabilities.
     
     ## Authentication
-    All endpoints require authentication via the `X-API-Key` header. Set `JARVIS_DISABLE_AUTH=true` to bypass authentication locally.
+    All endpoints require authentication via the `X-API-Key` header. Set `ADAPTIVEMIND_DISABLE_AUTH=true` to bypass authentication locally.
     
     ## Endpoint Categories
     - **Core API** (`/api/v1/*`): Main Jarvis functionality
@@ -23,8 +23,8 @@ info:
     - **OpenAI-Compatible** (`/v1/*`): Drop-in replacement for OpenAI API clients
   version: "1.0.0"
   contact:
-    name: Jarvis AI Support
-    email: support@jarvis.ai
+    name: AdaptiveMind AI Support
+    email: support@adaptivemind.ai
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -32,7 +32,7 @@ info:
 servers:
   - url: http://127.0.0.1:8000
     description: Local development server
-  - url: https://api.jarvis.ai
+  - url: https://api.adaptivemind.ai
     description: Production server
 
 security:
@@ -506,7 +506,7 @@ paths:
             schema:
               $ref: '#/components/schemas/OpenAIChatRequest'
             example:
-              model: "jarvis-default"
+              model: "adaptivemind-default"
               messages:
                 - role: user
                   content: "Hello!"
@@ -987,7 +987,7 @@ components:
       properties:
         model:
           type: string
-          default: "jarvis-default"
+          default: "adaptivemind-default"
           description: Model name (mapped to persona if exists)
         messages:
           type: array

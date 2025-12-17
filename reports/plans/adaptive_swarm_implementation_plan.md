@@ -115,7 +115,7 @@ The system implements the complete framework from the research paper:
 
 ## 🚀 **Ready for Production**
 
-The **Dynamically Adaptive Swarm System** is now complete and ready for integration with your Jarvis_AI system. It provides:
+The **Dynamically Adaptive Swarm System** is now complete and ready for integration with your AdaptiveMind system. It provides:
 
 - **Scientific Intelligence**: Based on peer-reviewed research
 - **Adaptive Processing**: Dynamic architecture selection per task

@@ -16,9 +16,9 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 #!/usr/bin/env python3
 """
-Simple Jarvis AI Server Startup Script
+Simple AdaptiveMind AI Server Startup Script
 
-This script starts the Jarvis AI server with proper configuration
+This script starts the AdaptiveMind AI server with proper configuration
 and handles dependency issues.
 """
 
@@ -29,7 +29,7 @@ from pathlib import Path
 
 def setup_environment():
     """Setup environment and check dependencies."""
-    print("🔧 Setting up Jarvis AI environment...")
+    print("🔧 Setting up AdaptiveMind AI environment...")
     
     # Add current directory to Python path
     current_dir = Path(__file__).parent
@@ -112,8 +112,8 @@ def load_config():
         return config
 
 def start_server():
-    """Start the Jarvis AI server."""
-    print("🚀 Starting Jarvis AI Server...")
+    """Start the AdaptiveMind AI server."""
+    print("🚀 Starting AdaptiveMind AI Server...")
     
     # Setup environment
     setup_environment()
@@ -134,7 +134,7 @@ def start_server():
         from fastapi import FastAPI
         from fastapi.responses import JSONResponse
         
-        app = FastAPI(title="Jarvis AI", version="1.0.0")
+        app = FastAPI(title="AdaptiveMind AI", version="1.0.0")
         
         @app.get("/health")
         async def health():
@@ -160,8 +160,8 @@ def start_server():
         print("✅ Minimal server created")
     
     # Start server
-    port = int(os.getenv("JARVIS_PORT", "8000"))
-    host = os.getenv("JARVIS_HOST", "127.0.0.1")
+    port = int(os.getenv("ADAPTIVEMIND_PORT", "8000"))
+    host = os.getenv("ADAPTIVEMIND_HOST", "127.0.0.1")
     
     print(f"🌐 Starting server on {host}:{port}")
     print(f"🔗 Health check: http://{host}:{port}/health")

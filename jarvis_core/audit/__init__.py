@@ -15,7 +15,7 @@ Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 """
-Jarvis AI Audit System
+AdaptiveMind AI Audit System
 
 A comprehensive audit system for security vulnerabilities, performance bottlenecks,
 code quality issues, dependency risks, API compliance, and architectural patterns.

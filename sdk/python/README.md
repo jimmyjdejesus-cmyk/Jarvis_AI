@@ -4,9 +4,9 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis AI Python SDK
+# AdaptiveMind AI Python SDK
 
-A lightweight SDK to integrate with the Jarvis AI v1 API.
+A lightweight SDK to integrate with the AdaptiveMind AI v1 API.
 
 ## Install
 
@@ -39,7 +39,7 @@ print(status)
 ```
 
 ## Auth
-- Set `X-API-Key` header via `api_key` or `JARVIS_API_KEY` env var.
+- Set `X-API-Key` header via `api_key` or `ADAPTIVEMIND_API_KEY` env var.
 
 ## Endpoints covered
 - Health, Models, Chat (streaming and non-streaming)

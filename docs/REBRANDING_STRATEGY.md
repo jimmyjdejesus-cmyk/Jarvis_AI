@@ -4,7 +4,7 @@ Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
-# Jarvis_AI Framework Rebranding Strategy
+# AdaptiveMind Framework Rebranding Strategy
 
 ## Executive Summary
 
@@ -104,7 +104,7 @@ The framework provides:
 
 #### Code Impact Assessment
 - **Package Names**: All `jarvis*` packages need renaming
-- **Class Names**: `JarvisApplication`, `JarvisBackend` etc.
+- **Class Names**: `AdaptiveMindApplication`, `AdaptiveMindBackend` etc.
 - **Configuration**: Environment variables and config files
 - **Documentation**: Complete documentation overhaul
 - **URLs**: API endpoints and documentation links

@@ -23,10 +23,10 @@ This bypasses all FastAPI middleware issues by using Python's built-in HTTP serv
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-from jarvis_core.app import JarvisApplication
+from jarvis_core.app import AdaptiveMindApplication
 from jarvis_core.config import load_config
 
-class JarvisHandler(BaseHTTPRequestHandler):
+class AdaptiveMindHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, jarvis_app=None, **kwargs):
         self.jarvis_app = jarvis_app
         super().__init__(*args, **kwargs)
@@ -147,8 +147,8 @@ class JarvisHandler(BaseHTTPRequestHandler):
         print(f"[{self.address_string()}] {format % args}")
 
 def create_handler_class(jarvis_app):
-    """Create a handler class with the Jarvis app instance"""
-    class BoundHandler(JarvisHandler):
+    """Create a handler class with the AdaptiveMind app instance"""
+    class BoundHandler(AdaptiveMindHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, jarvis_app=jarvis_app, **kwargs)
     
@@ -156,19 +156,19 @@ def create_handler_class(jarvis_app):
 
 def run_server(host="127.0.0.1", port=8000):
     """Run the standalone Jarvis server"""
-    print("🤖 Starting Jarvis Local Assistant...")
+    print("🤖 Starting AdaptiveMind Local Assistant...")
     print("=" * 50)
     
-    # Initialize Jarvis application
+    # Initialize AdaptiveMind application
     try:
         config = load_config()
-        jarvis_app = JarvisApplication(config=config)
-        print(f"✅ Jarvis application initialized")
+        jarvis_app = AdaptiveMindApplication(config=config)
+        print(f"✅ AdaptiveMind application initialized")
         print(f"📊 Available backends: {len(jarvis_app.backends)}")
         print(f"🎭 Configured personas: {list(jarvis_app.config.personas.keys())}")
         print(f"📈 Models available: {jarvis_app.models()}")
     except Exception as e:
-        print(f"❌ Failed to initialize Jarvis: {e}")
+        print(f"❌ Failed to initialize AdaptiveMind: {e}")
         return
     
     # Create handler class
@@ -196,7 +196,7 @@ _INDEX_HTML = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>🤖 Jarvis Local Assistant</title>
+    <title>🤖 AdaptiveMind Local Assistant</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -341,11 +341,11 @@ _INDEX_HTML = """
 </head>
 <body>
     <div class="container">
-        <h1>🤖 Jarvis Local Assistant</h1>
+        <h1>🤖 AdaptiveMind Local Assistant</h1>
         <div id="status" class="status">🔄 Initializing system...</div>
         
         <div class="input-section">
-            <label for="prompt">💬 Ask Jarvis anything:</label>
+            <label for="prompt">💬 Ask AdaptiveMind anything:</label>
             <textarea id="prompt" placeholder="Type your question here... (Press Enter to send, Shift+Enter for new line)"></textarea>
         </div>
         
@@ -388,7 +388,7 @@ _INDEX_HTML = """
             const textarea = document.getElementById('prompt');
             
             // UI updates
-            output.innerHTML = '<span class="loading">🤔</span> Jarvis is thinking...';
+            output.innerHTML = '<span class="loading">🤔</span> AdaptiveMind is thinking...';
             button.innerHTML = '<span class="loading">⏳</span> Processing...';
             button.disabled = true;
             textarea.disabled = true;

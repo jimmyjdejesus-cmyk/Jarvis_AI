@@ -66,7 +66,7 @@ pytest -q
 
 Test mode notes (for developers):
 
-- Set `JARVIS_TEST_MODE=true` to enable test-only fallbacks used by the
+- Set `ADAPTIVEMIND_TEST_MODE=true` to enable test-only fallbacks used by the
   local test harness (e.g., relaxed CORS for websocket-client tests and a
   small fallback ExceptionMiddleware when Starlette's ExceptionMiddleware
   is not present). The test suite sets this automatically when running
@@ -74,7 +74,7 @@ Test mode notes (for developers):
   explicitly when debugging:
 
 ```bash
-export JARVIS_TEST_MODE=true
+export ADAPTIVEMIND_TEST_MODE=true
 pytest -q
 ```
 

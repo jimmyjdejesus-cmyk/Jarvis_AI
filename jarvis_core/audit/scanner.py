@@ -15,7 +15,7 @@ Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 """
-Base scanner classes for the Jarvis AI audit system.
+Base scanner classes for the AdaptiveMind AI audit system.
 
 This module provides the foundation for all scanning operations including
 security vulnerability detection, code quality analysis, and dependency scanning.

@@ -14,7 +14,7 @@ import time
 import pytest
 import websocket
 
-BASE_URL = os.getenv("JARVIS_TEST_BASE_URL", "http://127.0.0.1:8000").replace("http", "ws")
+BASE_URL = os.getenv("ADAPTIVEMIND_TEST_BASE_URL", "http://127.0.0.1:8000").replace("http", "ws")
 
 
 def test_websocket_ping_pong():

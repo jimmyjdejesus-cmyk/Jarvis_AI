@@ -8,7 +8,7 @@
 
 
 
-from .app import JarvisApplication
+from .app import AdaptiveMindApplication
 from .server import build_app
 
-__all__ = ["JarvisApplication", "build_app"]
+__all__ = ["AdaptiveMindApplication", "build_app"]

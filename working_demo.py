@@ -23,11 +23,11 @@ This script demonstrates a fully functional Jarvis assistant.
 import json
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from jarvis_core.app import JarvisApplication
+from jarvis_core.app import AdaptiveMindApplication
 from jarvis_core.config import load_config
 from jarvis_core.routing.router_fixed import AdaptiveLLMRouter
 
-class JarvisDemoHandler(BaseHTTPRequestHandler):
+class AdaptiveMindDemoHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, jarvis_app=None, **kwargs):
         self.jarvis_app = jarvis_app
         super().__init__(*args, **kwargs)
@@ -115,8 +115,8 @@ class JarvisDemoHandler(BaseHTTPRequestHandler):
         print(f"[{self.address_string()}] {format % args}")
 
 def create_handler_class(jarvis_app):
-    """Create a handler class with the Jarvis app instance"""
-    class BoundHandler(JarvisDemoHandler):
+    """Create a handler class with the AdaptiveMind app instance"""
+    class BoundHandler(AdaptiveMindDemoHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, jarvis_app=jarvis_app, **kwargs)
     return BoundHandler
@@ -128,7 +128,7 @@ def run_demo_server():
     
     # Initialize Jarvis with fixed configuration
     config = load_config()
-    jarvis_app = JarvisApplication(config=config)
+    jarvis_app = AdaptiveMindApplication(config=config)
     
     # Replace router with fixed version to handle empty allowed_personas
     jarvis_app.router = AdaptiveLLMRouter(
@@ -139,7 +139,7 @@ def run_demo_server():
         traces=jarvis_app.traces,
     )
     
-    print(f"✅ Jarvis application initialized with fixed router")
+    print(f"✅ AdaptiveMind application initialized with fixed router")
     print(f"📊 Available backends: {len(jarvis_app.backends)}")
     print(f"🎭 Configured personas: {list(jarvis_app.config.personas.keys())}")
     print(f"📈 Models available: {jarvis_app.models()}")
@@ -180,7 +180,7 @@ _INDEX_HTML = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>🤖 Jarvis Working Demo</title>
+    <title>🤖 AdaptiveMind Working Demo</title>
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -249,10 +249,10 @@ _INDEX_HTML = """
 </head>
 <body>
     <div class="container">
-        <h1>🤖 Jarvis Working Demo</h1>
+        <h1>🤖 AdaptiveMind Working Demo</h1>
         <div id="status" class="status">✅ System Ready - Fixed Router Active!</div>
         
-        <textarea id="prompt" placeholder="Ask Jarvis anything..."></textarea>
+        <textarea id="prompt" placeholder="Ask AdaptiveMind anything..."></textarea>
         <button onclick="sendChat()">Send Message</button>
         <pre id="output">Ready to chat!</pre>
     </div>

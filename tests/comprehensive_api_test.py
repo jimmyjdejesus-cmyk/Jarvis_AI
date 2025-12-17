@@ -16,9 +16,9 @@ See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 #!/usr/bin/env python3
 """
-Comprehensive Jarvis AI API Testing Suite
+Comprehensive AdaptiveMind AI API Testing Suite
 
-This script performs comprehensive testing of all Jarvis AI API endpoints including:
+This script performs comprehensive testing of all AdaptiveMind AI API endpoints including:
 - Schema validation
 - Endpoint functionality testing
 - Security testing
@@ -69,7 +69,7 @@ class PerformanceMetrics:
 
 
 class JarvisAPITester:
-    """Comprehensive API testing suite for Jarvis AI."""
+    """Comprehensive API testing suite for AdaptiveMind AI."""
     
     def __init__(self, base_url: str = "http://127.0.0.1:8000", api_key: Optional[str] = None):
         self.base_url = base_url.rstrip('/')
@@ -315,7 +315,7 @@ class JarvisAPITester:
         
         # OpenAI chat completions
         openai_data = {
-            "model": "jarvis-default",
+            "model": "adaptivemind-default",
             "messages": [{"role": "user", "content": "Hello!"}],
             "temperature": 0.7,
             "max_tokens": 100
@@ -445,7 +445,7 @@ class JarvisAPITester:
     
     async def run_all_tests(self) -> Dict[str, Any]:
         """Run all test suites and generate comprehensive report."""
-        print("🚀 Starting Comprehensive Jarvis AI API Testing")
+        print("🚀 Starting Comprehensive AdaptiveMind AI API Testing")
         print("=" * 60)
         
         test_suites = [
@@ -515,7 +515,7 @@ class JarvisAPITester:
 
 async def main():
     """Main testing function."""
-    parser = argparse.ArgumentParser(description="Comprehensive Jarvis AI API Testing")
+    parser = argparse.ArgumentParser(description="Comprehensive AdaptiveMind AI API Testing")
     parser.add_argument("--server-url", default="http://127.0.0.1:8000", help="Server URL")
     parser.add_argument("--api-key", help="API key for authentication")
     parser.add_argument("--output", default="test_report.json", help="Output file for test report")

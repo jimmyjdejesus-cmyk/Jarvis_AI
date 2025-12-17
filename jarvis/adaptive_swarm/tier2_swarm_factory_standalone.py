@@ -12,7 +12,7 @@
 Tier 2: Polymorphic Swarm Factory (Standalone Version)
 
 This is a standalone implementation of the swarm factory that doesn't
-depend on the full Jarvis_AI system. It can be integrated later.
+depend on the full AdaptiveMind system. It can be integrated later.
 
 Features:
 - Dynamic architecture instantiation (Single, Centralized, Decentralized)

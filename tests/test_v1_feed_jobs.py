@@ -14,8 +14,8 @@ import json
 import pytest
 import requests
 
-BASE_URL = os.getenv("JARVIS_TEST_BASE_URL", "http://127.0.0.1:8000")
-API_KEY = os.getenv("JARVIS_API_KEY", "test-key")
+BASE_URL = os.getenv("ADAPTIVEMIND_TEST_BASE_URL", "http://127.0.0.1:8000")
+API_KEY = os.getenv("ADAPTIVEMIND_API_KEY", "test-key")
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 REQUIRE_NEW_RUNTIME = os.getenv("REQUIRE_NEW_RUNTIME", "false").lower() in {"1", "true", "yes", "on"}
 

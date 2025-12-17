@@ -13,7 +13,7 @@ import keyring
 from logger_config import log
 
 # Use a unique service name for your application
-SERVICE_NAME = "jarvis_local_ai"
+SERVICE_NAME = "adaptivemind_local_ai"
 USERNAME = "openai_api_key"
 
 def save_api_key(api_key: str):

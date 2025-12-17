@@ -15,7 +15,7 @@ Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 
 """
-Command-line interface for the Jarvis AI audit system.
+Command-line interface for the AdaptiveMind AI audit system.
 
 Provides a simple CLI for running comprehensive code audits and generating reports.
 """
@@ -247,7 +247,7 @@ def main(argv: Optional[list] = None) -> int:
         Exit code
     """
     parser = argparse.ArgumentParser(
-        description="Jarvis AI Audit System - Comprehensive security and quality scanning",
+        description="AdaptiveMind AI Audit System - Comprehensive security and quality scanning",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

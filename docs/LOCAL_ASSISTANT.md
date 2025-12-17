@@ -11,7 +11,7 @@ research workflows, routing strategies, and observability.
 
 ## Architecture Highlights
 
-- **JarvisApplication** wires configuration, context engineering, monitoring, and LLM backends.
+- **AdaptiveMindApplication** wires configuration, context engineering, monitoring, and LLM backends.
 - **AdaptiveLLMRouter** picks the best backend for each persona, trying
   Ollama, then WindowsML (when available), and finally the deterministic
   contextual fallback.
@@ -52,7 +52,7 @@ mode.
 ## API Keys and Cloud Usage
 
 To gate cloud-based workflows, set API keys in configuration or the
-`JARVIS_API_KEYS` environment variable. The server requires `X-API-Key`
+`ADAPTIVEMIND_API_KEYS` environment variable. The server requires `X-API-Key`
 (or `api_key` query parameter) for every authenticated request. Failed
 attempts are rejected with HTTP 401 and logged by the central logger for
 auditing.
@@ -69,7 +69,7 @@ schema to bootstrap integrations without editing core routing code.
 
 ## Observability Playbook
 
-1. Configure log output with `JARVIS_LOG_LEVEL=DEBUG` for detailed traces.
+1. Configure log output with `ADAPTIVEMIND_LOG_LEVEL=DEBUG` for detailed traces.
 2. Poll `/api/v1/monitoring/metrics` regularly to harvest aggregated metrics.
 3. Use `/api/v1/monitoring/traces` to trace persona-specific behaviour and backend choices.
 4. Optionally persist audit logs by pointing `security.audit_log_path` to a file location.
