@@ -1,3 +1,25 @@
+# AdaptiveMind Branding Implementation
+
+This document outlines the core branding assets and implementation plan for the AdaptiveMind rebrand.
+
+## Name and Positioning
+- Name: AdaptiveMind
+- Tagline / Positioning: Intelligent AI Routing & Context Engine
+
+## Assets to include
+- Updated README references to `AdaptiveMind`
+- `docs/ADAPTIVEMIND_BRANDING.md` (this file)
+- `docs/BUDGET_IP_PROTECTION.md` (IP protection summary)
+- Visual assets (logo, favicon) — add to `assets/branding/` when available
+
+## Implementation steps
+1. Create/update docs with new name and attribution.
+2. Add a compatibility shim (if retaining `Jarvis` imports) to ease transition.
+3. Run full test suite and CI on the rebrand branch before renaming repository.
+4. After all PRs are merged and branch cleanup, rename repository and update remote URLs.
+
+## Notes
+- Keep `jarvis` module shims in place until downstream consumers migrate.
 # AdaptiveMind: The New Name for Jarvis_AI Framework
 
 ## Executive Summary

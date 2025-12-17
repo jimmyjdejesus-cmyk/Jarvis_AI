@@ -1,5 +1,49 @@
 #!/usr/bin/env python3
 """
+Update existing copyright headers to a new author string.
+
+Example: python scripts/update_copyright_info.py "Jimmy De Jesus"
+"""
+import re
+from pathlib import Path
+
+TARGET = "Jimmy De Jesus"
+PATTERN = re.compile(r"Copyright \(c\) .*", re.IGNORECASE)
+
+
+def replace_header(path: Path, new_name: str) -> bool:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    if "Copyright (c)" not in text:
+        return False
+    new_text = PATTERN.sub(f"Copyright (c) {new_name}", text)
+    if new_text == text:
+        return False
+    path.write_text(new_text, encoding="utf-8")
+    return True
+
+
+def main(root: str = ".", new_name: str = TARGET):
+    rootp = Path(root)
+    modified = []
+    for p in rootp.rglob("*"):
+        try:
+            if p.is_file() and replace_header(p, new_name):
+                modified.append(str(p))
+        except Exception:
+            continue
+    print(f"Updated copyright in {len(modified)} files")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("new_name", nargs="?", default=TARGET)
+    ap.add_argument("root", nargs="?", default=".")
+    args = ap.parse_args()
+    main(args.root, args.new_name)
+#!/usr/bin/env python3
+"""
 Update copyright information in all files to replace placeholder names with actual names.
 """
 

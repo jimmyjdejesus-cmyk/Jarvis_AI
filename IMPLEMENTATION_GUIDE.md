@@ -1,3 +1,24 @@
+# AdaptiveMind Implementation Guide
+
+This is a short step-by-step execution guide for the rebrand and IP protection rollout.
+
+1. Merge and close all outstanding PRs on the current branches. Ensure `main` is green in CI.
+2. Create a dedicated rebrand branch (optional) for larger changes: `rebrand/adaptivemind`.
+3. Run the automated header script to add/update copyright headers.
+4. Update `LICENSE` to `CC-BY 4.0` and include your attribution.
+5. Replace visible branding strings and docs; keep compatibility shims for imports.
+6. Run full test suite: `PYTHONNOUSERSITE=1 pytest -q` and fix regressions.
+7. Rename repository on GitHub and update CI/workflows and remote URLs.
+
+Minimal commands reference:
+```bash
+# run tests locally
+PYTHONNOUSERSITE=1 pytest -q
+
+# create rebrand branch
+git checkout -b rebrand/adaptivemind
+git push -u origin rebrand/adaptivemind
+```
 # Immediate IP Protection Implementation Guide
 
 ## Quick Start: Zero-Cost IP Protection (30 Minutes)

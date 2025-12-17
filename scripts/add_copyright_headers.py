@@ -1,5 +1,68 @@
 #!/usr/bin/env python3
 """
+Walk the repository and add a simple CC-BY 4.0 notice header to text files that are missing it.
+
+This is a helper script for zero-cost IP protection. Use carefully — review diffs before committing.
+"""
+import os
+from pathlib import Path
+
+HEADER = (
+    """"""
+Copyright (c) 2025 Jimmy De Jesus (Bravetto)
+
+Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
+See https://creativecommons.org/licenses/by/4.0/ for license terms.
+"""
+)
+
+EXCLUDE = {".git", "venv", "env", "__pycache__", "node_modules"}
+
+
+def should_process(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    if any(part in EXCLUDE for part in path.parts):
+        return False
+    if path.suffix in {".pyc", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".tar"}:
+        return False
+    return True
+
+
+def has_header(text: str) -> bool:
+    return "Copyright (c)" in text or "Creative Commons" in text
+
+
+def add_header(path: Path) -> bool:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    if has_header(text):
+        return False
+    new = HEADER + "\n" + text
+    path.write_text(new, encoding="utf-8")
+    return True
+
+
+def main(root: str = "."):
+    rootp = Path(root)
+    modified = []
+    for p in rootp.rglob("*"):
+        try:
+            if should_process(p) and add_header(p):
+                modified.append(str(p))
+        except Exception:
+            continue
+    print(f"Added headers to {len(modified)} files")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("root", nargs="?", default=".")
+    args = ap.parse_args()
+    main(args.root)
+#!/usr/bin/env python3
+"""
 Add copyright headers to all code files in the AdaptiveMind framework.
 This script adds the required copyright notice to Python, JavaScript, YAML, and other code files.
 """
