@@ -1,3 +1,9 @@
+
+Copyright (c) 2025 Jimmy De Jesus (Bravetto)
+
+Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
+See https://creativecommons.org/licenses/by/4.0/ for license terms.
+
 # Integrating Auto-Deep-Research (ADR) into Jarvis_AI
 
 This document outlines how to integrate Auto-Deep-Research (ADR) as an optional

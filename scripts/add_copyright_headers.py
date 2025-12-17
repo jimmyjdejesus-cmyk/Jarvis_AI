@@ -7,14 +7,12 @@ This is a helper script for zero-cost IP protection. Use carefully — review di
 import os
 from pathlib import Path
 
-HEADER = (
-    """"""
+HEADER = """
 Copyright (c) 2025 Jimmy De Jesus (Bravetto)
 
 Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
 See https://creativecommons.org/licenses/by/4.0/ for license terms.
 """
-)
 
 EXCLUDE = {".git", "venv", "env", "__pycache__", "node_modules"}
 

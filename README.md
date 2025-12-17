@@ -1,3 +1,9 @@
+
+Copyright (c) 2025 Jimmy De Jesus (Bravetto)
+
+Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
+See https://creativecommons.org/licenses/by/4.0/ for license terms.
+
 # J.A.R.V.I.S. — Local-first AI Runtime
 
 Jarvis_AI is a local-first multi-persona assistant that prioritizes verifiable truth, observability, and

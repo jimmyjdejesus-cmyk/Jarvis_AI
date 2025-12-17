@@ -1,3 +1,9 @@
+
+Copyright (c) 2025 Jimmy De Jesus (Bravetto)
+
+Licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0).
+See https://creativecommons.org/licenses/by/4.0/ for license terms.
+
 # Python SDK Guide
 
 The Python SDK wraps the Jarvis AI v1 API with convenient methods and API key handling.
