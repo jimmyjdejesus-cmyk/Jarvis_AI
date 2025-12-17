@@ -34,12 +34,12 @@ uvicorn jarvis_core.server:build_app --factory --host 127.0.0.1 --port 8000
 # git mv archive/legacy legacy && uvicorn legacy.app.main:app --reload --port 8000
 ```
 
-4) Test the local-only endpoint
+4) Test the chat endpoint
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/local_chat \
+curl -X POST http://localhost:8000/api/v1/chat \
   -H "Content-Type: application/json" \
-  -d '{\n+    "messages": [{"role": "user", "content": "What is Python?"}]\n+  }'
+  -d '{"messages": [{"role": "user", "content": "What is Python?"}]}'
 ```
 
 Expected: 200 OK with a JSON response containing the assistant reply.

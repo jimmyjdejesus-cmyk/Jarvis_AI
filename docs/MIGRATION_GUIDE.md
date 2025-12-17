@@ -25,16 +25,16 @@ cp config.json config_backup.json
 ```bash
 # Install required packages
 pip install PyQt6 psutil websocket-client
-pip install -e "C:\Users\Student\Downloads\github_repos\jarvis-ai"
+pip install -e .  # Install from repository root
 ```
 
 ## Migration Steps
 
 ### Step 1: Configuration Migration
 
-Run the configuration migration tool:
+Run the configuration migration tool (if legacy runtime is restored):
 ```bash
-python C:\Users\Student\.cursor\Jarvis_AI\legacy\scripts\migrate_config.py
+python legacy/scripts/migrate_config.py
 ```
 
 This will:
@@ -60,61 +60,10 @@ If you need to run the legacy system for migration testing, restore it first:
 # uvicorn legacy.app.main:app --host 127.0.0.1 --port 8000
 ```
 
-In another terminal, run the migration:
+> **Note:** The following endpoints (`/api/memory/*`, `/api/agents/*`, `/api/workflows/*`, `/api/security/*`) 
+> are planned features documented for future implementation. See `docs/API_V1.md` for currently implemented endpoints.
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/memory/migrate
-```
-
-#### Knowledge Graph
-```bash
-# Sync knowledge to legacy format
-curl -X POST http://127.0.0.1:8000/api/memory/sync/to-legacy
-
-# Load legacy data into new system
-curl -X POST http://127.0.0.1:8000/api/memory/sync/from-legacy
-```
-
-### Step 3: Agent Setup
-
-#### Initialize Agents
-The system will automatically create agents when first used. You can also manually initialize:
-
-```bash
-# Check available agents
-curl http://127.0.0.1:8000/api/agents
-
-# Test agent execution
-curl -X POST http://127.0.0.1:8000/api/agents/execute \
-  -H "Content-Type: application/json" \
-  -d '{"agent_type": "research", "objective": "Test migration"}'
-```
-
-### Step 4: Workflow Migration
-
-#### Legacy Workflows
-Existing workflows will continue to work. New workflow capabilities are available through:
-
-```bash
-# Check workflow capabilities
-curl http://127.0.0.1:8000/api/workflows/capabilities
-
-# Execute new workflow
-curl -X POST http://127.0.0.1:8000/api/workflows/execute \
-  -H "Content-Type: application/json" \
-  -d '{"workflow_type": "research", "parameters": {"query": "test"}}'
-```
-
-### Step 5: Security Configuration
-
-#### Security Audit
-```bash
-# Run security audit
-curl -X POST http://127.0.0.1:8000/api/security/audit
-
-# Check security stats
-curl http://127.0.0.1:8000/api/security/stats
-```
+### Step 3: API Security
 
 #### API Security
 If you had API key authentication enabled:
@@ -130,12 +79,13 @@ echo "JARVIS_API_KEY=your-api-key" >> .env
 
 ### 1. Run Integration Tests
 ```bash
-python C:\Users\Student\.cursor\Jarvis_AI\legacy\scripts\test_integration.py
+pytest tests/
 ```
 
 ### 2. Test GUI
 ```bash
-python C:\Users\Student\.cursor\Jarvis_AI\legacy\scripts\run_new_gui.py
+# If legacy runtime is restored:
+python legacy/scripts/run_new_gui.py
 ```
 
 ### 3. Verify API Endpoints
@@ -144,10 +94,10 @@ python C:\Users\Student\.cursor\Jarvis_AI\legacy\scripts\run_new_gui.py
 curl http://127.0.0.1:8000/health
 
 # Models
-curl http://127.0.0.1:8000/api/models
+curl http://127.0.0.1:8000/api/v1/models
 
 # Chat
-curl -X POST http://127.0.0.1:8000/api/chat \
+curl -X POST http://127.0.0.1:8000/api/v1/chat \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "Hello"}]}'
 ```
@@ -231,8 +181,8 @@ The new config file (`~/.jarvis/config.json`) includes:
 
 #### 1. Import Errors
 ```bash
-# Ensure new repo is installed
-pip install -e "C:\Users\Student\Downloads\github_repos\jarvis-ai"
+# Ensure repo is installed from project root
+pip install -e .
 
 # Check Python path
 python -c "import jarvis; print(jarvis.__file__)"
@@ -240,8 +190,8 @@ python -c "import jarvis; print(jarvis.__file__)"
 
 #### 2. Configuration Issues
 ```bash
-# Re-run migration
-python C:\Users\Student\.cursor\Jarvis_AI\legacy\scripts\migrate_config.py
+# Re-run migration (if legacy runtime is restored)
+python legacy/scripts/migrate_config.py
 
 # Check config file
 cat ~/.jarvis/config.json
@@ -296,7 +246,7 @@ If migration fails:
 ### Optimization Tips
 1. Adjust `MAX_CONCURRENT_AGENTS` based on system resources
 2. Use appropriate `AGENT_TIMEOUT` values
-3. Monitor system metrics through `/api/monitoring/health`
+3. Monitor system metrics through `/api/v1/monitoring/metrics`
 4. Regular memory cleanup through sync operations
 
 ## Support and Help

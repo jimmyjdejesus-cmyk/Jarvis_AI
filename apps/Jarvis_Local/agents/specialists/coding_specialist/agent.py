@@ -1,3 +1,13 @@
+# AdaptiveMind Framework
+# Copyright (c) 2025 Jimmy De Jesus
+# Licensed under CC-BY 4.0
+#
+# AdaptiveMind - Intelligent AI Routing & Context Engine
+# More info: https://github.com/[username]/adaptivemind
+# License: https://creativecommons.org/licenses/by/4.0/
+
+
+
 from Jarvis_Local.agents.base_agent.agent import BaseAgent
 from Jarvis_Local.logger_config import log
 # This prompt could benefit from abstracting the language to a variable, e.g. `programming_language` 

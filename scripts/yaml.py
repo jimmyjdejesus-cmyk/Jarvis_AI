@@ -1,3 +1,13 @@
+# AdaptiveMind Framework
+# Copyright (c) 2025 Jimmy De Jesus
+# Licensed under CC-BY 4.0
+#
+# AdaptiveMind - Intelligent AI Routing & Context Engine
+# More info: https://github.com/[username]/adaptivemind
+# License: https://creativecommons.org/licenses/by/4.0/
+
+
+
 """Tiny shim for PyYAML's safe_load used in legacy code during tests.
 
 This is intentionally minimal and returns an empty dict for missing/empty
