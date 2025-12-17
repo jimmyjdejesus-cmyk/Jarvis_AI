@@ -1,0 +1,3 @@
+[submodule "agent_scaling_laws"]
+	path = agent_scaling_laws
+	url = https://github.com/jimmyjdejesus-cmyk/agent-scaling-laws.git

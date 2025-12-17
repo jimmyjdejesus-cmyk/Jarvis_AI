@@ -79,9 +79,6 @@ Phi-4-mini-instruct.Q4_K_M.gguf
 *.log
 logs/
 
-# Keep the local clone of the agent_scaling_laws project out of the repo
-agent_scaling_laws/
-
 # Temporary files
 *.tmp
 *.temp
