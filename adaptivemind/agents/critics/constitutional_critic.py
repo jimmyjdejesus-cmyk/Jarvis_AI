@@ -16,8 +16,10 @@ class ConstitutionalCritic:
 
     Attributes:
         name: Optional name for the critic (defaults to 'constitutional')
+        mcp_client: optional mcp client instance (ignored by the shim)
     """
     name: str = "constitutional"
+    mcp_client: Any | None = None
 
     def evaluate(self, content: str) -> dict:
         """Evaluate content and return a simple score dict."""
