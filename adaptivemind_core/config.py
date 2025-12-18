@@ -267,7 +267,7 @@ class AppConfig(BaseModel):
         Returns:
             List of allowed persona names
         """
-        if value:
+        if value is not None:
             return value
         personas = info.data.get("personas", {})
         if isinstance(personas, dict):
