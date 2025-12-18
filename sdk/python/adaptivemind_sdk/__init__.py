@@ -8,6 +8,6 @@
 
 
 
-from .client import JarvisClient
+from .client import AdaptiveMindClient
 
-__all__ = ["JarvisClient"]
+__all__ = ["AdaptiveMindClient"]

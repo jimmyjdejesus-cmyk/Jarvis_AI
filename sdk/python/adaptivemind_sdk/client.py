@@ -15,7 +15,7 @@ import typing as t
 import requests
 
 
-class JarvisClient:
+class AdaptiveMindClient:
     """AdaptiveMind AI Python SDK client for the versioned `/api/v1` endpoints.
 
     Features:
@@ -24,8 +24,8 @@ class JarvisClient:
     - Sensible defaults for local development
 
     Example:
-        from jarvis_sdk.client import JarvisClient
-        client = JarvisClient(base_url="http://127.0.0.1:8000", api_key="YOUR_KEY")
+        from adaptivemind_sdk.client import AdaptiveMindClient
+        client = AdaptiveMindClient(base_url="http://127.0.0.1:8000", api_key="YOUR_KEY")
         health = client.health()
         models = client.models()
         chat = client.chat(messages=[{"role": "user", "content": "Hello"}])
